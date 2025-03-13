@@ -820,9 +820,13 @@ def list_scoring(
             continue
 
         if gt_files is not None:
-            assert (
-                key in gt_files.keys()
-            ), "key {} not found in ground truth files".format(key)
+            try:
+                assert (
+                    key in gt_files.keys()
+                ), "key {} not found in ground truth files".format(key)
+            except AssertionError:
+                logging.warning("key {} not found in ground truth files though provided, skipping".format(key))
+                continue
         if gt_files is not None:
             if io == "kaldi":
                 gt_sr, gt_wav = gt_files[key]
@@ -848,10 +852,14 @@ def list_scoring(
             gt_sr = None
 
         if text_info is not None:
-            assert (
-                key in text_info.keys()
-            ), "key {} not found in ground truth transcription".format(key)
-            text = text_info[key]
+            try:
+                assert (
+                    key in text_info.keys()
+                ), "key {} not found in ground truth transcription".format(key)
+                text = text_info[key]
+            except AssertionError:
+                logging.warning("key {} not found in transcription though provided, skipping".format(key))
+                continue
         else:
             text = None
 
