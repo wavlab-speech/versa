@@ -22,7 +22,7 @@ except ImportError:
 
 def scoreq_nr_setup(
     data_domain="synthetic",
-    cache_dir="./scoreq_pt-models",
+    cache_dir="versa_cache/scoreq_pt-models",
     use_gpu=False,
 ):
     if use_gpu:

@@ -9,12 +9,10 @@ import torch
 try:
     import torchaudio
     import torchaudio.functional as F
-    from pesq import pesq
-    from pystoi import stoi
     from torchaudio.pipelines import SQUIM_OBJECTIVE, SQUIM_SUBJECTIVE
 except ImportError:
     raise ImportError(
-        "Please install pesq, pystoi, torchaudio and retry: pip install stoi"
+        "Please install torchaudio and retry"
     )
 
 

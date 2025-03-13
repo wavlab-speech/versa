@@ -14,6 +14,7 @@ from versa.utils_shared import (
     check_minimum_length,
     find_files,
     wav_normalize,
+    load_audio,
 )
 
 def audio_loader_setup(audio, io):
@@ -730,13 +731,11 @@ def list_scoring(
 
     score_info = []
     for key in tqdm(gen_files.keys()):
-        if io == "kaldi":
-            gen_sr, gen_wav = gen_files[key]
-        elif io == "soundfile" or io == "dir":
-            gen_wav, gen_sr = sf.read(gen_files[key])
-        else:
-            raise NotImplementedError("Not supported io type: {}".format(io))
+        # Step1: load source speech and conduct basic checks
+        gen_sr, gen_wav = load_audio(gen_files[key], io)
         gen_wav = wav_normalize(gen_wav)
+
+        # length check
         if not check_minimum_length(gen_wav.shape[0] / gen_sr, score_modules.keys()):
             logging.warning(
                 "audio {} (generated, length {}) is too short to be evaluated with some metric metrics, skipping".format(
@@ -745,27 +744,25 @@ def list_scoring(
             )
             continue
 
+        # Step2: load reference (gt) speech and conduct basic checks
         if gt_files is not None:
-            try:
-                assert (
-                    key in gt_files.keys()
-                ), "key {} not found in ground truth files".format(key)
-            except AssertionError:
+            if key not in gen_files.keys():
                 logging.warning("key {} not found in ground truth files though provided, skipping".format(key))
                 continue
-        if gt_files is not None:
-            if io == "kaldi":
-                gt_sr, gt_wav = gt_files[key]
-            else:
-                gt_wav, gt_sr = sf.read(gt_files[key])
+
+            gt_sr, gt_wav = load_audio(gt_files[key], io)
             gt_wav = wav_normalize(gt_wav)
+
+            # check ground truth audio files
             if check_all_same(gt_wav):
                 logging.warning(
-                    "skip audio with gt {}, as the gt audio has all the same value.".format(
+                    "gt audio of key {} has only the same value, skipping".format(
                         key
                     )
                 )
                 continue
+
+            # length check
             if not check_minimum_length(gt_wav.shape[0] / gt_sr, score_modules.keys()):
                 logging.warning(
                     "audio {} (ground truth, length {}) is too short to be evaluated with many metrics, skipping".format(
@@ -777,18 +774,15 @@ def list_scoring(
             gt_wav = None
             gt_sr = None
 
+        # Step3: load text information if provided
         if text_info is not None:
-            try:
-                assert (
-                    key in text_info.keys()
-                ), "key {} not found in ground truth transcription".format(key)
-                text = text_info[key]
-            except AssertionError:
-                logging.warning("key {} not found in transcription though provided, skipping".format(key))
+            if key not in text_info.keys():
+                logging.warning("key {} not found in ground truth transcription though provided, skipping".format(key))
                 continue
         else:
             text = None
 
+        # Step4: check if the sampling rate of generated and gt audio are the same
         if gt_sr is not None and gen_sr > gt_sr:
             logging.warning(
                 "Resampling the generated audio to match the ground truth audio"

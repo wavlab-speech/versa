@@ -31,12 +31,12 @@ def srmr_metric(
     srmr_score = srmr(
         pred_x,
         fs,
-        n_cochlear_filters=23,
-        low_freq=125,
-        min_cf=4,
-        max_cf=128,
-        fast=True,
-        norm=False,
+        n_cochlear_filters=n_cochlear_filters,
+        low_freq=low_freq,
+        min_cf=min_cf,
+        max_cf=max_cf,
+        fast=fast,
+        norm=norm,
     )
 
     return {
