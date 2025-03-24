@@ -31,7 +31,8 @@
 # -- torch_squim_stoi: reference-less stoi
 # -- torch_squim_si_sdr: reference-less si-sdr
 # -- torch_squim_mos: MOS score with reference
-- name: squim  
+- name: squim_ref
+- name: squim_no_ref
 
 # An overall model on MOS-bench from Sheet toolkit
 # More info in https://github.com/unilight/sheet/tree/main

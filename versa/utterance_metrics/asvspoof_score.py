@@ -58,7 +58,7 @@ def asvspoof_metric(model, pred_x, fs):
     pred_x = torch.from_numpy(pred_x).unsqueeze(0).float().to(model.device)
     model.eval()
     with torch.no_grad():
-        embedding, output = model(pred_x)
+        _, output = model(pred_x)
     output = torch.softmax(output, dim=1)
     output = output.squeeze(0).cpu().numpy()
     return {"asvspoof_score": output[1]}

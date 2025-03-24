@@ -5,7 +5,6 @@
 
 import os
 
-import librosa
 import numpy as np
 from espnet2.bin.enh_inference import SeparateSpeech
 
@@ -46,5 +45,5 @@ def se_snr(model, pred_x, fs):
 if __name__ == "__main__":
     a = np.random.random(16000)
     b = np.random.random(16000)
-    model = enhancement_model_setup()
+    model = se_snr_setup()
     print("metrics: {}".format(se_snr(model, a, 16000)))

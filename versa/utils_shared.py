@@ -9,6 +9,7 @@ import logging
 import os
 import numpy as np
 from typing import Dict, List
+import soundfile as sf
 
 def find_files(
     root_dir: str, query: List[str] = ["*.flac", "*.wav"], include_root_dir: bool = True
@@ -41,6 +42,16 @@ def check_all_same(array):
     except IndexError:
         logging.warning("Detect an empty audio")
         return True
+
+
+def load_audio(info, io):
+    if io == "kaldi":
+        gen_sr, gen_wav = info
+    elif io == "soundfile" or io == "dir":
+        gen_wav, gen_sr = sf.read(info)
+    else:
+        raise NotImplementedError(f"Unknown io type: {io}")
+    return gen_sr, gen_wav
 
 
 def wav_normalize(wave_array):
@@ -82,3 +93,5 @@ def check_minimum_length(length, key_info):
         if length < 0.1:
             return False
     return True
+
+

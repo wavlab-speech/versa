@@ -14,6 +14,7 @@ from versa.utils_shared import (
     check_minimum_length,
     find_files,
     wav_normalize,
+    load_audio,
 )
 
 def audio_loader_setup(audio, io):
@@ -566,14 +567,59 @@ def load_score_modules(score_config, use_gt=True, use_gt_text=False, use_gpu=Fal
                 "args": {"model": audiobox_model},
             }
             logging.info("Initiate audiobox aesthetics metric successfully")
-
+        
+        elif "qwen2_audio" in config["name"]:
+            logging.info("Loading qwen2-audio model")
+            from versa import qwen2_model_setup
+            if "qwen2_audio" not in score_modules.keys():
+                qwen_model = qwen2_model_setup(
+                    model_tag=config.get("model_tag", "default"),
+                )
+                score_modules["qwen2_audio"] = {
+                    "module": qwen_model,
+                    "start_prompt": config.get("start_prompt", None),
+                }
+            if config["name"] == "qwen2_audio_speaker_age":
+                from versa import qwen2_speaker_age_metric
+                score_modules["qwen2_audio_speaker_age"] = {
+                    "module": qwen2_speaker_age_metric,
+                    "prompt": config.get("prompt", None),
+                }
+            elif config["name"] == "qwen2_audio_speaker_count":
+                from versa import qwen2_speaker_count_metric
+                score_modules["qwen2_audio_speaker_count"] = {
+                    "module": qwen2_speaker_count_metric,
+                    "prompt": config.get("prompt", None),
+                }
+            elif config["name"] == "qwen2_audio_language":
+                from versa import qwen2_language_metric
+                score_modules["qwen2_audio_language"] = {
+                    "module": qwen2_language_metric,
+                    "prompt": config.get("prompt", None),
+                }
+            elif config["name"] == "qwen2_audio_speech_emotion":
+                from versa import qwen2_speech_emotion_metric
+                score_modules["qwen2_audio_speech_emotion"] = {
+                    "module": qwen2_speech_emotion_metric,
+                    "prompt": config.get("prompt", None),
+                }
+            elif config["name"] == "qwen2_audio_speaker_gender":
+                from versa import qwen2_speaker_gender_metric
+                score_modules["qwen2_audio_speaker_gender"] = {
+                    "module": qwen2_speaker_gender_metric,
+                    "prompt": config.get("prompt", None),
+                }
+            logging.info("Initiate qwen2 audio metric: {} successfully".format(config["name"]))
     return score_modules
 
 
 def use_score_modules(score_modules, gen_wav, gt_wav, gen_sr, text=None):
     utt_score = {}
 
-    # TODO(jiatong): set topology for speaker evaluation
+    # general cache information to reduce recaculation
+    general_cache = {
+        "whisper_hyp_text": None,
+    }
     for key in score_modules.keys():
         if key == "mcd_f0":
             score = score_modules[key]["module"](
@@ -638,6 +684,8 @@ def use_score_modules(score_modules, gen_wav, gt_wav, gen_sr, text=None):
                 text,
                 gen_sr,
             )
+            if key == "whisper_wer":
+                general_cache["whisper_hyp_text"] = score["whisper_hyp_text"]
         elif key == "scoreq_ref":
             score = score_modules[key]["module"](
                 score_modules[key]["model"], gen_wav, gt_wav, gen_sr
@@ -676,7 +724,7 @@ def use_score_modules(score_modules, gen_wav, gt_wav, gen_sr, text=None):
             score = score_modules[key]["module"](gen_wav, gt_wav, fs=gen_sr)
         elif key == "speaking_rate":
             cache_text = None
-            if utt_score.get("whisper_hyp_text", None) is not None:
+            if general_cache.get("whisper_hyp_text", None) is not None:
                 cache_text = utt_score["whisper_hyp_text"]
             score = score_modules[key]["module"](
                 score_modules[key]["args"],
@@ -684,12 +732,12 @@ def use_score_modules(score_modules, gen_wav, gt_wav, gen_sr, text=None):
                 cache_text,
                 gen_sr,
             )
+            if cache_text is None:
+                general_cache["whisper_hyp_text"] = score["whisper_hyp_text"]
         elif key == "asr_match":
             cache_text = None
-            if utt_score.get("whisper_hyp_text", None) is not None:
+            if general_cache.get("whisper_hyp_text", None) is not None:
                 cache_text = utt_score["whisper_hyp_text"]
-            elif utt_score.get("speaking_rate_text", None) is not None:
-                cache_text = utt_score["speaking_rate_text"]
             score = score_modules[key]["module"](
                 score_modules[key]["args"],
                 gen_wav,
@@ -697,6 +745,8 @@ def use_score_modules(score_modules, gen_wav, gt_wav, gen_sr, text=None):
                 cache_text,
                 gen_sr,
             )
+            if cache_text is None:
+                general_cache["whisper_hyp_text"] = score["whisper_hyp_text"]
         elif key == "lid":
             score = score_modules[key]["module"](
                 score_modules[key]["args"],
@@ -708,6 +758,16 @@ def use_score_modules(score_modules, gen_wav, gt_wav, gen_sr, text=None):
                 score_modules[key]["args"]["model"],
                 gen_wav,
                 gen_sr,
+            )
+        elif "qwen2_audio" in key:
+            if key == "qwen2_audio":
+                continue # skip the base model, only use the specific metrics
+            # Support qwen2_audio metrics
+            score = score_modules[key]["module"](
+                score_modules["qwen2_audio"]["module"],
+                gen_wav,
+                gen_sr,
+                custom_prompt=score_modules[key]["prompt"],
             )
         else:
             raise NotImplementedError(f"Not supported {key}")
@@ -724,19 +784,19 @@ def list_scoring(
     text_info=None,
     output_file=None,
     io="kaldi",
+    batch_size=1,
 ):
     if output_file is not None:
         f = open(output_file, "w", encoding="utf-8")
 
     score_info = []
+    cache_info = [] # for batch processing
     for key in tqdm(gen_files.keys()):
-        if io == "kaldi":
-            gen_sr, gen_wav = gen_files[key]
-        elif io == "soundfile" or io == "dir":
-            gen_wav, gen_sr = sf.read(gen_files[key])
-        else:
-            raise NotImplementedError("Not supported io type: {}".format(io))
+        # Step1: load source speech and conduct basic checks
+        gen_sr, gen_wav = load_audio(gen_files[key], io)
         gen_wav = wav_normalize(gen_wav)
+
+        # length check
         if not check_minimum_length(gen_wav.shape[0] / gen_sr, score_modules.keys()):
             logging.warning(
                 "audio {} (generated, length {}) is too short to be evaluated with some metric metrics, skipping".format(
@@ -745,27 +805,25 @@ def list_scoring(
             )
             continue
 
+        # Step2: load reference (gt) speech and conduct basic checks
         if gt_files is not None:
-            try:
-                assert (
-                    key in gt_files.keys()
-                ), "key {} not found in ground truth files".format(key)
-            except AssertionError:
+            if key not in gen_files.keys():
                 logging.warning("key {} not found in ground truth files though provided, skipping".format(key))
                 continue
-        if gt_files is not None:
-            if io == "kaldi":
-                gt_sr, gt_wav = gt_files[key]
-            else:
-                gt_wav, gt_sr = sf.read(gt_files[key])
+
+            gt_sr, gt_wav = load_audio(gt_files[key], io)
             gt_wav = wav_normalize(gt_wav)
+
+            # check ground truth audio files
             if check_all_same(gt_wav):
                 logging.warning(
-                    "skip audio with gt {}, as the gt audio has all the same value.".format(
+                    "gt audio of key {} has only the same value, skipping".format(
                         key
                     )
                 )
                 continue
+
+            # length check
             if not check_minimum_length(gt_wav.shape[0] / gt_sr, score_modules.keys()):
                 logging.warning(
                     "audio {} (ground truth, length {}) is too short to be evaluated with many metrics, skipping".format(
@@ -777,18 +835,15 @@ def list_scoring(
             gt_wav = None
             gt_sr = None
 
+        # Step3: load text information if provided
         if text_info is not None:
-            try:
-                assert (
-                    key in text_info.keys()
-                ), "key {} not found in ground truth transcription".format(key)
-                text = text_info[key]
-            except AssertionError:
-                logging.warning("key {} not found in transcription though provided, skipping".format(key))
+            if key not in text_info.keys():
+                logging.warning("key {} not found in ground truth transcription though provided, skipping".format(key))
                 continue
         else:
             text = None
 
+        # Step4: check if the sampling rate of generated and gt audio are the same
         if gt_sr is not None and gen_sr > gt_sr:
             logging.warning(
                 "Resampling the generated audio to match the ground truth audio"
@@ -800,18 +855,26 @@ def list_scoring(
                 "Resampling the ground truth audio to match the generated audio"
             )
             gt_wav = librosa.resample(gt_wav, orig_sr=gt_sr, target_sr=gen_sr)
+        
+        # Step5: cache for batch processing
+        utterance_info = (key, gen_wav, gt_wav, gen_sr, text)
 
-        utt_score = {"key": key}
+        cache_info.append(utterance_info)
+        if len(cache_info) == batch_size:
+            # Process after a batch is collected
+            for utt_info in cache_info:
+                key, gen_wav, gt_wav, gen_sr, text = utt_info
+                utt_score = {"key": key}
+                utt_score.update(
+                    use_score_modules(score_modules, gen_wav, gt_wav, gen_sr, text)
+                )
+                score_info.append(utt_score)
+                if output_file is not None:
+                    f.write(f"{utt_score}\n")
+        else:
+            # continue collect the batch
+            continue
 
-        utt_score.update(
-            use_score_modules(score_modules, gen_wav, gt_wav, gen_sr, text=text)
-        )
-        del gen_wav
-        del gt_wav
-
-        if output_file is not None:
-            f.write(f"{utt_score}\n")
-        score_info.append(utt_score)
     logging.info("Scoring completed and save score at {}".format(output_file))
     return score_info
 
