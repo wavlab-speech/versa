@@ -1,0 +1,7 @@
+
+# Audiobox Aesthetics (Unified automatic quality assessment for speech, music, and sound.)
+# Check https://github.com/facebookresearch/audiobox-aesthetics.git for original release.
+# We use our own interface at https://github.com/ftshijt/audiobox-aesthetics.git
+- name: audiobox_aesthetics
+  batch_size: 1
+  cache_dir: versa_cache/audiobox
