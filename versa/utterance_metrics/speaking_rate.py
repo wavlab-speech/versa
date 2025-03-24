@@ -73,7 +73,7 @@ def speaking_rate_metric(wer_utils, pred_x, cache_text=None, fs=16000, use_char=
         length = len(inf_text.split())
     return {
         "speaking_rate": length / (len(pred_x) / fs),
-        "speaking_rate_text": inf_text,
+        "whisper_hyp_text": inf_text,
     }
 
 

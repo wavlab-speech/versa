@@ -574,7 +574,10 @@ def load_score_modules(score_config, use_gt=True, use_gt_text=False, use_gpu=Fal
 def use_score_modules(score_modules, gen_wav, gt_wav, gen_sr, text=None):
     utt_score = {}
 
-    # TODO(jiatong): set topology for speaker evaluation
+    # general cache information to reduce recaculation
+    general_cache = {
+        "whisper_hyp_text": None,
+    }
     for key in score_modules.keys():
         if key == "mcd_f0":
             score = score_modules[key]["module"](
@@ -639,6 +642,8 @@ def use_score_modules(score_modules, gen_wav, gt_wav, gen_sr, text=None):
                 text,
                 gen_sr,
             )
+            if key == "whisper_wer":
+                general_cache["whisper_hyp_text"] = score["whisper_hyp_text"]
         elif key == "scoreq_ref":
             score = score_modules[key]["module"](
                 score_modules[key]["model"], gen_wav, gt_wav, gen_sr
@@ -677,7 +682,7 @@ def use_score_modules(score_modules, gen_wav, gt_wav, gen_sr, text=None):
             score = score_modules[key]["module"](gen_wav, gt_wav, fs=gen_sr)
         elif key == "speaking_rate":
             cache_text = None
-            if utt_score.get("whisper_hyp_text", None) is not None:
+            if general_cache.get("whisper_hyp_text", None) is not None:
                 cache_text = utt_score["whisper_hyp_text"]
             score = score_modules[key]["module"](
                 score_modules[key]["args"],
@@ -685,12 +690,12 @@ def use_score_modules(score_modules, gen_wav, gt_wav, gen_sr, text=None):
                 cache_text,
                 gen_sr,
             )
+            if cache_text is None:
+                general_cache["whisper_hyp_text"] = score["whisper_hyp_text"]
         elif key == "asr_match":
             cache_text = None
-            if utt_score.get("whisper_hyp_text", None) is not None:
+            if general_cache.get("whisper_hyp_text", None) is not None:
                 cache_text = utt_score["whisper_hyp_text"]
-            elif utt_score.get("speaking_rate_text", None) is not None:
-                cache_text = utt_score["speaking_rate_text"]
             score = score_modules[key]["module"](
                 score_modules[key]["args"],
                 gen_wav,
@@ -698,6 +703,8 @@ def use_score_modules(score_modules, gen_wav, gt_wav, gen_sr, text=None):
                 cache_text,
                 gen_sr,
             )
+            if cache_text is None:
+                general_cache["whisper_hyp_text"] = score["whisper_hyp_text"]
         elif key == "lid":
             score = score_modules[key]["module"](
                 score_modules[key]["args"],
@@ -725,11 +732,13 @@ def list_scoring(
     text_info=None,
     output_file=None,
     io="kaldi",
+    batch_size=1,
 ):
     if output_file is not None:
         f = open(output_file, "w", encoding="utf-8")
 
     score_info = []
+    cache_info = [] # for batch processing
     for key in tqdm(gen_files.keys()):
         # Step1: load source speech and conduct basic checks
         gen_sr, gen_wav = load_audio(gen_files[key], io)
@@ -794,18 +803,26 @@ def list_scoring(
                 "Resampling the ground truth audio to match the generated audio"
             )
             gt_wav = librosa.resample(gt_wav, orig_sr=gt_sr, target_sr=gen_sr)
+        
+        # Step5: cache for batch processing
+        utterance_info = (key, gen_wav, gt_wav, gen_sr, text)
 
-        utt_score = {"key": key}
+        cache_info.append(utterance_info)
+        if len(cache_info) == batch_size:
+            # Process after a batch is collected
+            for utt_info in cache_info:
+                key, gen_wav, gt_wav, gen_sr, text = utt_info
+                utt_score = {"key": key}
+                utt_score.update(
+                    use_score_modules(score_modules, gen_wav, gt_wav, gen_sr, text)
+                )
+                score_info.append(utt_score)
+                if output_file is not None:
+                    f.write(f"{utt_score}\n")
+        else:
+            # continue collect the batch
+            continue
 
-        utt_score.update(
-            use_score_modules(score_modules, gen_wav, gt_wav, gen_sr, text=text)
-        )
-        del gen_wav
-        del gt_wav
-
-        if output_file is not None:
-            f.write(f"{utt_score}\n")
-        score_info.append(utt_score)
     logging.info("Scoring completed and save score at {}".format(output_file))
     return score_info
 

@@ -114,10 +114,10 @@ def asr_match_metric(wer_utils, pred_x, gt_x, cache_pred_text=None, fs=16000):
         + result["asr_match_insert"]
         + result["asr_match_replace"]
     ) / len(ref_chars)
-    return {"asr_match_error_rate": asr_match_error_rate}
+    return {"asr_match_error_rate": asr_match_error_rate, "whisper_hyp_text": inf_text}
 
 
 if __name__ == "__main__":
     a = np.random.random(16000)
-    wer_utils = asr_model_setup()
+    wer_utils = asr_match_setup()
     print("metrics: {}".format(asr_match_metric(wer_utils, a, None, 16000)))
