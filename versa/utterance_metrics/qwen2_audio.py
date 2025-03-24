@@ -6,6 +6,7 @@
 import numpy as np
 import logging
 import librosa
+import copy
 
 try:
     from transformers import Qwen2AudioForConditionalGeneration, AutoProcessor
@@ -52,7 +53,7 @@ def qwen2_base_metric(qwen_utils, pred_x, fs=16000, custom_prompt=None):
     Returns:
         ret (dict): ditionary containing the speaker age prediction
     """
-    conversation = qwen_utils["start_conversation"]
+    conversation = copy.deepcopy(qwen_utils["start_conversation"])
     processor = qwen_utils["processor"]
     model = qwen_utils["model"]
     if custom_prompt is None:
@@ -71,7 +72,7 @@ def qwen2_base_metric(qwen_utils, pred_x, fs=16000, custom_prompt=None):
     generate_ids = model.generate(**inputs, max_length=256)
     generate_ids = generate_ids[:, inputs.input_ids.size(1):]
     response = processor.batch_decode(generate_ids, skip_special_tokens=True, clean_up_tokenization_spaces=True)[0]
-
+    del conversation
     return response
 
 

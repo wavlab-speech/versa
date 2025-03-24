@@ -72,4 +72,4 @@ from versa.utterance_metrics.audiobox_aesthetics_score import (
     audiobox_aesthetics_setup,
     audiobox_aesthetics_score,
 )
-from versa.utterance_metrics.qwen2_audio import qwen2_audio_setup, qwen2_speaker_age_metric, qwen2_speaker_count_metric, qwen2_speaker_gender_metric, qwen2_speech_emotion_metric, qwen2_language_metric
+from versa.utterance_metrics.qwen2_audio import qwen2_model_setup, qwen2_speaker_age_metric, qwen2_speaker_count_metric, qwen2_speaker_gender_metric, qwen2_speech_emotion_metric, qwen2_language_metric

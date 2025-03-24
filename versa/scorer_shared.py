@@ -760,6 +760,8 @@ def use_score_modules(score_modules, gen_wav, gt_wav, gen_sr, text=None):
                 gen_sr,
             )
         elif "qwen2_audio" in key:
+            if key == "qwen2_audio":
+                continue # skip the base model, only use the specific metrics
             # Support qwen2_audio metrics
             score = score_modules[key]["module"](
                 score_modules["qwen2_audio"]["module"],

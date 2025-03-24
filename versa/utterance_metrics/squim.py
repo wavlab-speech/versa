@@ -12,13 +12,8 @@ try:
     import torchaudio.functional as F
     from torchaudio.pipelines import SQUIM_OBJECTIVE, SQUIM_SUBJECTIVE
 except ImportError:
-<<<<<<< HEAD
-    raise ImportError(
-        "Please install torchaudio and retry"
-=======
     logging.warning(
         "Import error. Please install pesq, pystoi, torchaudio for torch squim"
->>>>>>> c87b05ac0054e8144f1f3beb5fc97cb8d1bde458
     )
 
 
