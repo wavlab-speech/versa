@@ -5,7 +5,6 @@
 
 import os
 
-import librosa
 import numpy as np
 from espnet2.bin.enh_inference import SeparateSpeech
 
