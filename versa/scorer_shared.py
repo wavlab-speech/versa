@@ -567,7 +567,49 @@ def load_score_modules(score_config, use_gt=True, use_gt_text=False, use_gpu=Fal
                 "args": {"model": audiobox_model},
             }
             logging.info("Initiate audiobox aesthetics metric successfully")
-
+        
+        elif "qwen2_audio" in config["name"]:
+            logging.info("Loading qwen2-audio model")
+            from versa import qwen2_model_setup
+            if "qwen2_audio" not in score_modules.keys():
+                qwen_model = qwen2_model_setup(
+                    model_tag=config.get("model_tag", "default"),
+                )
+                score_modules["qwen2_audio"] = {
+                    "module": qwen_model,
+                    "start_prompt": config.get("start_prompt", None),
+                }
+            if config["name"] == "qwen2_audio_speaker_age":
+                from versa import qwen2_speaker_age_metric
+                score_modules["qwen2_audio_speaker_age"] = {
+                    "module": qwen2_speaker_age_metric,
+                    "prompt": config.get("prompt", None),
+                }
+            elif config["name"] == "qwen2_audio_speaker_count":
+                from versa import qwen2_speaker_count_metric
+                score_modules["qwen2_audio_speaker_count"] = {
+                    "module": qwen2_speaker_count_metric,
+                    "prompt": config.get("prompt", None),
+                }
+            elif config["name"] == "qwen2_audio_language":
+                from versa import qwen2_language_metric
+                score_modules["qwen2_audio_language"] = {
+                    "module": qwen2_language_metric,
+                    "prompt": config.get("prompt", None),
+                }
+            elif config["name"] == "qwen2_audio_speech_emotion":
+                from versa import qwen2_speech_emotion_metric
+                score_modules["qwen2_audio_speech_emotion"] = {
+                    "module": qwen2_speech_emotion_metric,
+                    "prompt": config.get("prompt", None),
+                }
+            elif config["name"] == "qwen2_audio_speaker_gender":
+                from versa import qwen2_speaker_gender_metric
+                score_modules["qwen2_audio_speaker_gender"] = {
+                    "module": qwen2_speaker_gender_metric,
+                    "prompt": config.get("prompt", None),
+                }
+            logging.info("Initiate qwen2 audio metric: {} successfully".format(config["name"]))
     return score_modules
 
 
@@ -716,6 +758,14 @@ def use_score_modules(score_modules, gen_wav, gt_wav, gen_sr, text=None):
                 score_modules[key]["args"]["model"],
                 gen_wav,
                 gen_sr,
+            )
+        elif "qwen2_audio" in key:
+            # Support qwen2_audio metrics
+            score = score_modules[key]["module"](
+                score_modules["qwen2_audio"]["module"],
+                gen_wav,
+                gen_sr,
+                custom_prompt=score_modules[key]["prompt"],
             )
         else:
             raise NotImplementedError(f"Not supported {key}")

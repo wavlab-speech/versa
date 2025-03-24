@@ -40,7 +40,7 @@ def whisper_wer_setup(
     return wer_utils
 
 
-def whisper_levenshtein_metric(wer_utils, pred_x, ref_text, fs=16000):
+def whisper_levenshtein_metric(wer_utils, pred_x, ref_text, cache_pred_text=None, fs=16000):
     """Calculate the Levenshtein distance between ref and inf ASR results.
 
     Args:
@@ -49,20 +49,24 @@ def whisper_levenshtein_metric(wer_utils, pred_x, ref_text, fs=16000):
             beam size ("beam size")
         pred_x (np.ndarray): test signal (time,)
         ref_text (string): reference transcript
+        cache_pred_text (string): transcription from cache (previous modules)
         fs (int): sampling rate in Hz
     Returns:
         ret (dict): ditionary containing occurrences of edit operations
     """
-    if fs != TARGET_FS:
-        pred_x = librosa.resample(pred_x, orig_sr=fs, target_sr=TARGET_FS)
-        fs = TARGET_FS
-    with torch.no_grad():
-        inf_txt = wer_utils["model"].transcribe(
-            torch.tensor(pred_x).float(), beam_size=wer_utils["beam_size"]
-        )["text"]
+    if cache_pred_text is not None:
+        inf_text = cache_pred_text
+    else:
+        if fs != TARGET_FS:
+            pred_x = librosa.resample(pred_x, orig_sr=fs, target_sr=TARGET_FS)
+            fs = TARGET_FS
+        with torch.no_grad():
+            inf_text = wer_utils["model"].transcribe(
+                torch.tensor(pred_x).float(), beam_size=wer_utils["beam_size"]
+            )["text"]
 
     ref_text = wer_utils["cleaner"](ref_text).strip()
-    pred_text = wer_utils["cleaner"](inf_txt).strip()
+    pred_text = wer_utils["cleaner"](inf_text).strip()
 
     # process wer
     ref_words = ref_text.strip().split()
