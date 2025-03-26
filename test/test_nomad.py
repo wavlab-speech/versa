@@ -11,7 +11,7 @@ from versa.scorer_shared import (
     load_summary,
 )
 
-TEST_INFO = {"nomad": 1.006}
+TEST_INFO = {"nomad": 0.0336}
 
 
 def info_update():
