@@ -579,28 +579,12 @@ def load_score_modules(score_config, use_gt=True, use_gt_text=False, use_gpu=Fal
                     "module": qwen_model,
                     "start_prompt": config.get("start_prompt", None),
                 }
-            if config["name"] == "qwen2_audio_speaker_age":
-                from versa import qwen2_speaker_age_metric
-                score_modules["qwen2_audio_speaker_age"] = {
-                    "module": qwen2_speaker_age_metric,
-                    "prompt": config.get("prompt", None),
-                }
-            elif config["name"] == "qwen2_audio_speaker_count":
+            
+            # 1. Speaker Characteristics
+            if config["name"] == "qwen2_audio_speaker_count":
                 from versa import qwen2_speaker_count_metric
                 score_modules["qwen2_audio_speaker_count"] = {
                     "module": qwen2_speaker_count_metric,
-                    "prompt": config.get("prompt", None),
-                }
-            elif config["name"] == "qwen2_audio_language":
-                from versa import qwen2_language_metric
-                score_modules["qwen2_audio_language"] = {
-                    "module": qwen2_language_metric,
-                    "prompt": config.get("prompt", None),
-                }
-            elif config["name"] == "qwen2_audio_speech_emotion":
-                from versa import qwen2_speech_emotion_metric
-                score_modules["qwen2_audio_speech_emotion"] = {
-                    "module": qwen2_speech_emotion_metric,
                     "prompt": config.get("prompt", None),
                 }
             elif config["name"] == "qwen2_audio_speaker_gender":
@@ -609,6 +593,131 @@ def load_score_modules(score_config, use_gt=True, use_gt_text=False, use_gpu=Fal
                     "module": qwen2_speaker_gender_metric,
                     "prompt": config.get("prompt", None),
                 }
+            elif config["name"] == "qwen2_audio_speaker_age":
+                from versa import qwen2_speaker_age_metric
+                score_modules["qwen2_audio_speaker_age"] = {
+                    "module": qwen2_speaker_age_metric,
+                    "prompt": config.get("prompt", None),
+                }
+            elif config["name"] == "qwen2_audio_speech_impairment":
+                from versa import qwen2_speech_impairment_metric
+                score_modules["qwen2_audio_speech_impairment"] = {
+                    "module": qwen2_speech_impairment_metric,
+                    "prompt": config.get("prompt", None),
+                }
+            
+            # 2. Voice Properties
+            elif config["name"] == "qwen2_audio_voice_pitch":
+                from versa import qwen2_voice_pitch_metric
+                score_modules["qwen2_audio_voice_pitch"] = {
+                    "module": qwen2_voice_pitch_metric,
+                    "prompt": config.get("prompt", None),
+                }
+            elif config["name"] == "qwen2_audio_pitch_range":
+                from versa import qwen2_pitch_range_metric
+                score_modules["qwen2_audio_pitch_range"] = {
+                    "module": qwen2_pitch_range_metric,
+                    "prompt": config.get("prompt", None),
+                }
+            elif config["name"] == "qwen2_audio_voice_type":
+                from versa import qwen2_voice_type_metric
+                score_modules["qwen2_audio_voice_type"] = {
+                    "module": qwen2_voice_type_metric,
+                    "prompt": config.get("prompt", None),
+                }
+            elif config["name"] == "qwen2_audio_speech_volume_level":
+                from versa import qwen2_speech_volume_level_metric
+                score_modules["qwen2_audio_speech_volume_level"] = {
+                    "module": qwen2_speech_volume_level_metric,
+                    "prompt": config.get("prompt", None),
+                }
+            
+            # 3. Speech Content
+            elif config["name"] == "qwen2_audio_language":
+                from versa import qwen2_language_metric
+                score_modules["qwen2_audio_language"] = {
+                    "module": qwen2_language_metric,
+                    "prompt": config.get("prompt", None),
+                }
+            elif config["name"] == "qwen2_audio_speech_register":
+                from versa import qwen2_speech_register_metric
+                score_modules["qwen2_audio_speech_register"] = {
+                    "module": qwen2_speech_register_metric,
+                    "prompt": config.get("prompt", None),
+                }
+            elif config["name"] == "qwen2_audio_vocabulary_complexity":
+                from versa import qwen2_vocabulary_complexity_metric
+                score_modules["qwen2_audio_vocabulary_complexity"] = {
+                    "module": qwen2_vocabulary_complexity_metric,
+                    "prompt": config.get("prompt", None),
+                }
+            elif config["name"] == "qwen2_audio_speech_purpose":
+                from versa import qwen2_speech_purpose_metric
+                score_modules["qwen2_audio_speech_purpose"] = {
+                    "module": qwen2_speech_purpose_metric,
+                    "prompt": config.get("prompt", None),
+                }
+            
+            # 4. Speech Delivery
+            elif config["name"] == "qwen2_audio_speech_emotion":
+                from versa import qwen2_speech_emotion_metric
+                score_modules["qwen2_audio_speech_emotion"] = {
+                    "module": qwen2_speech_emotion_metric,
+                    "prompt": config.get("prompt", None),
+                }
+            elif config["name"] == "qwen2_audio_speech_clarity":
+                from versa import qwen2_speech_clarity_metric
+                score_modules["qwen2_audio_speech_clarity"] = {
+                    "module": qwen2_speech_clarity_metric,
+                    "prompt": config.get("prompt", None),
+                }
+            elif config["name"] == "qwen2_audio_speech_rate":
+                from versa import qwen2_speech_rate_metric
+                score_modules["qwen2_audio_speech_rate"] = {
+                    "module": qwen2_speech_rate_metric,
+                    "prompt": config.get("prompt", None),
+                }
+            elif config["name"] == "qwen2_audio_speaking_style":
+                from versa import qwen2_speaking_style_metric
+                score_modules["qwen2_audio_speaking_style"] = {
+                    "module": qwen2_speaking_style_metric,
+                    "prompt": config.get("prompt", None),
+                }
+            elif config["name"] == "qwen2_audio_laughter_crying":
+                from versa import qwen2_laughter_crying_metric
+                score_modules["qwen2_audio_laughter_crying"] = {
+                    "module": qwen2_laughter_crying_metric,
+                    "prompt": config.get("prompt", None),
+                }
+            
+            # 5. Interaction Patterns
+            elif config["name"] == "qwen2_audio_overlapping_speech":
+                from versa import qwen2_overlapping_speech_metric
+                score_modules["qwen2_audio_overlapping_speech"] = {
+                    "module": qwen2_overlapping_speech_metric,
+                    "prompt": config.get("prompt", None),
+                }
+            
+            # 6. Recording Environment
+            elif config["name"] == "qwen2_audio_background_environment":
+                from versa import qwen2_background_environment_metric
+                score_modules["qwen2_audio_background_environment"] = {
+                    "module": qwen2_background_environment_metric,
+                    "prompt": config.get("prompt", None),
+                }
+            elif config["name"] == "qwen2_audio_recording_quality":
+                from versa import qwen2_recording_quality_metric
+                score_modules["qwen2_audio_recording_quality"] = {
+                    "module": qwen2_recording_quality_metric,
+                    "prompt": config.get("prompt", None),
+                }
+            elif config["name"] == "qwen2_audio_channel_type":
+                from versa import qwen2_channel_type_metric
+                score_modules["qwen2_audio_channel_type"] = {
+                    "module": qwen2_channel_type_metric,
+                    "prompt": config.get("prompt", None),
+                }
+            
             logging.info("Initiate qwen2 audio metric: {} successfully".format(config["name"]))
     return score_modules
 
