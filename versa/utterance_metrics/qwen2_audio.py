@@ -19,8 +19,8 @@ following categories:
 2. Voice Properties
     - qwen2_voice_pitch_metric: Overall pitch level
     - qwen2_pitch_range_metric: Variation in intonation
-    - qwen2_voice_quality_metric: Voice texture characteristics
-    - qwen2_volume_level_metric: Loudness of speech
+    - qwen2_voice_type_metric: Voice texture characteristics
+    - qwen2_speech_volume_level_metric: Loudness of speech
 
 3. Speech Content
     - qwen2_language_metric: Language(s) being spoken
@@ -102,7 +102,7 @@ def qwen2_base_metric(qwen_utils, pred_x, fs=16000, custom_prompt=None):
         fs (int): sampling rate in Hz
         custom_prompt (string): custom prompt for the model
     Returns:
-        ret (dict): ditionary containing the speaker age prediction
+        ret (dict): dictionary containing the speaker age prediction
     """
     conversation = copy.deepcopy(qwen_utils["start_conversation"])
     processor = qwen_utils["processor"]
@@ -127,63 +127,9 @@ def qwen2_base_metric(qwen_utils, pred_x, fs=16000, custom_prompt=None):
     return response
 
 
-############################################
-# Speech Metrics
-############################################
-
-def qwen2_speaker_age_metric(qwen_utils, pred_x, fs=16000, custom_prompt=None):
-    
-    """Calculate the speaker age from Qwen2Audio results.
-
-    Args:
-        qwen_utils (dict): a utility dict for Qwen2Audio calculation.
-            including: Qwen2Audio model ("model"), processor ("processor"), and start conversation ("start_conversation")
-        pred_x (np.ndarray): test signal (time,)
-        fs (int): sampling rate in Hz
-        custom_prompt (string): custom prompt for the model's age prediction
-    Returns:
-        ret (dict): ditionary containing the speaker age prediction
-    """
-    if custom_prompt is None:
-        custom_prompt = """Identify the age group of the speaker.
-Choose exactly one label from the following categories:
-- Child: under 13 years
-- Teen: 13-19 years
-- Young adult: 20-35 years
-- Middle-aged adult: 36-55 years
-- Senior: over 55 years"""
-    response = qwen2_base_metric(qwen_utils, pred_x, fs, custom_prompt)
-    return {"qwen_speaker_age": response}
-
-
-def qwen2_speech_emotion_metric(qwen_utils, pred_x, fs=16000, custom_prompt=None):
-    
-    """Calculate the speaker age from Qwen2Audio results.
-
-    Args:
-        qwen_utils (dict): a utility dict for Qwen2Audio calculation.
-            including: Qwen2Audio model ("model"), processor ("processor"), and start conversation ("start_conversation")
-        pred_x (np.ndarray): test signal (time,)
-        fs (int): sampling rate in Hz
-        custom_prompt (string): custom prompt for the model's speech emotion prediction
-    Returns:
-        ret (dict): ditionary containing the speech emotion prediction
-    """
-    if custom_prompt is None:
-        # IEMOCAP emotion classification prompt
-        custom_prompt = """Identify the dominant emotion expressed in this speech.
-Choose exactly one label from the following categories:
-- Neutral: even-toned, matter-of-fact delivery with minimal emotional expression
-- Happy: upbeat, positive, enthusiastic tone
-- Sad: downcast, melancholic, somber tone
-- Angry: irritated, frustrated, hostile tone  
-- Fearful: anxious, worried, frightened tone
-- Surprised: astonished, shocked tone
-- Disgusted: repulsed, revolted tone
-- Other: other emotion that cannot be classified by above classes"""
-        response = qwen2_base_metric(qwen_utils, pred_x, fs, custom_prompt)
-    return {"qwen_speech_emotion": response}
-
+################################################
+# Speech Metrics Part I: Speaker Characteristics
+################################################
 
 def qwen2_speaker_count_metric(qwen_utils, pred_x, fs=16000, custom_prompt=None):
     """Calculate the speaker count from Qwen2Audio results.
@@ -195,7 +141,7 @@ def qwen2_speaker_count_metric(qwen_utils, pred_x, fs=16000, custom_prompt=None)
         fs (int): sampling rate in Hz
         custom_prompt (string): custom prompt for the model's speaker count prediction
     Returns:
-        ret (dict): ditionary containing the speaker count prediction
+        ret (dict): dictionary containing the speaker count prediction
     """
     if custom_prompt is None:
         custom_prompt = """Analyze the audio and determine the number of distinct speakers present.
@@ -206,37 +152,6 @@ Examples:
 - For a panel discussion with a moderator and three panelists: 4"""
     response = qwen2_base_metric(qwen_utils, pred_x, fs, custom_prompt)
     return {"qwen_speaker_count": response}
-
-
-def qwen2_language_metric(qwen_utils, pred_x, fs=16000, custom_prompt=None):
-    """Calculate the language from Qwen2Audio results.
-
-    Args:
-        qwen_utils (dict): a utility dict for Qwen2Audio calculation.
-            including: Qwen2Audio model ("model"), processor ("processor"), and start conversation ("start_conversation")
-        pred_x (np.ndarray): test signal (time,)
-        fs (int): sampling rate in Hz
-        custom_prompt (string): custom prompt for the model's language prediction
-    Returns:
-        ret (dict): ditionary containing the language prediction
-    """
-    if custom_prompt is None:
-        custom_prompt = """Identify all languages spoken in the audio.
-List languages using their English names.
-Choose from common languages:
-- English
-- Spanish
-- Mandarin Chinese
-- Hindi
-- Arabic
-- French
-- Russian
-- Portuguese
-- German
-- Japanese
-- Other (specify if possible)"""
-    response = qwen2_base_metric(qwen_utils, pred_x, fs, custom_prompt)
-    return {"qwen_language": response}
 
 
 def qwen2_speaker_gender_metric(qwen_utils, pred_x, fs=16000, custom_prompt=None):
@@ -264,126 +179,29 @@ Choose from:
     return {"qwen_speaker_gender": response}
 
 
-def qwen2_speech_clarity_metric(qwen_utils, pred_x, fs=16000, custom_prompt=None):
-    """Calculate the speech clarity from Qwen2Audio results.
+def qwen2_speaker_age_metric(qwen_utils, pred_x, fs=16000, custom_prompt=None):
+    
+    """Calculate the speaker age from Qwen2Audio results.
 
     Args:
         qwen_utils (dict): a utility dict for Qwen2Audio calculation.
             including: Qwen2Audio model ("model"), processor ("processor"), and start conversation ("start_conversation")
         pred_x (np.ndarray): test signal (time,)
         fs (int): sampling rate in Hz
-        custom_prompt (string): custom prompt for the model's speech clarity prediction
+        custom_prompt (string): custom prompt for the model's age prediction
     Returns:
-        ret (dict): ditionary containing the speech clarity prediction
+        ret (dict): dictionary containing the speaker age prediction
     """
     if custom_prompt is None:
-        custom_prompt = """Rate the overall clarity and intelligibility of the speech.
-Choose one category:
-- High clarity: perfectly intelligible, professional quality
-- Medium clarity: generally understandable with occasional unclear segments
-- Low clarity: difficult to understand, frequent unclear segments
-- Very low clarity: mostly unintelligible"""
+        custom_prompt = """Identify the age group of the speaker.
+Choose exactly one label from the following categories:
+- Child: under 13 years
+- Teen: 13-19 years
+- Young adult: 20-35 years
+- Middle-aged adult: 36-55 years
+- Senior: over 55 years"""
     response = qwen2_base_metric(qwen_utils, pred_x, fs, custom_prompt)
-    return {"qwen_speech_clarity": response}
-
-
-def qwen2_speech_rate_metric(qwen_utils, pred_x, fs=16000, custom_prompt=None):
-    """Calculate the speech rate from Qwen2Audio results.
-
-    Args:
-        qwen_utils (dict): a utility dict for Qwen2Audio calculation.
-            including: Qwen2Audio model ("model"), processor ("processor"), and start conversation ("start_conversation")
-        pred_x (np.ndarray): test signal (time,)
-        fs (int): sampling rate in Hz
-        custom_prompt (string): custom prompt for the model's speech rate prediction
-    Returns:
-        ret (dict): ditionary containing the speech rate prediction
-    """
-    if custom_prompt is None:
-        custom_prompt = """Assess the rate of speech in the audio.
-Choose one category:
-- Very slow: deliberate, significantly slower than average speech
-- Slow: relaxed pace, slower than conversational speech
-- Medium: average conversational pace
-- Fast: quicker than average conversational speech
-- Very fast: rapid delivery, difficult to follow"""
-    response = qwen2_base_metric(qwen_utils, pred_x, fs, custom_prompt)
-    return {"qwen_speech_rate": response}
-
-
-def qwen2_speech_background_environment_metric(qwen_utils, pred_x, fs=16000, custom_prompt=None):
-    """Calculate the speech background environment from Qwen2Audio results.
-
-    Args:
-        qwen_utils (dict): a utility dict for Qwen2Audio calculation.
-            including: Qwen2Audio model ("model"), processor ("processor"), and start conversation ("start_conversation")
-        pred_x (np.ndarray): test signal (time,)
-        fs (int): sampling rate in Hz
-        custom_prompt (string): custom prompt for the model's background environment prediction
-    Returns:
-        ret (dict): ditionary containing the background environment prediction
-    """
-    if custom_prompt is None:
-        custom_prompt = """Identify the dominant background environment or setting.
-Choose one category:
-- Quiet indoor: minimal background noise, likely studio environment
-- Noisy indoor: indoor setting with noticeable background sounds (cafe, office)
-- Outdoor urban: city sounds, traffic
-- Outdoor natural: nature sounds, birds, wind, water
-- Event/crowd: audience sounds, applause, crowd noise
-- Music background: music playing behind speech
-- Multiple environments: changes throughout recording"""
-    response = qwen2_base_metric(qwen_utils, pred_x, fs, custom_prompt)
-    return {"qwen_speech_background_environment": response}
-
-def qwen2_speech_purpose_metric(qwen_utils, pred_x, fs=16000, custom_prompt=None):
-    """Calculate the speech purpose from Qwen2Audio results.
-
-    Args:
-        qwen_utils (dict): a utility dict for Qwen2Audio calculation.
-            including: Qwen2Audio model ("model"), processor ("processor"), and start conversation ("start_conversation")
-        pred_x (np.ndarray): test signal (time,)
-        fs (int): sampling rate in Hz
-        custom_prompt (string): custom prompt for the model's speech purpose prediction
-    Returns:
-        ret (dict): ditionary containing the speech purpose prediction
-    """
-    if custom_prompt is None:
-        custom_prompt = """Identify the primary purpose of the speech.
-Choose one category:
-- Informative: primarily explains or educates
-- Persuasive: attempts to convince or change opinions
-- Entertainment: primarily aims to amuse or entertain
-- Narrative: tells a story or relates events
-- Conversational: casual exchange of information
-- Instructional: provides specific directions or guidance
-- Emotional expression: primarily conveys feelings or emotional state"""
-    response = qwen2_base_metric(qwen_utils, pred_x, fs, custom_prompt)
-    return {"qwen_speech_purpose": response}
-
-
-def qwen2_overlapping_speech_metric(qwen_utils, pred_x, fs=16000, custom_prompt=None):
-    """Calculate the overlapping speech presence from Qwen2Audio results.
-
-    Args:
-        qwen_utils (dict): a utility dict for Qwen2Audio calculation.
-            including: Qwen2Audio model ("model"), processor ("processor"), and start conversation ("start_conversation")
-        pred_x (np.ndarray): test signal (time,)
-        fs (int): sampling rate in Hz
-        custom_prompt (string): custom prompt for the model's overlapping speech prediction
-    Returns:
-        ret (dict): ditionary containing the overlapping speech prediction
-    """
-    if custom_prompt is None:
-        custom_prompt = """Determine if there is overlapping speech in the audio (people talking simultaneously).
-Choose exactly one category:
-- No overlap: clean turn-taking with no simultaneous speech
-- Minimal overlap: occasional brief instances of overlapping speech
-- Moderate overlap: noticeable instances where speakers talk over each other
-- Significant overlap: frequent overlapping speech making it difficult to follow
-- Constant overlap: multiple speakers talking simultaneously throughout most of the audio"""
-    response = qwen2_base_metric(qwen_utils, pred_x, fs, custom_prompt)
-    return {"qwen_overlapping_speech": response}
+    return {"qwen_speaker_age": response}
 
 
 def qwen2_speech_impairment_metric(qwen_utils, pred_x, fs=16000, custom_prompt=None):
@@ -396,7 +214,7 @@ def qwen2_speech_impairment_metric(qwen_utils, pred_x, fs=16000, custom_prompt=N
         fs (int): sampling rate in Hz
         custom_prompt (string): custom prompt for the model's speech impairment prediction
     Returns:
-        ret (dict): ditionary containing the speech impairment prediction
+        ret (dict): dictionary containing the speech impairment prediction
     """
     if custom_prompt is None:
         custom_prompt = """Assess whether there are any noticeable speech impairments or disorders in the speaker's voice.
@@ -414,29 +232,9 @@ Choose exactly one category:
     return {"qwen_speech_impairment": response}
 
 
-def qwen2_laughter_crying_metric(qwen_utils, pred_x, fs=16000, custom_prompt=None):
-    """Calculate the presence of laughter/crying from Qwen2Audio results.
-
-    Args:
-        qwen_utils (dict): a utility dict for Qwen2Audio calculation.
-            including: Qwen2Audio model ("model"), processor ("processor"), and start conversation ("start_conversation")
-        pred_x (np.ndarray): test signal (time,)
-        fs (int): sampling rate in Hz
-        custom_prompt (string): custom prompt for the model's laughter/crying prediction
-    Returns:
-        ret (dict): ditionary containing the laughter/crying prediction
-    """
-    if custom_prompt is None:
-        custom_prompt = """Identify if there is laughter, crying, or other emotional vocalizations in the audio.
-Choose exactly one category:
-- No laughter or crying: speech only
-- Contains laughter: audible laughter is present
-- Contains crying: audible crying or sobbing is present
-- Contains both: both laughter and crying are present
-- Contains other emotional sounds: sighs, gasps, etc.
-- Contains multiple emotional vocalizations: combination of various emotional sounds"""
-    response = qwen2_base_metric(qwen_utils, pred_x, fs, custom_prompt)
-    return {"qwen_laughter_crying": response}
+################################################
+# Speech Metrics Part II: Voice Properties
+################################################
 
 
 def qwen2_pitch_range_metric(qwen_utils, pred_x, fs=16000, custom_prompt=None):
@@ -449,7 +247,7 @@ def qwen2_pitch_range_metric(qwen_utils, pred_x, fs=16000, custom_prompt=None):
         fs (int): sampling rate in Hz
         custom_prompt (string): custom prompt for the model's pitch range prediction
     Returns:
-        ret (dict): ditionary containing the pitch range prediction
+        ret (dict): dictionary containing the pitch range prediction
     """
     if custom_prompt is None:
         custom_prompt = """Assess the pitch variation/intonation range in the speaker's voice.
@@ -472,7 +270,7 @@ def qwen2_voice_pitch_metric(qwen_utils, pred_x, fs=16000, custom_prompt=None):
         fs (int): sampling rate in Hz
         custom_prompt (string): custom prompt for the model's voice pitch prediction
     Returns:
-        ret (dict): ditionary containing the voice pitch prediction
+        ret (dict): dictionary containing the voice pitch prediction
     """
     if custom_prompt is None:
         custom_prompt = """Analyze the voice pitch/tone of the speaker.
@@ -496,7 +294,7 @@ def qwen2_voice_type_metric(qwen_utils, pred_x, fs=16000, custom_prompt=None):
         fs (int): sampling rate in Hz
         custom_prompt (string): custom prompt for the model's voice quality prediction
     Returns:
-        ret (dict): ditionary containing the voice quality prediction
+        ret (dict): dictionary containing the voice quality prediction
     """
     if custom_prompt is None:
         custom_prompt = """Identify the dominant voice quality-related characteristic of the speaker.
@@ -512,6 +310,330 @@ Choose exactly one category:
 - Tremulous: shaky or quivery voice quality"""
     response = qwen2_base_metric(qwen_utils, pred_x, fs, custom_prompt)
     return {"qwen_voice_type": response}
+
+
+def qwen2_speech_volume_level_metric(qwen_utils, pred_x, fs=16000, custom_prompt=None):
+    """Calculate the volume/loudness level from Qwen2Audio results.
+
+    Args:
+        qwen_utils (dict): a utility dict for Qwen2Audio calculation.
+            including: Qwen2Audio model ("model"), processor ("processor"), and start conversation ("start_conversation")
+        pred_x (np.ndarray): test signal (time,)
+        fs (int): sampling rate in Hz
+        custom_prompt (string): custom prompt for the model's volume level prediction
+    Returns:
+        ret (dict): dictionary containing the volume level prediction
+    """
+    if custom_prompt is None:
+        custom_prompt = """Assess the overall volume or loudness level of the speaker.
+Choose exactly one category:
+- Very quiet: barely audible, whispering or very soft-spoken
+- Quiet: below average volume, soft-spoken
+- Moderate: normal conversational volume
+- Loud: above average volume, projecting voice
+- Very loud: shouting or extremely high volume
+- Variable: significant changes in volume throughout the recording"""
+    response = qwen2_base_metric(qwen_utils, pred_x, fs, custom_prompt)
+    return {"qwen_speech_volume_level": response}
+
+
+###################################################
+# Speech Metrics Part III: Speech Content Analysis
+###################################################
+
+def qwen2_language_metric(qwen_utils, pred_x, fs=16000, custom_prompt=None):
+    """Calculate the language from Qwen2Audio results.
+
+    Args:
+        qwen_utils (dict): a utility dict for Qwen2Audio calculation.
+            including: Qwen2Audio model ("model"), processor ("processor"), and start conversation ("start_conversation")
+        pred_x (np.ndarray): test signal (time,)
+        fs (int): sampling rate in Hz
+        custom_prompt (string): custom prompt for the model's language prediction
+    Returns:
+        ret (dict): dictionary containing the language prediction
+    """
+    if custom_prompt is None:
+        custom_prompt = """Identify all languages spoken in the audio.
+List languages using their English names.
+Choose from common languages:
+- English
+- Spanish
+- Mandarin Chinese
+- Hindi
+- Arabic
+- French
+- Russian
+- Portuguese
+- German
+- Japanese
+- Other (specify if possible)"""
+    response = qwen2_base_metric(qwen_utils, pred_x, fs, custom_prompt)
+    return {"qwen_language": response}
+
+
+def qwen2_speech_register_metric(qwen_utils, pred_x, fs=16000, custom_prompt=None):
+    """Calculate the speech register from Qwen2Audio results.
+
+    Args:
+        qwen_utils (dict): a utility dict for Qwen2Audio calculation.
+            including: Qwen2Audio model ("model"), processor ("processor"), and start conversation ("start_conversation")
+        pred_x (np.ndarray): test signal (time,)
+        fs (int): sampling rate in Hz
+        custom_prompt (string): custom prompt for the model's speech register prediction
+    Returns:
+        ret (dict): dictionary containing the speech register prediction
+    """
+    if custom_prompt is None:
+        custom_prompt = """Determine the speech register used by the speaker.
+Choose exactly one category:
+- Formal register: careful pronunciation, complex grammar, specialized vocabulary
+- Standard register: proper grammar and pronunciation for professional or educational contexts
+- Consultative register: mixture of formal and casual for everyday professional interactions
+- Casual register: relaxed grammar, contractions, colloquialisms for friends/family
+- Intimate register: highly familiar language used with close relations
+- Technical register: specialized terminology for a specific field or profession
+- Slang register: highly informal with group-specific vocabulary"""
+    response = qwen2_base_metric(qwen_utils, pred_x, fs, custom_prompt)
+    return {"qwen_speech_register": response}
+
+
+def qwen2_vocabulary_complexity_metric(qwen_utils, pred_x, fs=16000, custom_prompt=None):
+    """Calculate the vocabulary complexity from Qwen2Audio results.
+
+    Args:
+        qwen_utils (dict): a utility dict for Qwen2Audio calculation.
+            including: Qwen2Audio model ("model"), processor ("processor"), and start conversation ("start_conversation")
+        pred_x (np.ndarray): test signal (time,)
+        fs (int): sampling rate in Hz
+        custom_prompt (string): custom prompt for the model's vocabulary complexity prediction
+    Returns:
+        ret (dict): dictionary containing the vocabulary complexity prediction
+    """
+    if custom_prompt is None:
+        custom_prompt = """Evaluate the vocabulary complexity level in the speech.
+Choose exactly one category:
+- Basic: simple, everyday vocabulary, mostly high-frequency words
+- General: standard vocabulary for common topics, occasional advanced words
+- Advanced: sophisticated vocabulary with specific terminology
+- Technical: specialized/domain-specific terminology
+- Academic: scholarly vocabulary with abstract concepts"""
+    response = qwen2_base_metric(qwen_utils, pred_x, fs, custom_prompt)
+    return {"qwen_vocabulary_complexity": response}
+
+
+def qwen2_speech_purpose_metric(qwen_utils, pred_x, fs=16000, custom_prompt=None):
+    """Calculate the speech purpose from Qwen2Audio results.
+
+    Args:
+        qwen_utils (dict): a utility dict for Qwen2Audio calculation.
+            including: Qwen2Audio model ("model"), processor ("processor"), and start conversation ("start_conversation")
+        pred_x (np.ndarray): test signal (time,)
+        fs (int): sampling rate in Hz
+        custom_prompt (string): custom prompt for the model's speech purpose prediction
+    Returns:
+        ret (dict): dictionary containing the speech purpose prediction
+    """
+    if custom_prompt is None:
+        custom_prompt = """Identify the primary purpose of the speech.
+Choose one category:
+- Informative: primarily explains or educates
+- Persuasive: attempts to convince or change opinions
+- Entertainment: primarily aims to amuse or entertain
+- Narrative: tells a story or relates events
+- Conversational: casual exchange of information
+- Instructional: provides specific directions or guidance
+- Emotional expression: primarily conveys feelings or emotional state"""
+    response = qwen2_base_metric(qwen_utils, pred_x, fs, custom_prompt)
+    return {"qwen_speech_purpose": response}
+
+
+###################################################
+# Speech Metrics Part IV: Speech Delivery Analysis
+###################################################
+
+def qwen2_speech_emotion_metric(qwen_utils, pred_x, fs=16000, custom_prompt=None):
+    
+    """Calculate the speaker age from Qwen2Audio results.
+
+    Args:
+        qwen_utils (dict): a utility dict for Qwen2Audio calculation.
+            including: Qwen2Audio model ("model"), processor ("processor"), and start conversation ("start_conversation")
+        pred_x (np.ndarray): test signal (time,)
+        fs (int): sampling rate in Hz
+        custom_prompt (string): custom prompt for the model's speech emotion prediction
+    Returns:
+        ret (dict): dictionary containing the speech emotion prediction
+    """
+    if custom_prompt is None:
+        # IEMOCAP emotion classification prompt
+        custom_prompt = """Identify the dominant emotion expressed in this speech.
+Choose exactly one label from the following categories:
+- Neutral: even-toned, matter-of-fact delivery with minimal emotional expression
+- Happy: upbeat, positive, enthusiastic tone
+- Sad: downcast, melancholic, somber tone
+- Angry: irritated, frustrated, hostile tone  
+- Fearful: anxious, worried, frightened tone
+- Surprised: astonished, shocked tone
+- Disgusted: repulsed, revolted tone
+- Other: other emotion that cannot be classified by above classes"""
+        response = qwen2_base_metric(qwen_utils, pred_x, fs, custom_prompt)
+    return {"qwen_speech_emotion": response}
+
+
+def qwen2_speech_clarity_metric(qwen_utils, pred_x, fs=16000, custom_prompt=None):
+    """Calculate the speech clarity from Qwen2Audio results.
+
+    Args:
+        qwen_utils (dict): a utility dict for Qwen2Audio calculation.
+            including: Qwen2Audio model ("model"), processor ("processor"), and start conversation ("start_conversation")
+        pred_x (np.ndarray): test signal (time,)
+        fs (int): sampling rate in Hz
+        custom_prompt (string): custom prompt for the model's speech clarity prediction
+    Returns:
+        ret (dict): dictionary containing the speech clarity prediction
+    """
+    if custom_prompt is None:
+        custom_prompt = """Rate the overall clarity and intelligibility of the speech.
+Choose one category:
+- High clarity: perfectly intelligible, professional quality
+- Medium clarity: generally understandable with occasional unclear segments
+- Low clarity: difficult to understand, frequent unclear segments
+- Very low clarity: mostly unintelligible"""
+    response = qwen2_base_metric(qwen_utils, pred_x, fs, custom_prompt)
+    return {"qwen_speech_clarity": response}
+
+
+def qwen2_speech_rate_metric(qwen_utils, pred_x, fs=16000, custom_prompt=None):
+    """Calculate the speech rate from Qwen2Audio results.
+
+    Args:
+        qwen_utils (dict): a utility dict for Qwen2Audio calculation.
+            including: Qwen2Audio model ("model"), processor ("processor"), and start conversation ("start_conversation")
+        pred_x (np.ndarray): test signal (time,)
+        fs (int): sampling rate in Hz
+        custom_prompt (string): custom prompt for the model's speech rate prediction
+    Returns:
+        ret (dict): dictionary containing the speech rate prediction
+    """
+    if custom_prompt is None:
+        custom_prompt = """Assess the rate of speech in the audio.
+Choose one category:
+- Very slow: deliberate, significantly slower than average speech
+- Slow: relaxed pace, slower than conversational speech
+- Medium: average conversational pace
+- Fast: quicker than average conversational speech
+- Very fast: rapid delivery, difficult to follow"""
+    response = qwen2_base_metric(qwen_utils, pred_x, fs, custom_prompt)
+    return {"qwen_speech_rate": response}
+
+
+def qwen2_speaking_style_metric(qwen_utils, pred_x, fs=16000, custom_prompt=None):
+    """Calculate the speaking style from Qwen2Audio results.
+
+    Args:
+        qwen_utils (dict): a utility dict for Qwen2Audio calculation.
+            including: Qwen2Audio model ("model"), processor ("processor"), and start conversation ("start_conversation")
+        pred_x (np.ndarray): test signal (time,)
+        fs (int): sampling rate in Hz
+        custom_prompt (string): custom prompt for the model's speaking style prediction
+    Returns:
+        ret (dict): dictionary containing the speaking style prediction
+    """
+    if custom_prompt is None:
+        custom_prompt = """Identify the predominant speaking style of the speaker.
+Choose exactly one category:
+- Formal: structured, proper, adherence to linguistic conventions
+- Professional: clear, efficient communication focused on task/topic
+- Casual/conversational: relaxed, everyday speech
+- Animated/enthusiastic: highly energetic, expressive speech
+- Deliberate: careful, measured delivery
+- Dramatic: theatrical, performance-oriented speech
+- Authoritative: commanding, confident tone
+- Hesitant: uncertain, tentative speech with pauses"""
+    response = qwen2_base_metric(qwen_utils, pred_x, fs, custom_prompt)
+    return {"qwen_speaking_style": response}
+
+
+def qwen2_laughter_crying_metric(qwen_utils, pred_x, fs=16000, custom_prompt=None):
+    """Calculate the presence of laughter/crying from Qwen2Audio results.
+
+    Args:
+        qwen_utils (dict): a utility dict for Qwen2Audio calculation.
+            including: Qwen2Audio model ("model"), processor ("processor"), and start conversation ("start_conversation")
+        pred_x (np.ndarray): test signal (time,)
+        fs (int): sampling rate in Hz
+        custom_prompt (string): custom prompt for the model's laughter/crying prediction
+    Returns:
+        ret (dict): dictionary containing the laughter/crying prediction
+    """
+    if custom_prompt is None:
+        custom_prompt = """Identify if there is laughter, crying, or other emotional vocalizations in the audio.
+Choose exactly one category:
+- No laughter or crying: speech only
+- Contains laughter: audible laughter is present
+- Contains crying: audible crying or sobbing is present
+- Contains both: both laughter and crying are present
+- Contains other emotional sounds: sighs, gasps, etc.
+- Contains multiple emotional vocalizations: combination of various emotional sounds"""
+    response = qwen2_base_metric(qwen_utils, pred_x, fs, custom_prompt)
+    return {"qwen_laughter_crying": response}
+
+
+def qwen2_speech_background_environment_metric(qwen_utils, pred_x, fs=16000, custom_prompt=None):
+    """Calculate the speech background environment from Qwen2Audio results.
+
+    Args:
+        qwen_utils (dict): a utility dict for Qwen2Audio calculation.
+            including: Qwen2Audio model ("model"), processor ("processor"), and start conversation ("start_conversation")
+        pred_x (np.ndarray): test signal (time,)
+        fs (int): sampling rate in Hz
+        custom_prompt (string): custom prompt for the model's background environment prediction
+    Returns:
+        ret (dict): dictionary containing the background environment prediction
+    """
+    if custom_prompt is None:
+        custom_prompt = """Identify the dominant background environment or setting.
+Choose one category:
+- Quiet indoor: minimal background noise, likely studio environment
+- Noisy indoor: indoor setting with noticeable background sounds (cafe, office)
+- Outdoor urban: city sounds, traffic
+- Outdoor natural: nature sounds, birds, wind, water
+- Event/crowd: audience sounds, applause, crowd noise
+- Music background: music playing behind speech
+- Multiple environments: changes throughout recording"""
+    response = qwen2_base_metric(qwen_utils, pred_x, fs, custom_prompt)
+    return {"qwen_speech_background_environment": response}
+
+
+###################################################
+# Speech Metrics Part V: Interaction Patterns
+###################################################
+
+def qwen2_overlapping_speech_metric(qwen_utils, pred_x, fs=16000, custom_prompt=None):
+    """Calculate the overlapping speech presence from Qwen2Audio results.
+
+    Args:
+        qwen_utils (dict): a utility dict for Qwen2Audio calculation.
+            including: Qwen2Audio model ("model"), processor ("processor"), and start conversation ("start_conversation")
+        pred_x (np.ndarray): test signal (time,)
+        fs (int): sampling rate in Hz
+        custom_prompt (string): custom prompt for the model's overlapping speech prediction
+    Returns:
+        ret (dict): dictionary containing the overlapping speech prediction
+    """
+    if custom_prompt is None:
+        custom_prompt = """Determine if there is overlapping speech in the audio (people talking simultaneously).
+Choose exactly one category:
+- No overlap: clean turn-taking with no simultaneous speech
+- Minimal overlap: occasional brief instances of overlapping speech
+- Moderate overlap: noticeable instances where speakers talk over each other
+- Significant overlap: frequent overlapping speech, making it difficult to follow
+- Constant overlap: multiple speakers talking simultaneously throughout most of the audio"""
+    response = qwen2_base_metric(qwen_utils, pred_x, fs, custom_prompt)
+    return {"qwen_overlapping_speech": response}
+
+
 
 ############################################
 # Audio Metrics
@@ -534,7 +656,7 @@ def qwen2_recording_quality_metric(qwen_utils, pred_x, fs=16000, custom_prompt=N
         fs (int): sampling rate in Hz
         custom_prompt (string): custom prompt for the model's recording quality prediction
     Returns:
-        ret (dict): ditionary containing the recording quality prediction
+        ret (dict): dictionary containing the recording quality prediction
     """
     if custom_prompt is None:
         custom_prompt = """Assess the technical quality of the audio recording.
@@ -557,7 +679,7 @@ def qwen2_channel_type_metric(qwen_utils, pred_x, fs=16000, custom_prompt=None):
         fs (int): sampling rate in Hz
         custom_prompt (string): custom prompt for the model's channel type prediction
     Returns:
-        ret (dict): ditionary containing the channel type prediction
+        ret (dict): dictionary containing the channel type prediction
     """
     if custom_prompt is None:
         custom_prompt = """Identify the likely recording channel or device type used to record this audio.
@@ -575,107 +697,6 @@ Choose exactly one category:
     return {"qwen_channel_type": response}
 
 
-def qwen2_volume_level_metric(qwen_utils, pred_x, fs=16000, custom_prompt=None):
-    """Calculate the volume/loudness level from Qwen2Audio results.
-
-    Args:
-        qwen_utils (dict): a utility dict for Qwen2Audio calculation.
-            including: Qwen2Audio model ("model"), processor ("processor"), and start conversation ("start_conversation")
-        pred_x (np.ndarray): test signal (time,)
-        fs (int): sampling rate in Hz
-        custom_prompt (string): custom prompt for the model's volume level prediction
-    Returns:
-        ret (dict): ditionary containing the volume level prediction
-    """
-    if custom_prompt is None:
-        custom_prompt = """Assess the overall volume or loudness level of the speaker.
-Choose exactly one category:
-- Very quiet: barely audible, whispering or very soft-spoken
-- Quiet: below average volume, soft-spoken
-- Moderate: normal conversational volume
-- Loud: above average volume, projecting voice
-- Very loud: shouting or extremely high volume
-- Variable: significant changes in volume throughout the recording"""
-    response = qwen2_base_metric(qwen_utils, pred_x, fs, custom_prompt)
-    return {"qwen_volume_level": response}
-
-
-def qwen2_speaking_style_metric(qwen_utils, pred_x, fs=16000, custom_prompt=None):
-    """Calculate the speaking style from Qwen2Audio results.
-
-    Args:
-        qwen_utils (dict): a utility dict for Qwen2Audio calculation.
-            including: Qwen2Audio model ("model"), processor ("processor"), and start conversation ("start_conversation")
-        pred_x (np.ndarray): test signal (time,)
-        fs (int): sampling rate in Hz
-        custom_prompt (string): custom prompt for the model's speaking style prediction
-    Returns:
-        ret (dict): ditionary containing the speaking style prediction
-    """
-    if custom_prompt is None:
-        custom_prompt = """Identify the predominant speaking style of the speaker.
-Choose exactly one category:
-- Formal: structured, proper, adherence to linguistic conventions
-- Professional: clear, efficient communication focused on task/topic
-- Casual/conversational: relaxed, everyday speech
-- Animated/enthusiastic: highly energetic, expressive speech
-- Deliberate: careful, measured delivery
-- Dramatic: theatrical, performance-oriented speech
-- Authoritative: commanding, confident tone
-- Hesitant: uncertain, tentative speech with pauses"""
-    response = qwen2_base_metric(qwen_utils, pred_x, fs, custom_prompt)
-    return {"qwen_speaking_style": response}
-
-
-def qwen2_speech_register_metric(qwen_utils, pred_x, fs=16000, custom_prompt=None):
-    """Calculate the speech register from Qwen2Audio results.
-
-    Args:
-        qwen_utils (dict): a utility dict for Qwen2Audio calculation.
-            including: Qwen2Audio model ("model"), processor ("processor"), and start conversation ("start_conversation")
-        pred_x (np.ndarray): test signal (time,)
-        fs (int): sampling rate in Hz
-        custom_prompt (string): custom prompt for the model's speech register prediction
-    Returns:
-        ret (dict): ditionary containing the speech register prediction
-    """
-    if custom_prompt is None:
-        custom_prompt = """Determine the speech register used by the speaker.
-Choose exactly one category:
-- Formal register: careful pronunciation, complex grammar, specialized vocabulary
-- Standard register: proper grammar and pronunciation for professional or educational contexts
-- Consultative register: mixture of formal and casual for everyday professional interactions
-- Casual register: relaxed grammar, contractions, colloquialisms for friends/family
-- Intimate register: highly familiar language used with close relations
-- Technical register: specialized terminology for specific field or profession
-- Slang register: highly informal with group-specific vocabulary"""
-    response = qwen2_base_metric(qwen_utils, pred_x, fs, custom_prompt)
-    return {"qwen_speech_register": response}
-
-
-def qwen2_vocabulary_complexity_metric(qwen_utils, pred_x, fs=16000, custom_prompt=None):
-    """Calculate the vocabulary complexity from Qwen2Audio results.
-
-    Args:
-        qwen_utils (dict): a utility dict for Qwen2Audio calculation.
-            including: Qwen2Audio model ("model"), processor ("processor"), and start conversation ("start_conversation")
-        pred_x (np.ndarray): test signal (time,)
-        fs (int): sampling rate in Hz
-        custom_prompt (string): custom prompt for the model's vocabulary complexity prediction
-    Returns:
-        ret (dict): ditionary containing the vocabulary complexity prediction
-    """
-    if custom_prompt is None:
-        custom_prompt = """Evaluate the vocabulary complexity level in the speech.
-Choose exactly one category:
-- Basic: simple, everyday vocabulary, mostly high-frequency words
-- General: standard vocabulary for common topics, occasional advanced words
-- Advanced: sophisticated vocabulary with specific terminology
-- Technical: specialized/domain-specific terminology
-- Academic: scholarly vocabulary with abstract concepts"""
-    response = qwen2_base_metric(qwen_utils, pred_x, fs, custom_prompt)
-    return {"qwen_vocabulary_complexity": response}
-
 def qwen2_channel_type_metric(qwen_utils, pred_x, fs=16000, custom_prompt=None):
     """Calculate the audio channel type from Qwen2Audio results.
 
@@ -686,7 +707,7 @@ def qwen2_channel_type_metric(qwen_utils, pred_x, fs=16000, custom_prompt=None):
         fs (int): sampling rate in Hz
         custom_prompt (string): custom prompt for the model's channel type prediction
     Returns:
-        ret (dict): ditionary containing the channel type prediction
+        ret (dict): dictionary containing the channel type prediction
     """
     if custom_prompt is None:
         custom_prompt = """Identify the likely recording channel or device type used to record this audio.
