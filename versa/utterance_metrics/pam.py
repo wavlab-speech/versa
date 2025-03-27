@@ -3,27 +3,29 @@
 
 from __future__ import annotations
 
-from pathlib import Path
 import warnings
+from pathlib import Path
 
 warnings.filterwarnings("ignore")
-import re
-from transformers import AutoTokenizer, logging
-from versa.utterance_metrics.pam_utils.clap import CLAP
+import argparse
 import os
+import re
+import sys
+
 import torch
 import torchaudio
 import torchaudio.transforms as T
-import argparse
 import yaml
-import sys
 from huggingface_hub.file_download import hf_hub_download
+from transformers import AutoTokenizer, logging
+
+from versa.utterance_metrics.pam_utils.clap import CLAP
 
 logging.set_verbosity_error()
-import torch.nn.functional as F
 import collections
-import numpy as np
 
+import numpy as np
+import torch.nn.functional as F
 
 HF_REPO = "microsoft/msclap"
 CLAP_VERSION = "CLAP_weights_2023.pth"

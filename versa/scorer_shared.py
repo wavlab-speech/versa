@@ -3,19 +3,15 @@
 # Copyright 2024 Jiatong Shi
 #  Apache 2.0  (http://www.apache.org/licenses/LICENSE-2.0)
 import logging
+
 import kaldiio
 import librosa
 import soundfile as sf
 import yaml
 from tqdm import tqdm
 
-from versa.utils_shared import (
-    check_all_same,
-    check_minimum_length,
-    find_files,
-    wav_normalize,
-    load_audio,
-)
+from versa.utils_shared import (check_all_same, check_minimum_length,
+                                find_files, load_audio, wav_normalize)
 
 
 def audio_loader_setup(audio, io):
@@ -420,9 +416,7 @@ def load_score_modules(score_config, use_gt=True, use_gt_text=False, use_gpu=Fal
 
             logging.info("Loading asvspoof score metric without reference...")
             from versa.utterance_metrics.asvspoof_score import (
-                asvspoof_metric,
-                deepfake_detection_model_setup,
-            )
+                asvspoof_metric, deepfake_detection_model_setup)
 
             deepfake_detection_model = deepfake_detection_model_setup(use_gpu=use_gpu)
             score_modules["asvspoof_score"] = {
@@ -472,10 +466,8 @@ def load_score_modules(score_config, use_gt=True, use_gt_text=False, use_gpu=Fal
 
             logging.info("Loading noresqa metrics with reference")
 
-            from versa.utterance_metrics.noresqa import (
-                noresqa_metric,
-                noresqa_model_setup,
-            )
+            from versa.utterance_metrics.noresqa import (noresqa_metric,
+                                                         noresqa_model_setup)
 
             noresqa_model = noresqa_model_setup(use_gpu=use_gpu)
             score_modules["noresqa"] = {
@@ -537,7 +529,7 @@ def load_score_modules(score_config, use_gt=True, use_gt_text=False, use_gpu=Fal
 
         elif config["name"] == "lid":
             logging.info("Loading language identification metric")
-            from versa import owsm_lid_model_setup, language_id
+            from versa import language_id, owsm_lid_model_setup
 
             owsm_model = owsm_lid_model_setup(
                 model_tag=config.get("model_tag", "default"),
@@ -552,7 +544,8 @@ def load_score_modules(score_config, use_gt=True, use_gt_text=False, use_gpu=Fal
 
         elif config["name"] == "audiobox_aesthetics":
             logging.info("Loading audiobox aesthetics metric")
-            from versa import audiobox_aesthetics_score, audiobox_aesthetics_setup
+            from versa import (audiobox_aesthetics_score,
+                               audiobox_aesthetics_setup)
 
             audiobox_model = audiobox_aesthetics_setup(
                 model_path=config.get("model_path", None),

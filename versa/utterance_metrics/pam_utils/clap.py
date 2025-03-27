@@ -1,19 +1,18 @@
-import numpy as np
+import collections.abc
 import math
 import random
-import torch
-import torch.nn.functional as F
-from torch import nn
-from transformers import AutoModel
-import torch.utils.checkpoint as checkpoint
-from torchlibrosa.stft import Spectrogram, LogmelFilterBank
-from torchlibrosa.augmentation import SpecAugmentation
+import warnings
 from itertools import repeat
 
-import collections.abc
-import warnings
-
+import numpy as np
+import torch
+import torch.nn.functional as F
+import torch.utils.checkpoint as checkpoint
+from torch import nn
 from torch.nn.init import _calculate_fan_in_and_fan_out
+from torchlibrosa.augmentation import SpecAugmentation
+from torchlibrosa.stft import LogmelFilterBank, Spectrogram
+from transformers import AutoModel
 
 
 def _ntuple(n):

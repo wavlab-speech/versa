@@ -54,13 +54,14 @@ the key is the metric name prefixed with "qwen_" and the value is the
 model's response.
 """
 
-import numpy as np
-import logging
-import librosa
 import copy
+import logging
+
+import librosa
+import numpy as np
 
 try:
-    from transformers import Qwen2AudioForConditionalGeneration, AutoProcessor
+    from transformers import AutoProcessor, Qwen2AudioForConditionalGeneration
 except ImportError:
     logging.warning(
         "If Qwen2Audio is not found with key error, please install the latest version of transformers and retry."

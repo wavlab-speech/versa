@@ -2,10 +2,10 @@
 """
 @author: Gabriel Mittag, TU-Berlin
 """
-import os
-import multiprocessing
 import copy
 import math
+import multiprocessing
+import os
 
 import librosa as lb
 import numpy as np
@@ -13,18 +13,14 @@ import pandas as pd
 
 pd.options.mode.chained_assignment = None
 import matplotlib.pyplot as plt
-
-from tqdm import tqdm
-from scipy.stats import pearsonr
-from scipy.optimize import minimize
-
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from torch.nn.utils.rnn import pad_packed_sequence
-from torch.nn.utils.rnn import pack_padded_sequence
-from torch.utils.data import DataLoader
-from torch.utils.data import Dataset
+from scipy.optimize import minimize
+from scipy.stats import pearsonr
+from torch.nn.utils.rnn import pack_padded_sequence, pad_packed_sequence
+from torch.utils.data import DataLoader, Dataset
+from tqdm import tqdm
 
 
 # %% Models

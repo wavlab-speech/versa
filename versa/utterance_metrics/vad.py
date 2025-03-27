@@ -6,8 +6,8 @@
 import os
 
 import librosa
-import torch
 import numpy as np
+import torch
 
 
 def vad_model_setup(

@@ -4,19 +4,19 @@
 #  Apache 2.0  (http://www.apache.org/licenses/LICENSE-2.0)
 
 
+import logging
 import os
-import numpy as np
-import librosa
-import torch
 import sys
 
-import logging
+import librosa
+import numpy as np
+import torch
 
 logger = logging.getLogger(__name__)
 
 from urllib.request import urlretrieve
-import torch.nn as nn
 
+import torch.nn as nn
 
 base_path = os.path.abspath(
     os.path.join(os.path.dirname(__file__), "../../tools/Noresqa")
@@ -32,12 +32,9 @@ except ImportError:
     )
 
 try:
-    from utils import (
-        feats_loading,
-        model_prediction_noresqa,
-        model_prediction_noresqa_mos,
-    )
     from model import NORESQA
+    from utils import (feats_loading, model_prediction_noresqa,
+                       model_prediction_noresqa_mos)
 
 except ImportError:
     logger.info(

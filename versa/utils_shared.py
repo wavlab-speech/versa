@@ -7,8 +7,9 @@ import copy
 import fnmatch
 import logging
 import os
-import numpy as np
 from typing import Dict, List
+
+import numpy as np
 import soundfile as sf
 
 
