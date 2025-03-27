@@ -50,7 +50,7 @@ def nomad(model, pred_x, gt_x, fs):
         pred_x = librosa.resample(pred_x, orig_sr=fs, target_sr=16000)
 
     return {
-        "nomad_score": model.predict(mode="csv", nmr=gt_x, deg=pred_x),
+        "nomad": model.predict(nmr=gt_x, deg=pred_x),
     }
 
 
