@@ -10,8 +10,13 @@ import soundfile as sf
 import yaml
 from tqdm import tqdm
 
-from versa.utils_shared import (check_all_same, check_minimum_length,
-                                find_files, load_audio, wav_normalize)
+from versa.utils_shared import (
+    check_all_same,
+    check_minimum_length,
+    find_files,
+    load_audio,
+    wav_normalize,
+)
 
 
 def audio_loader_setup(audio, io):
@@ -416,7 +421,9 @@ def load_score_modules(score_config, use_gt=True, use_gt_text=False, use_gpu=Fal
 
             logging.info("Loading asvspoof score metric without reference...")
             from versa.utterance_metrics.asvspoof_score import (
-                asvspoof_metric, deepfake_detection_model_setup)
+                asvspoof_metric,
+                deepfake_detection_model_setup,
+            )
 
             deepfake_detection_model = deepfake_detection_model_setup(use_gpu=use_gpu)
             score_modules["asvspoof_score"] = {
@@ -466,8 +473,10 @@ def load_score_modules(score_config, use_gt=True, use_gt_text=False, use_gpu=Fal
 
             logging.info("Loading noresqa metrics with reference")
 
-            from versa.utterance_metrics.noresqa import (noresqa_metric,
-                                                         noresqa_model_setup)
+            from versa.utterance_metrics.noresqa import (
+                noresqa_metric,
+                noresqa_model_setup,
+            )
 
             noresqa_model = noresqa_model_setup(use_gpu=use_gpu)
             score_modules["noresqa"] = {
@@ -544,8 +553,7 @@ def load_score_modules(score_config, use_gt=True, use_gt_text=False, use_gpu=Fal
 
         elif config["name"] == "audiobox_aesthetics":
             logging.info("Loading audiobox aesthetics metric")
-            from versa import (audiobox_aesthetics_score,
-                               audiobox_aesthetics_setup)
+            from versa import audiobox_aesthetics_score, audiobox_aesthetics_setup
 
             audiobox_model = audiobox_aesthetics_setup(
                 model_path=config.get("model_path", None),
@@ -712,11 +720,11 @@ def load_score_modules(score_config, use_gt=True, use_gt_text=False, use_gpu=Fal
                 }
 
             # 6. Recording Environment
-            elif config["name"] == "qwen2_audio_background_environment":
-                from versa import qwen2_background_environment_metric
+            elif config["name"] == "qwen2_audio_speech_background_environment":
+                from versa import qwen2_speech_background_environment_metric
 
-                score_modules["qwen2_audio_background_environment"] = {
-                    "module": qwen2_background_environment_metric,
+                score_modules["qwen2_audio_speech_background_environment"] = {
+                    "module": qwen2_speech_background_environment_metric,
                     "prompt": config.get("prompt", None),
                 }
             elif config["name"] == "qwen2_audio_recording_quality":
@@ -738,6 +746,20 @@ def load_score_modules(score_config, use_gt=True, use_gt_text=False, use_gpu=Fal
                 "Initiate qwen2 audio metric: {} successfully".format(config["name"])
             )
     return score_modules
+
+
+def process_cache_info(cache_info, score_modules, output_file):
+    batch_score_info = []
+    for utt_info in cache_info:
+        key, gen_wav, gt_wav, gen_sr, text = utt_info
+        utt_score = {"key": key}
+        utt_score.update(
+            use_score_modules(score_modules, gen_wav, gt_wav, gen_sr, text)
+        )
+        batch_score_info.append(utt_score)
+        if output_file is not None:
+            output_file.write(f"{utt_score}\n")
+    return batch_score_info
 
 
 def use_score_modules(score_modules, gen_wav, gt_wav, gen_sr, text=None):
@@ -900,6 +922,7 @@ def use_score_modules(score_modules, gen_wav, gt_wav, gen_sr, text=None):
                 gen_sr,
                 custom_prompt=score_modules[key]["prompt"],
             )
+            print("score: {}".format(score), flush=True)
         else:
             raise NotImplementedError(f"Not supported {key}")
 
@@ -919,6 +942,8 @@ def list_scoring(
 ):
     if output_file is not None:
         f = open(output_file, "w", encoding="utf-8")
+    else:
+        f = None
 
     score_info = []
     cache_info = []  # for batch processing
@@ -999,18 +1024,14 @@ def list_scoring(
         cache_info.append(utterance_info)
         if len(cache_info) == batch_size:
             # Process after a batch is collected
-            for utt_info in cache_info:
-                key, gen_wav, gt_wav, gen_sr, text = utt_info
-                utt_score = {"key": key}
-                utt_score.update(
-                    use_score_modules(score_modules, gen_wav, gt_wav, gen_sr, text)
-                )
-                score_info.append(utt_score)
-                if output_file is not None:
-                    f.write(f"{utt_score}\n")
+            score_info.extend(process_cache_info(cache_info, score_modules, f))
+            cache_info = []
         else:
             # continue collect the batch
             continue
+
+    # Process left-over batch
+    score_info.extend(process_cache_info(cache_info, score_modules, f))
 
     logging.info("Scoring completed and save score at {}".format(output_file))
     return score_info

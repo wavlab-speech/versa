@@ -33,8 +33,11 @@ except ImportError:
 
 try:
     from model import NORESQA
-    from utils import (feats_loading, model_prediction_noresqa,
-                       model_prediction_noresqa_mos)
+    from utils import (
+        feats_loading,
+        model_prediction_noresqa,
+        model_prediction_noresqa_mos,
+    )
 
 except ImportError:
     logger.info(

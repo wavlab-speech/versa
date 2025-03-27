@@ -140,7 +140,6 @@ def qwen2_base_metric(qwen_utils, pred_x, fs=16000, custom_prompt=None, max_leng
     response = processor.batch_decode(
         generate_ids, skip_special_tokens=True, clean_up_tokenization_spaces=True
     )[0]
-    del conversation
     return response
 
 
