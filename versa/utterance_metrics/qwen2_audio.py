@@ -718,34 +718,6 @@ Choose exactly one category:
     return {"qwen_channel_type": response}
 
 
-def qwen2_channel_type_metric(qwen_utils, pred_x, fs=16000, custom_prompt=None):
-    """Calculate the audio channel type from Qwen2Audio results.
-
-    Args:
-        qwen_utils (dict): a utility dict for Qwen2Audio calculation.
-            including: Qwen2Audio model ("model"), processor ("processor"), and start conversation ("start_conversation")
-        pred_x (np.ndarray): test signal (time,)
-        fs (int): sampling rate in Hz
-        custom_prompt (string): custom prompt for the model's channel type prediction
-    Returns:
-        ret (dict): dictionary containing the channel type prediction
-    """
-    if custom_prompt is None:
-        custom_prompt = """Identify the likely recording channel or device type used to record this audio.
-Choose exactly one category:
-- Professional microphone: high-quality, full-range audio
-- Consumer microphone: decent quality but less clarity than professional
-- Smartphone: typical mobile phone recording quality
-- Telephone/VoIP: limited frequency range, compression artifacts
-- Webcam/computer mic: variable quality, often with computer fan noise
-- Headset microphone: close to mouth, may have breathing sounds
-- Distant microphone: recorded from a distance, may have room echo
-- Radio/broadcast: compressed audio with limited frequency range
-- Surveillance/hidden mic: typically lower quality with background noise"""
-    response = qwen2_base_metric(qwen_utils, pred_x, fs, custom_prompt)
-    return {"qwen_channel_type": response}
-
-
 if __name__ == "__main__":
     a = np.random.random(16000)
     qwen_utils = qwen2_model_setup()
