@@ -69,8 +69,8 @@ except ImportError:
 
 
 def qwen2_model_setup(
-        model_tag="Qwen/Qwen2-Audio-7B-Instruct",
-        start_prompt="The following is a conversation with an AI assistant. The assistant is helpful, honest, and harmless.",
+    model_tag="Qwen/Qwen2-Audio-7B-Instruct",
+    start_prompt="The following is a conversation with an AI assistant. The assistant is helpful, honest, and harmless.",
 ):
     if model_tag == "default":
         model_tag = "Qwen/Qwen2-Audio-7B-Instruct"
@@ -79,8 +79,9 @@ def qwen2_model_setup(
             "Qwen2Audio is used for evaluation while transformers is not installed (could be a version issue)."
         )
     processoor = AutoProcessor.from_pretrained(model_tag)
-    model = Qwen2AudioForConditionalGeneration.from_pretrained(model_tag, device_map="auto")
-
+    model = Qwen2AudioForConditionalGeneration.from_pretrained(
+        model_tag, device_map="auto"
+    )
 
     start_conversation = [
         {"role": "system", "content": start_prompt},
@@ -88,11 +89,11 @@ def qwen2_model_setup(
     return {
         "model": model,
         "processor": processoor,
-        "start_conversation": start_conversation
+        "start_conversation": start_conversation,
     }
 
 
-def qwen2_base_metric(qwen_utils, pred_x, fs=16000, custom_prompt=None):
+def qwen2_base_metric(qwen_utils, pred_x, fs=16000, custom_prompt=None, max_length=500):
     """Calculate the base metric from Qwen2Audio results.
 
     Args:
@@ -109,20 +110,35 @@ def qwen2_base_metric(qwen_utils, pred_x, fs=16000, custom_prompt=None):
     model = qwen_utils["model"]
     if custom_prompt is None:
         raise ValueError("Custom prompt must be provided for the qwen2-audio model.")
-    conversation.append({"role": "user", "content": [
-        {"type": "audio", "audio_url": None},
-        {"type": "text", "text": custom_prompt}
-    ]})
-    
-    text = processor.apply_chat_template(conversation, add_generation_prompt=True, tokenize=False)
-    audio = [librosa.resample(pred_x, orig_sr=fs, target_sr=processor.feature_extractor.sampling_rate)]
+    conversation.append(
+        {
+            "role": "user",
+            "content": [
+                {"type": "audio", "audio_url": None},
+                {"type": "text", "text": custom_prompt},
+            ],
+        }
+    )
+
+    text = processor.apply_chat_template(
+        conversation, add_generation_prompt=True, tokenize=False
+    )
+    audio = [
+        librosa.resample(
+            pred_x, orig_sr=fs, target_sr=processor.feature_extractor.sampling_rate
+        )
+    ]
 
     inputs = processor(text=text, audios=audio, return_tensors="pt", padding=True)
-    inputs.input_ids = inputs.input_ids.to(qwen_utils["model"].device)
+    # inputs.input_ids = inputs.input_ids.to(qwen_utils["model"].device)
+    for key in inputs.keys():
+        inputs[key] = inputs[key].to(qwen_utils["model"].device)
 
-    generate_ids = model.generate(**inputs, max_length=256)
-    generate_ids = generate_ids[:, inputs.input_ids.size(1):]
-    response = processor.batch_decode(generate_ids, skip_special_tokens=True, clean_up_tokenization_spaces=True)[0]
+    generate_ids = model.generate(**inputs, max_length=500)
+    generate_ids = generate_ids[:, inputs["input_ids"].size(1) :]
+    response = processor.batch_decode(
+        generate_ids, skip_special_tokens=True, clean_up_tokenization_spaces=True
+    )[0]
     del conversation
     return response
 
@@ -130,6 +146,7 @@ def qwen2_base_metric(qwen_utils, pred_x, fs=16000, custom_prompt=None):
 ################################################
 # Speech Metrics Part I: Speaker Characteristics
 ################################################
+
 
 def qwen2_speaker_count_metric(qwen_utils, pred_x, fs=16000, custom_prompt=None):
     """Calculate the speaker count from Qwen2Audio results.
@@ -156,7 +173,7 @@ Examples:
 
 def qwen2_speaker_gender_metric(qwen_utils, pred_x, fs=16000, custom_prompt=None):
     """Estimate the speaker gender from Qwen2Audio results.
-    
+
     Args:
         qwen_utils (dict): a utility dict for Qwen2Audio calculation.
             including: Qwen2Audio model ("model"), processor ("processor"), and start conversation ("start_conversation")
@@ -166,7 +183,7 @@ def qwen2_speaker_gender_metric(qwen_utils, pred_x, fs=16000, custom_prompt=None
     Returns:
         ret (dict): ditionary containing
     """
-    
+
     if custom_prompt is None:
         custom_prompt = """Identify the perceived gender of the speaker(s).
 If multiple speakers, list each speaker with their perceived gender.
@@ -180,7 +197,6 @@ Choose from:
 
 
 def qwen2_speaker_age_metric(qwen_utils, pred_x, fs=16000, custom_prompt=None):
-    
     """Calculate the speaker age from Qwen2Audio results.
 
     Args:
@@ -341,6 +357,7 @@ Choose exactly one category:
 # Speech Metrics Part III: Speech Content Analysis
 ###################################################
 
+
 def qwen2_language_metric(qwen_utils, pred_x, fs=16000, custom_prompt=None):
     """Calculate the language from Qwen2Audio results.
 
@@ -398,7 +415,9 @@ Choose exactly one category:
     return {"qwen_speech_register": response}
 
 
-def qwen2_vocabulary_complexity_metric(qwen_utils, pred_x, fs=16000, custom_prompt=None):
+def qwen2_vocabulary_complexity_metric(
+    qwen_utils, pred_x, fs=16000, custom_prompt=None
+):
     """Calculate the vocabulary complexity from Qwen2Audio results.
 
     Args:
@@ -452,8 +471,8 @@ Choose one category:
 # Speech Metrics Part IV: Speech Delivery Analysis
 ###################################################
 
+
 def qwen2_speech_emotion_metric(qwen_utils, pred_x, fs=16000, custom_prompt=None):
-    
     """Calculate the speaker age from Qwen2Audio results.
 
     Args:
@@ -580,7 +599,9 @@ Choose exactly one category:
     return {"qwen_laughter_crying": response}
 
 
-def qwen2_speech_background_environment_metric(qwen_utils, pred_x, fs=16000, custom_prompt=None):
+def qwen2_speech_background_environment_metric(
+    qwen_utils, pred_x, fs=16000, custom_prompt=None
+):
     """Calculate the speech background environment from Qwen2Audio results.
 
     Args:
@@ -610,6 +631,7 @@ Choose one category:
 # Speech Metrics Part V: Interaction Patterns
 ###################################################
 
+
 def qwen2_overlapping_speech_metric(qwen_utils, pred_x, fs=16000, custom_prompt=None):
     """Calculate the overlapping speech presence from Qwen2Audio results.
 
@@ -634,17 +656,15 @@ Choose exactly one category:
     return {"qwen_overlapping_speech": response}
 
 
-
 ############################################
 # Audio Metrics
 ############################################
 
 
-
-
 ############################################
 # General Metrics
 ############################################
+
 
 def qwen2_recording_quality_metric(qwen_utils, pred_x, fs=16000, custom_prompt=None):
     """Calculate the recording quality from Qwen2Audio results.
@@ -669,33 +689,6 @@ Choose one category:
     response = qwen2_base_metric(qwen_utils, pred_x, fs, custom_prompt)
     return {"qwen_recording_quality": response}
 
-def qwen2_channel_type_metric(qwen_utils, pred_x, fs=16000, custom_prompt=None):
-    """Calculate the audio channel type from Qwen2Audio results.
-
-    Args:
-        qwen_utils (dict): a utility dict for Qwen2Audio calculation.
-            including: Qwen2Audio model ("model"), processor ("processor"), and start conversation ("start_conversation")
-        pred_x (np.ndarray): test signal (time,)
-        fs (int): sampling rate in Hz
-        custom_prompt (string): custom prompt for the model's channel type prediction
-    Returns:
-        ret (dict): dictionary containing the channel type prediction
-    """
-    if custom_prompt is None:
-        custom_prompt = """Identify the likely recording channel or device type used to record this audio.
-Choose exactly one category:
-- Professional microphone: high-quality, full-range audio
-- Consumer microphone: decent quality but less clarity than professional
-- Smartphone: typical mobile phone recording quality
-- Telephone/VoIP: limited frequency range, compression artifacts
-- Webcam/computer mic: variable quality, often with computer fan noise
-- Headset microphone: close to mouth, may have breathing sounds
-- Distant microphone: recorded from a distance, may have room echo
-- Radio/broadcast: compressed audio with limited frequency range
-- Surveillance/hidden mic: typically lower quality with background noise"""
-    response = qwen2_base_metric(qwen_utils, pred_x, fs, custom_prompt)
-    return {"qwen_channel_type": response}
-
 
 def qwen2_channel_type_metric(qwen_utils, pred_x, fs=16000, custom_prompt=None):
     """Calculate the audio channel type from Qwen2Audio results.
@@ -723,7 +716,35 @@ Choose exactly one category:
 - Surveillance/hidden mic: typically lower quality with background noise"""
     response = qwen2_base_metric(qwen_utils, pred_x, fs, custom_prompt)
     return {"qwen_channel_type": response}
-    
+
+
+def qwen2_channel_type_metric(qwen_utils, pred_x, fs=16000, custom_prompt=None):
+    """Calculate the audio channel type from Qwen2Audio results.
+
+    Args:
+        qwen_utils (dict): a utility dict for Qwen2Audio calculation.
+            including: Qwen2Audio model ("model"), processor ("processor"), and start conversation ("start_conversation")
+        pred_x (np.ndarray): test signal (time,)
+        fs (int): sampling rate in Hz
+        custom_prompt (string): custom prompt for the model's channel type prediction
+    Returns:
+        ret (dict): dictionary containing the channel type prediction
+    """
+    if custom_prompt is None:
+        custom_prompt = """Identify the likely recording channel or device type used to record this audio.
+Choose exactly one category:
+- Professional microphone: high-quality, full-range audio
+- Consumer microphone: decent quality but less clarity than professional
+- Smartphone: typical mobile phone recording quality
+- Telephone/VoIP: limited frequency range, compression artifacts
+- Webcam/computer mic: variable quality, often with computer fan noise
+- Headset microphone: close to mouth, may have breathing sounds
+- Distant microphone: recorded from a distance, may have room echo
+- Radio/broadcast: compressed audio with limited frequency range
+- Surveillance/hidden mic: typically lower quality with background noise"""
+    response = qwen2_base_metric(qwen_utils, pred_x, fs, custom_prompt)
+    return {"qwen_channel_type": response}
+
 
 if __name__ == "__main__":
     a = np.random.random(16000)

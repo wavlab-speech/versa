@@ -110,6 +110,7 @@ def main():
     gen_files = audio_loader_setup(args.pred, args.io)
 
     # find reference file
+    args.gt = None if args.gt == "None" else args.gt
     if args.gt is not None and not args.no_match:
         gt_files = audio_loader_setup(args.gt, args.io)
     else:

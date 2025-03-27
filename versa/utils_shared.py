@@ -11,6 +11,7 @@ import numpy as np
 from typing import Dict, List
 import soundfile as sf
 
+
 def find_files(
     root_dir: str, query: List[str] = ["*.flac", "*.wav"], include_root_dir: bool = True
 ) -> Dict[str, str]:
@@ -93,5 +94,3 @@ def check_minimum_length(length, key_info):
         if length < 0.1:
             return False
     return True
-
-
