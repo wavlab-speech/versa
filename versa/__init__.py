@@ -59,7 +59,7 @@ from versa.utterance_metrics.noresqa import noresqa_metric, noresqa_model_setup
 from versa.utterance_metrics.owsm_lid import language_id, owsm_lid_model_setup
 from versa.utterance_metrics.pysepm import pysepm_metric
 from versa.utterance_metrics.qwen2_audio import (
-    qwen2_background_environment_metric, qwen2_channel_type_metric,
+    qwen2_speech_background_environment_metric, qwen2_channel_type_metric,
     qwen2_language_metric, qwen2_laughter_crying_metric, qwen2_model_setup,
     qwen2_overlapping_speech_metric, qwen2_pitch_range_metric,
     qwen2_recording_quality_metric, qwen2_speaker_age_metric,

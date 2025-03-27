@@ -39,7 +39,7 @@ following categories:
     - qwen2_overlapping_speech_metric: Degree of simultaneous speech
 
 6. Recording Environment
-    - qwen2_background_environment_metric: Setting where recorded
+    - qwen2_speech_background_environment_metric: Setting where recorded
     - qwen2_recording_quality_metric: Technical quality of recording
     - qwen2_channel_type_metric: Equipment used for recording
 
