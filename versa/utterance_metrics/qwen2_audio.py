@@ -17,6 +17,15 @@ except ImportError:
     Qwen2AudioForConditionalGeneration, AutoProcessor = None, None
 
 
+DEFAULT_PROMPT = {
+    "speaker_age": "What is the age of the speaker? Please answer in 'child', '20s', '30s', '40s', '50s', '60s', '70s', 'senior'.",
+    "speech_emotion": "What is the emotion of the speech? Please answer in 'neutral state', 'happiness', 'sadness', 'surprise', 'fear', 'disgust', 'frustration', 'excited', 'other' only.",
+    "speaker_count": "How many speakers are there in the audio? Please answer with a number.",
+    "language": "What language is being spoken? Please answer with the name of the language.",
+    "speaker_gender": "What is the gender of the speaekr. Please answer with 'male' or 'female' only.",
+}
+
+
 def qwen2_model_setup(
         model_tag="Qwen/Qwen2-Audio-7B-Instruct",
         start_prompt="The following is a conversation with an AI assistant. The assistant is helpful, honest, and harmless.",
@@ -94,7 +103,7 @@ def qwen2_speaker_age_metric(qwen_utils, pred_x, fs=16000, custom_prompt=None):
         ret (dict): ditionary containing the speaker age prediction
     """
     if custom_prompt is None:
-        custom_prompt = "What is the age of the speaker? Please answer in 'child', '20s', '30s', '40s', '50s', '60s', '70s', 'senior'."
+        custom_prompt = DEFAULT_PROMPT["speaker_age"]
     response = qwen2_base_metric(qwen_utils, pred_x, fs, custom_prompt)
     return {"qwen_speaker_age": response}
 
@@ -114,7 +123,7 @@ def qwen2_speech_emotion_metric(qwen_utils, pred_x, fs=16000, custom_prompt=None
     """
     if custom_prompt is None:
         # IEMOCAP emotion classification prompt
-        custom_prompt = "What is the emotion of the speech? Please answer in 'neutral state', 'happiness', 'sadness', 'surprise', 'fear', 'disgust', 'frustration', 'excited', 'other' only."
+        custom_prompt = DEFAULT_PROMPT["speech_emotion"]
     response = qwen2_base_metric(qwen_utils, pred_x, fs, custom_prompt)
     return {"qwen_Speech_emotion": response}
 
@@ -132,7 +141,7 @@ def qwen2_speaker_count_metric(qwen_utils, pred_x, fs=16000, custom_prompt=None)
         ret (dict): ditionary containing the speaker count prediction
     """
     if custom_prompt is None:
-        custom_prompt = "How many speakers are there in the audio? Please answer with a number."
+        custom_prompt = DEFAULT_PROMPT["speaker_count"]
     response = qwen2_base_metric(qwen_utils, pred_x, fs, custom_prompt)
     return {"qwen_speaker_count": response}
 
@@ -150,7 +159,7 @@ def qwen2_language_metric(qwen_utils, pred_x, fs=16000, custom_prompt=None):
         ret (dict): ditionary containing the language prediction
     """
     if custom_prompt is None:
-        custom_prompt = "What language is being spoken? Please answer with the name of the language."
+        custom_prompt = DEFAULT_PROMPT["language"]
     response = qwen2_base_metric(qwen_utils, pred_x, fs, custom_prompt)
     return {"qwen_language": response}
 
@@ -169,7 +178,7 @@ def qwen2_speaker_gender_metric(qwen_utils, pred_x, fs=16000, custom_prompt=None
     """
     
     if custom_prompt is None:
-        custom_prompt = "What is the gender of the speaekr. Please answer with 'male' or 'female' only."
+        custom_prompt = DEFAULT_PROMPT["speaker_gender"]
     response = qwen2_base_metric(qwen_utils, pred_x, fs, custom_prompt)
     return {"qwen_speaker_gender": response}
 
@@ -178,6 +187,12 @@ def qwen2_speaker_gender_metric(qwen_utils, pred_x, fs=16000, custom_prompt=None
 # Audio Metrics
 ############################################
 
+
+
+
+############################################
+# Audio Metrics
+############################################
 
 if __name__ == "__main__":
     a = np.random.random(16000)
