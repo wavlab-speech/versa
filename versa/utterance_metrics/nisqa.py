@@ -9,6 +9,7 @@ import torch
 import versa.utterance_metrics.nisqa_utils.nisqa_lib as NL
 import librosa
 
+
 def nisqa_model_setup(nisqa_model_path=None, use_gpu=False):
     """
     Setup the NISQA model for evaluation.
@@ -39,8 +40,9 @@ def nisqa_model_setup(nisqa_model_path=None, use_gpu=False):
     checkpoint = torch.load(nisqa_model_path, map_location="cpu")
     args = checkpoint.get("args", None)
     if args is None:
-        raise ValueError("Model checkpoint does not contain the required arguments. Might due to a wrong checkpoint.")
-    
+        raise ValueError(
+            "Model checkpoint does not contain the required arguments. Might due to a wrong checkpoint."
+        )
 
     if args["model"] == "NISQA_DIM":
         args["dim"] = True
@@ -150,23 +152,26 @@ def nisqa_metric(nisqa_model, pred_x, fs):
 
     # Evaluate the NISQA score
     with torch.no_grad():
-        metrics = NL.versa_eval_mos([pred_x], nisqa_model, 1, nisqa_model.device, num_workers=0)
-    
+        metrics = NL.versa_eval_mos(
+            [pred_x], nisqa_model, 1, nisqa_model.device, num_workers=0
+        )
+
     final_result = {}
     for metrics_key in metrics.keys():
         # Check if the metric is a list and take the first element for batch=1
         final_result["nisqa_" + metrics_key] = metrics[metrics_key][0][0]
-        
-    return final_result
 
-    
+    return final_result
 
 
 if __name__ == "__main__":
     a = np.random.random(16000)
     fs = 16000
     try:
-        nisqa_model = nisqa_model_setup(nisqa_model_path="/home/jiatong/projects/espnet/tools/versa/tools/NISQA/weights/nisqa.tar", use_gpu=True)
+        nisqa_model = nisqa_model_setup(
+            nisqa_model_path="/home/jiatong/projects/espnet/tools/versa/tools/NISQA/weights/nisqa.tar",
+            use_gpu=True,
+        )
         score = nisqa_metric(nisqa_model, a, fs)
         print("NISQA Score: {}".format(score))
     except NotImplementedError as e:

@@ -85,7 +85,7 @@ def load_score_modules(score_config, use_gt=True, use_gt_text=False, use_gpu=Fal
 
             score_modules["warpq"] = {"model": warpq_setup(), "module": warpq}
             logging.info("Initiate WARP-Q metric...")
-        
+
         elif config["name"] == "nisqa":
 
             logging.info("Loading NISQA evaluation...")
@@ -93,7 +93,9 @@ def load_score_modules(score_config, use_gt=True, use_gt_text=False, use_gpu=Fal
 
             # Load the NISQA model
             nisqa_model = nisqa_model_setup(
-                nisqa_model_path=config.get("model_path", "./tools/NISQA/weights/nisqa.tar"),
+                nisqa_model_path=config.get(
+                    "model_path", "./tools/NISQA/weights/nisqa.tar"
+                ),
                 use_gpu=use_gpu,
             )
             score_modules["nisqa"] = {

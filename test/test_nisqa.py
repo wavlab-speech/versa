@@ -12,7 +12,13 @@ from versa.scorer_shared import (
 )
 
 
-TEST_INFO = {'nisqa_mos_pred': 0.4997170865535736, 'nisqa_noi_pred': 1.481737494468689, 'nisqa_dis_pred': 2.110642671585083, 'nisqa_col_pred': 0.9634456634521484, 'nisqa_loud_pred': 1.287371039390564}
+TEST_INFO = {
+    "nisqa_mos_pred": 0.4997170865535736,
+    "nisqa_noi_pred": 1.481737494468689,
+    "nisqa_dis_pred": 2.110642671585083,
+    "nisqa_col_pred": 0.9634456634521484,
+    "nisqa_loud_pred": 1.287371039390564,
+}
 
 
 def info_update():

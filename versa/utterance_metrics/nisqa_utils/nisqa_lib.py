@@ -1466,54 +1466,65 @@ class Fusion(torch.nn.Module):
         return x
 
 
-#%% Evaluation 
-def predict_mos(model, ds, bs, dev, num_workers=0):    
-    '''
+# %% Evaluation
+def predict_mos(model, ds, bs, dev, num_workers=0):
+    """
     predict_mos: predicts MOS of the given dataset with given model. Used for
     NISQA and NISQA_DE model.
-    '''       
-    dl = DataLoader(ds,
-                    batch_size=bs,
-                    shuffle=False,
-                    drop_last=False,
-                    pin_memory=False,
-                    num_workers=num_workers)
+    """
+    dl = DataLoader(
+        ds,
+        batch_size=bs,
+        shuffle=False,
+        drop_last=False,
+        pin_memory=False,
+        num_workers=num_workers,
+    )
     model.to(dev)
     model.eval()
     with torch.no_grad():
-        y_hat_list = [ [model(xb.to(dev), n_wins.to(dev)).cpu().numpy(), yb.cpu().numpy()] for xb, yb, (idx, n_wins) in dl]
-    yy = np.concatenate( y_hat_list, axis=1 )
-    y_hat = yy[0,:,0].reshape(-1,1)
-    y = yy[1,:,0].reshape(-1,1)
-    ds.df['mos_pred'] = y_hat.astype(dtype=float)
+        y_hat_list = [
+            [model(xb.to(dev), n_wins.to(dev)).cpu().numpy(), yb.cpu().numpy()]
+            for xb, yb, (idx, n_wins) in dl
+        ]
+    yy = np.concatenate(y_hat_list, axis=1)
+    y_hat = yy[0, :, 0].reshape(-1, 1)
+    y = yy[1, :, 0].reshape(-1, 1)
+    ds.df["mos_pred"] = y_hat.astype(dtype=float)
     return y_hat, y
 
-def predict_dim(model, ds, bs, dev, num_workers=0):     
-    '''
-    predict_dim: predicts MOS and dimensions of the given dataset with given 
+
+def predict_dim(model, ds, bs, dev, num_workers=0):
+    """
+    predict_dim: predicts MOS and dimensions of the given dataset with given
     model. Used for NISQA_DIM model.
-    '''        
-    dl = DataLoader(ds,
-                    batch_size=bs,
-                    shuffle=False,
-                    drop_last=False,
-                    pin_memory=False,
-                    num_workers=num_workers)
+    """
+    dl = DataLoader(
+        ds,
+        batch_size=bs,
+        shuffle=False,
+        drop_last=False,
+        pin_memory=False,
+        num_workers=num_workers,
+    )
     model.to(dev)
     model.eval()
     with torch.no_grad():
-        y_hat_list = [ [model(xb.to(dev), n_wins.to(dev)).cpu().numpy(), yb.cpu().numpy()] for xb, yb, (idx, n_wins) in dl]
-    yy = np.concatenate( y_hat_list, axis=1 )
-    
-    y_hat = yy[0,:,:]
-    y = yy[1,:,:]
-    
-    ds.df['mos_pred'] = y_hat[:,0].reshape(-1,1)
-    ds.df['noi_pred'] = y_hat[:,1].reshape(-1,1)
-    ds.df['dis_pred'] = y_hat[:,2].reshape(-1,1)
-    ds.df['col_pred'] = y_hat[:,3].reshape(-1,1)
-    ds.df['loud_pred'] = y_hat[:,4].reshape(-1,1)
-    
+        y_hat_list = [
+            [model(xb.to(dev), n_wins.to(dev)).cpu().numpy(), yb.cpu().numpy()]
+            for xb, yb, (idx, n_wins) in dl
+        ]
+    yy = np.concatenate(y_hat_list, axis=1)
+
+    y_hat = yy[0, :, :]
+    y = yy[1, :, :]
+
+    ds.df["mos_pred"] = y_hat[:, 0].reshape(-1, 1)
+    ds.df["noi_pred"] = y_hat[:, 1].reshape(-1, 1)
+    ds.df["dis_pred"] = y_hat[:, 2].reshape(-1, 1)
+    ds.df["col_pred"] = y_hat[:, 3].reshape(-1, 1)
+    ds.df["loud_pred"] = y_hat[:, 4].reshape(-1, 1)
+
     return y_hat, y
 
 
@@ -1541,19 +1552,11 @@ def versa_eval_mos(data_list, model, bs, dev, num_workers=0):
 
     if model.args["dim"] == True:
         result = predict_dim_versa(
-            model=model,
-            ds=dataset,
-            bs=bs,
-            dev=dev,
-            num_workers=num_workers
+            model=model, ds=dataset, bs=bs, dev=dev, num_workers=num_workers
         )
     else:
         result = predict_mos_versa(
-            model=model,
-            ds=dataset,
-            bs=bs,
-            dev=dev,
-            num_workers=num_workers
+            model=model, ds=dataset, bs=bs, dev=dev, num_workers=num_workers
         )
     return result
 
@@ -2464,7 +2467,6 @@ class SpeechQualityDataset(Dataset):
         return len(self.df)
 
 
-
 # %% Dataset
 class SpeechQualityDatasetVERSA(Dataset):
     """
@@ -2542,7 +2544,7 @@ class SpeechQualityDatasetVERSA(Dataset):
         audio_file = self.data_list[index]
 
         spec = get_librosa_melspec_versa(
-            audio_file, # numpy array
+            audio_file,  # numpy array
             sr=self.ms_sr,
             n_fft=self.ms_n_fft,
             hop_length=self.ms_hop_length,
@@ -2591,7 +2593,6 @@ class SpeechQualityDatasetVERSA(Dataset):
 
     def __len__(self):
         return len(self.data_list)
-
 
 
 # %% Spectrograms
@@ -2643,7 +2644,6 @@ def segment_specs(file_path, x, seg_length, seg_hop=1, max_length=None):
         x = x_padded
 
     return x, np.array(n_wins)
-
 
 
 # %% Spectrograms
@@ -2746,7 +2746,6 @@ def get_librosa_melspec(
     return spec
 
 
-
 def get_librosa_melspec_versa(
     numpy_array,  # numpy array of audio samples
     sr=48e3,
@@ -2762,7 +2761,7 @@ def get_librosa_melspec_versa(
     # Calc spec
 
     if sr is None:
-        sr = 48e3 # default sample rate
+        sr = 48e3  # default sample rate
 
     hop_length = int(sr * hop_length)
     win_length = int(sr * win_length)
