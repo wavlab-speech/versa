@@ -4,7 +4,7 @@
 [![PyPI version](https://badge.fury.io/py/versa.svg)](https://badge.fury.io/py/versa)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-VERSA (Versatile Evaluation of Speech and Audio) is a comprehensive toolkit for evaluating speech and audio quality. It provides seamless access to over 80 evaluation metrics with 10x variants, enabling researchers and developers to assess audio quality through multiple dimensions.
+VERSA (Versatile Evaluation of Speech and Audio) is a comprehensive toolkit for evaluating speech and audio quality. It provides seamless access to over 80 evaluation/profiling metrics with 10x variants, enabling researchers and developers to assess audio quality through multiple dimensions.
 
 ## 🚀 Features
 
