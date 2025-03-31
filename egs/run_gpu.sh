@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# GPU Score Runner for Audio Processing
+# GPU Score Runner for VERSA Processing
 # ------------------------------------
 # This script processes audio files using GPU acceleration
 #
