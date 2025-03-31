@@ -28,7 +28,6 @@ cd versa
 pip install .
 ```
 
-
 ### Metric-Specific Dependencies
 
 VERSA aligns with original APIs provided by algorithm developers rather than redistributing models. The core package includes many metrics by default, but some require additional installation.
@@ -119,6 +118,8 @@ VERSA organizes metrics into four categories:
 2. **Dependent Metrics** - Metrics that compare predicted audio against reference audio
 3. **Non-match Metrics** - Metrics that work with non-matching references or information from other modalities
 4. **Distributional Metrics** - Metrics that evaluate statistical properties of audio collections
+
+*See the [full metrics documentation](https://github.com/wavlab-speech/versa/blob/main/supported_metrics.md) for a complete list with references.*
 
 ## 📝 Citation
 
