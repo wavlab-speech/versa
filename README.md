@@ -153,7 +153,7 @@ We sincerely thank all the authors of the open-source implementations listed in 
 
 ## 🤝 Contributing
 
-Contributions are welcome! Please feel free to submit a Pull Request.
+Contributions are welcome! Please feel free to submit a Pull Request. Please check the [contributing guideline](https://github.com/wavlab-speech/versa/blob/main/contributing.md) first.
 
 ## 📄 License
 
