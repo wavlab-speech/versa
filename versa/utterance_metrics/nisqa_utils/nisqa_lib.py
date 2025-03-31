@@ -1466,8 +1466,100 @@ class Fusion(torch.nn.Module):
         return x
 
 
+#%% Evaluation 
+def predict_mos(model, ds, bs, dev, num_workers=0):    
+    '''
+    predict_mos: predicts MOS of the given dataset with given model. Used for
+    NISQA and NISQA_DE model.
+    '''       
+    dl = DataLoader(ds,
+                    batch_size=bs,
+                    shuffle=False,
+                    drop_last=False,
+                    pin_memory=False,
+                    num_workers=num_workers)
+    model.to(dev)
+    model.eval()
+    with torch.no_grad():
+        y_hat_list = [ [model(xb.to(dev), n_wins.to(dev)).cpu().numpy(), yb.cpu().numpy()] for xb, yb, (idx, n_wins) in dl]
+    yy = np.concatenate( y_hat_list, axis=1 )
+    y_hat = yy[0,:,0].reshape(-1,1)
+    y = yy[1,:,0].reshape(-1,1)
+    ds.df['mos_pred'] = y_hat.astype(dtype=float)
+    return y_hat, y
+
+def predict_dim(model, ds, bs, dev, num_workers=0):     
+    '''
+    predict_dim: predicts MOS and dimensions of the given dataset with given 
+    model. Used for NISQA_DIM model.
+    '''        
+    dl = DataLoader(ds,
+                    batch_size=bs,
+                    shuffle=False,
+                    drop_last=False,
+                    pin_memory=False,
+                    num_workers=num_workers)
+    model.to(dev)
+    model.eval()
+    with torch.no_grad():
+        y_hat_list = [ [model(xb.to(dev), n_wins.to(dev)).cpu().numpy(), yb.cpu().numpy()] for xb, yb, (idx, n_wins) in dl]
+    yy = np.concatenate( y_hat_list, axis=1 )
+    
+    y_hat = yy[0,:,:]
+    y = yy[1,:,:]
+    
+    ds.df['mos_pred'] = y_hat[:,0].reshape(-1,1)
+    ds.df['noi_pred'] = y_hat[:,1].reshape(-1,1)
+    ds.df['dis_pred'] = y_hat[:,2].reshape(-1,1)
+    ds.df['col_pred'] = y_hat[:,3].reshape(-1,1)
+    ds.df['loud_pred'] = y_hat[:,4].reshape(-1,1)
+    
+    return y_hat, y
+
+
+def versa_eval_mos(data_list, model, bs, dev, num_workers=0):
+    """
+    versa_eval_mos: Evaluates the MOS of the given dataset with the given model.
+    This function is used to evaluate the performance of NISQA and NISQA_DE models.
+    """
+    dataset = SpeechQualityDatasetVERSA(
+        data_list=data_list,
+        seg_length=model.args["ms_seg_length"],
+        max_length=model.args["ms_max_segments"],
+        to_memory=None,
+        to_memory_workers=None,
+        seg_hop_length=model.args["ms_seg_hop_length"],
+        transform=None,
+        ms_n_fft=model.args["ms_n_fft"],
+        ms_hop_length=model.args["ms_hop_length"],
+        ms_win_length=model.args["ms_win_length"],
+        ms_n_mels=model.args["ms_n_mels"],
+        ms_sr=model.args["ms_sr"],
+        ms_fmax=model.args["ms_fmax"],
+        dim=model.args["dim"],
+    )
+
+    if model.args["dim"] == True:
+        result = predict_dim_versa(
+            model=model,
+            ds=dataset,
+            bs=bs,
+            dev=dev,
+            num_workers=num_workers
+        )
+    else:
+        result = predict_mos_versa(
+            model=model,
+            ds=dataset,
+            bs=bs,
+            dev=dev,
+            num_workers=num_workers
+        )
+    return result
+
+
 # %% Evaluation
-def predict_mos(model, ds, bs, dev, num_workers=0):
+def predict_mos_versa(model, ds, bs, dev, num_workers=0):
     """
     predict_mos: predicts MOS of the given dataset with given model. Used for
     NISQA and NISQA_DE model.
@@ -1489,12 +1581,11 @@ def predict_mos(model, ds, bs, dev, num_workers=0):
         ]
     yy = np.concatenate(y_hat_list, axis=1)
     y_hat = yy[0, :, 0].reshape(-1, 1)
-    y = yy[1, :, 0].reshape(-1, 1)
-    ds.df["mos_pred"] = y_hat.astype(dtype=float)
-    return y_hat, y
+    y_hat = y_hat.astype(dtype=float)
+    return {"mos_pred": y_hat}
 
 
-def predict_dim(model, ds, bs, dev, num_workers=0):
+def predict_dim_versa(model, ds, bs, dev, num_workers=0):
     """
     predict_dim: predicts MOS and dimensions of the given dataset with given
     model. Used for NISQA_DIM model.
@@ -1517,15 +1608,22 @@ def predict_dim(model, ds, bs, dev, num_workers=0):
     yy = np.concatenate(y_hat_list, axis=1)
 
     y_hat = yy[0, :, :]
-    y = yy[1, :, :]
 
-    ds.df["mos_pred"] = y_hat[:, 0].reshape(-1, 1)
-    ds.df["noi_pred"] = y_hat[:, 1].reshape(-1, 1)
-    ds.df["dis_pred"] = y_hat[:, 2].reshape(-1, 1)
-    ds.df["col_pred"] = y_hat[:, 3].reshape(-1, 1)
-    ds.df["loud_pred"] = y_hat[:, 4].reshape(-1, 1)
+    result = {
+        "mos_pred": None,
+        "noi_pred": None,
+        "dis_pred": None,
+        "col_pred": None,
+        "loud_pred": None,
+    }
 
-    return y_hat, y
+    result["mos_pred"] = y_hat[:, 0].reshape(-1, 1)
+    result["noi_pred"] = y_hat[:, 1].reshape(-1, 1)
+    result["dis_pred"] = y_hat[:, 2].reshape(-1, 1)
+    result["col_pred"] = y_hat[:, 3].reshape(-1, 1)
+    result["loud_pred"] = y_hat[:, 4].reshape(-1, 1)
+
+    return result
 
 
 def is_const(x):
@@ -2366,6 +2464,136 @@ class SpeechQualityDataset(Dataset):
         return len(self.df)
 
 
+
+# %% Dataset
+class SpeechQualityDatasetVERSA(Dataset):
+    """
+    Dataset for Speech Quality Model.
+    """
+
+    def __init__(
+        self,
+        data_list,
+        seg_length=15,
+        max_length=None,
+        to_memory=False,
+        to_memory_workers=0,
+        transform=None,
+        seg_hop_length=1,
+        ms_n_fft=1024,
+        ms_hop_length=80,
+        ms_win_length=170,
+        ms_n_mels=32,
+        ms_sr=48e3,
+        ms_fmax=16e3,
+        double_ended=False,
+        dim=False,
+    ):
+
+        self.data_list = data_list
+        self.seg_length = seg_length
+        self.seg_hop_length = seg_hop_length
+        self.max_length = max_length
+        self.transform = transform
+        self.to_memory_workers = to_memory_workers
+        self.ms_n_fft = ms_n_fft
+        self.ms_hop_length = ms_hop_length
+        self.ms_win_length = ms_win_length
+        self.ms_n_mels = ms_n_mels
+        self.ms_sr = ms_sr
+        self.ms_fmax = ms_fmax
+        assert not double_ended, "VERSA dataset does not support double ended."
+        self.double_ended = double_ended
+        self.dim = dim
+
+        # if True load all specs to memory
+        self.to_memory = False
+        if to_memory:
+            self._to_memory()
+
+    def _to_memory_multi_helper(self, idx):
+        return [self._load_spec(i) for i in idx]
+
+    def _to_memory(self):
+        if self.to_memory_workers == 0:
+            self.mem_list = [self._load_spec(idx) for idx in tqdm(range(len(self)))]
+        else:
+            buffer_size = 128
+            idx = np.arange(len(self))
+            n_bufs = int(len(idx) / buffer_size)
+            idx = (
+                idx[: buffer_size * n_bufs].reshape(-1, buffer_size).tolist()
+                + idx[buffer_size * n_bufs :].reshape(1, -1).tolist()
+            )
+            pool = multiprocessing.Pool(processes=self.to_memory_workers)
+            mem_list = []
+            for out in tqdm(
+                pool.imap(self._to_memory_multi_helper, idx), total=len(idx)
+            ):
+                mem_list = mem_list + out
+            self.mem_list = mem_list
+            pool.terminate()
+            pool.join()
+        self.to_memory = True
+
+    def _load_spec(self, index):
+
+        # Load spec
+        audio_file = self.data_list[index]
+
+        spec = get_librosa_melspec_versa(
+            audio_file, # numpy array
+            sr=self.ms_sr,
+            n_fft=self.ms_n_fft,
+            hop_length=self.ms_hop_length,
+            win_length=self.ms_win_length,
+            n_mels=self.ms_n_mels,
+            fmax=self.ms_fmax,
+        )
+
+        return spec
+
+    def __getitem__(self, index):
+        assert isinstance(index, int), "index must be integer (no slice)"
+
+        if self.to_memory:
+            spec = self.mem_list[index]
+        else:
+            spec = self._load_spec(index)
+
+        # Apply transformation if given
+        if self.transform:
+            spec = self.transform(spec)
+
+        # Segment specs
+        if self.seg_length is not None:
+            x_spec_seg, n_wins = segment_specs_versa(
+                index, spec, self.seg_length, self.seg_hop_length, self.max_length
+            )
+
+        else:
+            x_spec_seg = spec
+            n_wins = spec.shape[1]
+            if self.max_length is not None:
+                x_padded = np.zeros((x_spec_seg.shape[0], self.max_length))
+                x_padded[:, :n_wins] = x_spec_seg
+                x_spec_seg = np.expand_dims(x_padded.transpose(1, 0), axis=(1, 3))
+                if not torch.is_tensor(x_spec_seg):
+                    x_spec_seg = torch.tensor(x_spec_seg, dtype=torch.float)
+
+        # Get MOS (apply NaN in case of prediction only mode)
+        if self.dim:
+            y = np.full((5, 1), np.nan).reshape(-1).astype("float32")
+        else:
+            y = np.full(1, np.nan).reshape(-1).astype("float32")
+
+        return x_spec_seg, y, (index, n_wins)
+
+    def __len__(self):
+        return len(self.data_list)
+
+
+
 # %% Spectrograms
 def segment_specs(file_path, x, seg_length, seg_hop=1, max_length=None):
     """
@@ -2417,6 +2645,58 @@ def segment_specs(file_path, x, seg_length, seg_hop=1, max_length=None):
     return x, np.array(n_wins)
 
 
+
+# %% Spectrograms
+def segment_specs_versa(index, x, seg_length, seg_hop=1, max_length=None):
+    """
+    Segment a spectrogram into "seg_length" wide spectrogram segments.
+    Instead of using only the frequency bin of the current time step,
+    the neighboring bins are included as input to the CNN. For example
+    for a seg_length of 7, the previous 3 and the follwing 3 frequency
+    bins are included.
+
+    A spectrogram with input size [H x W] will be segmented to:
+    [W-(seg_length-1) x C x H x seg_length], where W is the width of the
+    original mel-spec (corresponding to the length of the speech signal),
+    H is the height of the mel-spec (corresponding to the number of mel bands),
+    C is the number of CNN input Channels (always one in our case).
+    """
+    if seg_length % 2 == 0:
+        raise ValueError("seg_length must be odd! (seg_lenth={})".format(seg_length))
+    if not torch.is_tensor(x):
+        x = torch.tensor(x)
+
+    n_wins = x.shape[1] - (seg_length - 1)
+    if n_wins < 1:
+        raise ValueError(
+            f"Sample too short. Only {x.shape[1]} windows available but seg_length={seg_length}. "
+            f"Consider zero padding the audio sample."
+        )
+
+    # broadcast magic to segment melspec
+    idx1 = torch.arange(seg_length)
+    idx2 = torch.arange(n_wins)
+    idx3 = idx1.unsqueeze(0) + idx2.unsqueeze(1)
+    x = x.transpose(1, 0)[idx3, :].unsqueeze(1).transpose(3, 2)
+
+    if seg_hop > 1:
+        x = x[::seg_hop, :]
+        n_wins = int(np.ceil(n_wins / seg_hop))
+
+    if max_length is not None:
+        if max_length < n_wins:
+            raise ValueError(
+                "n_wins {} > max_length {} --- {}. Increase max window length ms_max_segments!".format(
+                    n_wins, max_length, index
+                )
+            )
+        x_padded = torch.zeros((max_length, x.shape[1], x.shape[2], x.shape[3]))
+        x_padded[:n_wins, :] = x
+        x = x_padded
+
+    return x, np.array(n_wins)
+
+
 def get_librosa_melspec(
     file_path,
     sr=48e3,
@@ -2446,6 +2726,49 @@ def get_librosa_melspec(
 
     S = lb.feature.melspectrogram(
         y=y,
+        sr=sr,
+        S=None,
+        n_fft=n_fft,
+        hop_length=hop_length,
+        win_length=win_length,
+        window="hann",
+        center=True,
+        pad_mode="reflect",
+        power=1.0,
+        n_mels=n_mels,
+        fmin=0.0,
+        fmax=fmax,
+        htk=False,
+        norm="slaney",
+    )
+
+    spec = lb.core.amplitude_to_db(S, ref=1.0, amin=1e-4, top_db=80.0)
+    return spec
+
+
+
+def get_librosa_melspec_versa(
+    numpy_array,  # numpy array of audio samples
+    sr=48e3,
+    n_fft=1024,
+    hop_length=80,
+    win_length=170,
+    n_mels=32,
+    fmax=16e3,
+):
+    """
+    Calculate mel-spectrograms with Librosa.
+    """
+    # Calc spec
+
+    if sr is None:
+        sr = 48e3 # default sample rate
+
+    hop_length = int(sr * hop_length)
+    win_length = int(sr * win_length)
+
+    S = lb.feature.melspectrogram(
+        y=numpy_array,  # numpy array of audio samples
         sr=sr,
         S=None,
         n_fft=n_fft,

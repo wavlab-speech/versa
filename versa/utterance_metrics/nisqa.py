@@ -7,19 +7,27 @@ import numpy as np
 import torch
 
 import versa.utterance_metrics.nisqa_utils.nisqa_lib as NL
+import librosa
 
-def nisqa_model_setup():
-
-
-    pass
-
-
-def nisqa_metric(nisqa_model_path, pred_x, fs, use_gpu=False):
+def nisqa_model_setup(nisqa_model_path=None, use_gpu=False):
     """
-    Placeholder for NISQA metric calculation.
-    Currently, NISQA is not implemented.
+    Setup the NISQA model for evaluation.
+    Args:
+        nisqa_model_path (str): Path to the NISQA model checkpoint.
+        use_gpu (bool): If True, use GPU for computation. Default is False.
+
+    Returns:
+        model: The loaded NISQA model.
+
+    Raises:
+        ValueError: If the model path is not provided or the checkpoint is invalid.
     """
 
+    # Check if GPU is available
+    if use_gpu and not torch.cuda.is_available():
+        raise RuntimeError("GPU is not available. Please set use_gpu=False.")
+
+    # Set device
     if use_gpu:
         device = "cuda"
     else:
@@ -122,11 +130,43 @@ def nisqa_metric(nisqa_model_path, pred_x, fs, use_gpu=False):
     return model
 
 
+def nisqa_metric(nisqa_model, pred_x, fs):
+    """
+    Calculate the NISQA score for a given audio signal.
+
+    Args:
+        nisqa_model: The NISQA model to use for evaluation.
+        pred_x (np.ndarray): The audio signal to be evaluated (1D array).
+        fs (int): The sampling rate of the audio signal in Hz.
+
+    Returns:
+        dict: A dictionary containing the NISQA score and other metrics.
+    """
+    model_sr = 48e3  # NISQA model's expected sampling rate
+    if fs != model_sr:
+        # Resample the audio signal to the model's expected sampling rate
+        pred_x = librosa.resample(pred_x, orig_sr=fs, target_sr=model_sr)
+        fs = model_sr
+
+    # Evaluate the NISQA score
+    with torch.no_grad():
+        metrics = NL.versa_eval_mos([pred_x], nisqa_model, 1, nisqa_model.device, num_workers=0)
+    
+    final_result = {}
+    for metrics_key in metrics.keys():
+        # Check if the metric is a list and take the first element for batch=1
+        final_result["nisqa_" + metrics_key] = metrics[metrics_key][0][0]
+        
+    return final_result
+
+    
+
+
 if __name__ == "__main__":
     a = np.random.random(16000)
     fs = 16000
     try:
-        nisqa_model = nisqa_model_setup()
+        nisqa_model = nisqa_model_setup(nisqa_model_path="/home/jiatong/projects/espnet/tools/versa/tools/NISQA/weights/nisqa.tar", use_gpu=True)
         score = nisqa_metric(nisqa_model, a, fs)
         print("NISQA Score: {}".format(score))
     except NotImplementedError as e:
