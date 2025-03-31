@@ -85,6 +85,22 @@ def load_score_modules(score_config, use_gt=True, use_gt_text=False, use_gpu=Fal
 
             score_modules["warpq"] = {"model": warpq_setup(), "module": warpq}
             logging.info("Initiate WARP-Q metric...")
+        
+        elif config["name"] == "nisqa":
+
+            logging.info("Loading NISQA evaluation...")
+            from versa.utterance_metrics.nisqa import nisqa_metric, nisqa_model_setup
+
+            # Load the NISQA model
+            nisqa_model = nisqa_model_setup(
+                nisqa_model_path=config.get("model_path", "./tools/NISQA/weights/nisqa.tar"),
+                use_gpu=use_gpu,
+            )
+            score_modules["nisqa"] = {
+                "module": nisqa_metric,
+                "args": {"nisqa_model": nisqa_model},
+            }
+            logging.info("Initiate NISQA evaluation successfully.")
 
         elif config["name"] == "discrete_speech":
             if not use_gt:
@@ -788,6 +804,20 @@ def use_score_modules(score_modules, gen_wav, gt_wav, gen_sr, text=None):
             score = score_modules[key]["module"](
                 score_modules[key]["model"], gen_wav, gt_wav, gen_sr
             )
+        elif key == "nisqa":
+            try:
+                score = score_modules[key]["module"](
+                    score_modules[key]["args"]["nisqa_model"],
+                    gen_wav,
+                    gen_sr,
+                )
+            except ValueError as e:
+                logging.warning(
+                    "Value error in NISQA metric. Usually due to silence audio: {}".format(
+                        e
+                    )
+                )
+                continue
         elif key == "discrete_speech":
             score = score_modules[key]["module"](
                 score_modules[key]["args"]["discrete_speech_predictors"],
