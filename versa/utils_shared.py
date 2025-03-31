@@ -7,9 +7,11 @@ import copy
 import fnmatch
 import logging
 import os
-import numpy as np
 from typing import Dict, List
+
+import numpy as np
 import soundfile as sf
+
 
 def find_files(
     root_dir: str, query: List[str] = ["*.flac", "*.wav"], include_root_dir: bool = True
@@ -93,5 +95,3 @@ def check_minimum_length(length, key_info):
         if length < 0.1:
             return False
     return True
-
-

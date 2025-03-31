@@ -3,10 +3,10 @@
 # Copyright 2025 Jiatong Shi
 #  Apache 2.0  (http://www.apache.org/licenses/LICENSE-2.0)
 
+import json
 import os
 
 import numpy as np
-import json
 
 try:
     import audiobox_aesthetics.infer

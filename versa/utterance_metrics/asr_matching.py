@@ -22,7 +22,6 @@ except ImportError:
 
 from espnet2.text.cleaner import TextCleaner
 
-
 TARGET_FS = 16000
 CHUNK_SIZE = 30  # seconds
 

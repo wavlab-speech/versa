@@ -11,12 +11,13 @@
 # Please refer to https://github.com/clovaai/aasist for more details
 
 
-import os
 import json
-import numpy as np
-import librosa
-import torch
+import os
 import sys
+
+import librosa
+import numpy as np
+import torch
 
 sys.path.append("./tools/checkpoints/aasist")
 from models.AASIST import Model as AASIST

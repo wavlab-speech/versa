@@ -40,7 +40,9 @@ def whisper_wer_setup(
     return wer_utils
 
 
-def whisper_levenshtein_metric(wer_utils, pred_x, ref_text, cache_pred_text=None, fs=16000):
+def whisper_levenshtein_metric(
+    wer_utils, pred_x, ref_text, cache_pred_text=None, fs=16000
+):
     """Calculate the Levenshtein distance between ref and inf ASR results.
 
     Args:

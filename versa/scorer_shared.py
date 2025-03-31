@@ -3,6 +3,7 @@
 # Copyright 2024 Jiatong Shi
 #  Apache 2.0  (http://www.apache.org/licenses/LICENSE-2.0)
 import logging
+
 import kaldiio
 import librosa
 import soundfile as sf
@@ -13,9 +14,10 @@ from versa.utils_shared import (
     check_all_same,
     check_minimum_length,
     find_files,
-    wav_normalize,
     load_audio,
+    wav_normalize,
 )
+
 
 def audio_loader_setup(audio, io):
     # get ready compute embeddings
@@ -536,7 +538,7 @@ def load_score_modules(score_config, use_gt=True, use_gt_text=False, use_gpu=Fal
 
         elif config["name"] == "lid":
             logging.info("Loading language identification metric")
-            from versa import owsm_lid_model_setup, language_id
+            from versa import language_id, owsm_lid_model_setup
 
             owsm_model = owsm_lid_model_setup(
                 model_tag=config.get("model_tag", "default"),
@@ -567,10 +569,11 @@ def load_score_modules(score_config, use_gt=True, use_gt_text=False, use_gpu=Fal
                 "args": {"model": audiobox_model},
             }
             logging.info("Initiate audiobox aesthetics metric successfully")
-        
+
         elif "qwen2_audio" in config["name"]:
             logging.info("Loading qwen2-audio model")
             from versa import qwen2_model_setup
+
             if "qwen2_audio" not in score_modules.keys():
                 qwen_model = qwen2_model_setup(
                     model_tag=config.get("model_tag", "default"),
@@ -579,38 +582,184 @@ def load_score_modules(score_config, use_gt=True, use_gt_text=False, use_gpu=Fal
                     "module": qwen_model,
                     "start_prompt": config.get("start_prompt", None),
                 }
-            if config["name"] == "qwen2_audio_speaker_age":
-                from versa import qwen2_speaker_age_metric
-                score_modules["qwen2_audio_speaker_age"] = {
-                    "module": qwen2_speaker_age_metric,
-                    "prompt": config.get("prompt", None),
-                }
-            elif config["name"] == "qwen2_audio_speaker_count":
+
+            # 1. Speaker Characteristics
+            if config["name"] == "qwen2_audio_speaker_count":
                 from versa import qwen2_speaker_count_metric
+
                 score_modules["qwen2_audio_speaker_count"] = {
                     "module": qwen2_speaker_count_metric,
                     "prompt": config.get("prompt", None),
                 }
-            elif config["name"] == "qwen2_audio_language":
-                from versa import qwen2_language_metric
-                score_modules["qwen2_audio_language"] = {
-                    "module": qwen2_language_metric,
-                    "prompt": config.get("prompt", None),
-                }
-            elif config["name"] == "qwen2_audio_speech_emotion":
-                from versa import qwen2_speech_emotion_metric
-                score_modules["qwen2_audio_speech_emotion"] = {
-                    "module": qwen2_speech_emotion_metric,
-                    "prompt": config.get("prompt", None),
-                }
             elif config["name"] == "qwen2_audio_speaker_gender":
                 from versa import qwen2_speaker_gender_metric
+
                 score_modules["qwen2_audio_speaker_gender"] = {
                     "module": qwen2_speaker_gender_metric,
                     "prompt": config.get("prompt", None),
                 }
-            logging.info("Initiate qwen2 audio metric: {} successfully".format(config["name"]))
+            elif config["name"] == "qwen2_audio_speaker_age":
+                from versa import qwen2_speaker_age_metric
+
+                score_modules["qwen2_audio_speaker_age"] = {
+                    "module": qwen2_speaker_age_metric,
+                    "prompt": config.get("prompt", None),
+                }
+            elif config["name"] == "qwen2_audio_speech_impairment":
+                from versa import qwen2_speech_impairment_metric
+
+                score_modules["qwen2_audio_speech_impairment"] = {
+                    "module": qwen2_speech_impairment_metric,
+                    "prompt": config.get("prompt", None),
+                }
+
+            # 2. Voice Properties
+            elif config["name"] == "qwen2_audio_voice_pitch":
+                from versa import qwen2_voice_pitch_metric
+
+                score_modules["qwen2_audio_voice_pitch"] = {
+                    "module": qwen2_voice_pitch_metric,
+                    "prompt": config.get("prompt", None),
+                }
+            elif config["name"] == "qwen2_audio_pitch_range":
+                from versa import qwen2_pitch_range_metric
+
+                score_modules["qwen2_audio_pitch_range"] = {
+                    "module": qwen2_pitch_range_metric,
+                    "prompt": config.get("prompt", None),
+                }
+            elif config["name"] == "qwen2_audio_voice_type":
+                from versa import qwen2_voice_type_metric
+
+                score_modules["qwen2_audio_voice_type"] = {
+                    "module": qwen2_voice_type_metric,
+                    "prompt": config.get("prompt", None),
+                }
+            elif config["name"] == "qwen2_audio_speech_volume_level":
+                from versa import qwen2_speech_volume_level_metric
+
+                score_modules["qwen2_audio_speech_volume_level"] = {
+                    "module": qwen2_speech_volume_level_metric,
+                    "prompt": config.get("prompt", None),
+                }
+
+            # 3. Speech Content
+            elif config["name"] == "qwen2_audio_language":
+                from versa import qwen2_language_metric
+
+                score_modules["qwen2_audio_language"] = {
+                    "module": qwen2_language_metric,
+                    "prompt": config.get("prompt", None),
+                }
+            elif config["name"] == "qwen2_audio_speech_register":
+                from versa import qwen2_speech_register_metric
+
+                score_modules["qwen2_audio_speech_register"] = {
+                    "module": qwen2_speech_register_metric,
+                    "prompt": config.get("prompt", None),
+                }
+            elif config["name"] == "qwen2_audio_vocabulary_complexity":
+                from versa import qwen2_vocabulary_complexity_metric
+
+                score_modules["qwen2_audio_vocabulary_complexity"] = {
+                    "module": qwen2_vocabulary_complexity_metric,
+                    "prompt": config.get("prompt", None),
+                }
+            elif config["name"] == "qwen2_audio_speech_purpose":
+                from versa import qwen2_speech_purpose_metric
+
+                score_modules["qwen2_audio_speech_purpose"] = {
+                    "module": qwen2_speech_purpose_metric,
+                    "prompt": config.get("prompt", None),
+                }
+
+            # 4. Speech Delivery
+            elif config["name"] == "qwen2_audio_speech_emotion":
+                from versa import qwen2_speech_emotion_metric
+
+                score_modules["qwen2_audio_speech_emotion"] = {
+                    "module": qwen2_speech_emotion_metric,
+                    "prompt": config.get("prompt", None),
+                }
+            elif config["name"] == "qwen2_audio_speech_clarity":
+                from versa import qwen2_speech_clarity_metric
+
+                score_modules["qwen2_audio_speech_clarity"] = {
+                    "module": qwen2_speech_clarity_metric,
+                    "prompt": config.get("prompt", None),
+                }
+            elif config["name"] == "qwen2_audio_speech_rate":
+                from versa import qwen2_speech_rate_metric
+
+                score_modules["qwen2_audio_speech_rate"] = {
+                    "module": qwen2_speech_rate_metric,
+                    "prompt": config.get("prompt", None),
+                }
+            elif config["name"] == "qwen2_audio_speaking_style":
+                from versa import qwen2_speaking_style_metric
+
+                score_modules["qwen2_audio_speaking_style"] = {
+                    "module": qwen2_speaking_style_metric,
+                    "prompt": config.get("prompt", None),
+                }
+            elif config["name"] == "qwen2_audio_laughter_crying":
+                from versa import qwen2_laughter_crying_metric
+
+                score_modules["qwen2_audio_laughter_crying"] = {
+                    "module": qwen2_laughter_crying_metric,
+                    "prompt": config.get("prompt", None),
+                }
+
+            # 5. Interaction Patterns
+            elif config["name"] == "qwen2_audio_overlapping_speech":
+                from versa import qwen2_overlapping_speech_metric
+
+                score_modules["qwen2_audio_overlapping_speech"] = {
+                    "module": qwen2_overlapping_speech_metric,
+                    "prompt": config.get("prompt", None),
+                }
+
+            # 6. Recording Environment
+            elif config["name"] == "qwen2_audio_speech_background_environment":
+                from versa import qwen2_speech_background_environment_metric
+
+                score_modules["qwen2_audio_speech_background_environment"] = {
+                    "module": qwen2_speech_background_environment_metric,
+                    "prompt": config.get("prompt", None),
+                }
+            elif config["name"] == "qwen2_audio_recording_quality":
+                from versa import qwen2_recording_quality_metric
+
+                score_modules["qwen2_audio_recording_quality"] = {
+                    "module": qwen2_recording_quality_metric,
+                    "prompt": config.get("prompt", None),
+                }
+            elif config["name"] == "qwen2_audio_channel_type":
+                from versa import qwen2_channel_type_metric
+
+                score_modules["qwen2_audio_channel_type"] = {
+                    "module": qwen2_channel_type_metric,
+                    "prompt": config.get("prompt", None),
+                }
+
+            logging.info(
+                "Initiate qwen2 audio metric: {} successfully".format(config["name"])
+            )
     return score_modules
+
+
+def process_cache_info(cache_info, score_modules, output_file):
+    batch_score_info = []
+    for utt_info in cache_info:
+        key, gen_wav, gt_wav, gen_sr, text = utt_info
+        utt_score = {"key": key}
+        utt_score.update(
+            use_score_modules(score_modules, gen_wav, gt_wav, gen_sr, text)
+        )
+        batch_score_info.append(utt_score)
+        if output_file is not None:
+            output_file.write(f"{utt_score}\n")
+    return batch_score_info
 
 
 def use_score_modules(score_modules, gen_wav, gt_wav, gen_sr, text=None):
@@ -629,7 +778,11 @@ def use_score_modules(score_modules, gen_wav, gt_wav, gen_sr, text=None):
             try:
                 score = score_modules[key]["module"](gen_wav, gt_wav)
             except ValueError as e:
-                logging.warning("Value error in signal metric. Usually due to silence audio: {}".format(e))
+                logging.warning(
+                    "Value error in signal metric. Usually due to silence audio: {}".format(
+                        e
+                    )
+                )
                 continue
         elif key == "warpq":
             score = score_modules[key]["module"](
@@ -761,7 +914,7 @@ def use_score_modules(score_modules, gen_wav, gt_wav, gen_sr, text=None):
             )
         elif "qwen2_audio" in key:
             if key == "qwen2_audio":
-                continue # skip the base model, only use the specific metrics
+                continue  # skip the base model, only use the specific metrics
             # Support qwen2_audio metrics
             score = score_modules[key]["module"](
                 score_modules["qwen2_audio"]["module"],
@@ -769,6 +922,7 @@ def use_score_modules(score_modules, gen_wav, gt_wav, gen_sr, text=None):
                 gen_sr,
                 custom_prompt=score_modules[key]["prompt"],
             )
+            print("score: {}".format(score), flush=True)
         else:
             raise NotImplementedError(f"Not supported {key}")
 
@@ -788,9 +942,11 @@ def list_scoring(
 ):
     if output_file is not None:
         f = open(output_file, "w", encoding="utf-8")
+    else:
+        f = None
 
     score_info = []
-    cache_info = [] # for batch processing
+    cache_info = []  # for batch processing
     for key in tqdm(gen_files.keys()):
         # Step1: load source speech and conduct basic checks
         gen_sr, gen_wav = load_audio(gen_files[key], io)
@@ -808,7 +964,11 @@ def list_scoring(
         # Step2: load reference (gt) speech and conduct basic checks
         if gt_files is not None:
             if key not in gen_files.keys():
-                logging.warning("key {} not found in ground truth files though provided, skipping".format(key))
+                logging.warning(
+                    "key {} not found in ground truth files though provided, skipping".format(
+                        key
+                    )
+                )
                 continue
 
             gt_sr, gt_wav = load_audio(gt_files[key], io)
@@ -817,9 +977,7 @@ def list_scoring(
             # check ground truth audio files
             if check_all_same(gt_wav):
                 logging.warning(
-                    "gt audio of key {} has only the same value, skipping".format(
-                        key
-                    )
+                    "gt audio of key {} has only the same value, skipping".format(key)
                 )
                 continue
 
@@ -838,7 +996,11 @@ def list_scoring(
         # Step3: load text information if provided
         if text_info is not None:
             if key not in text_info.keys():
-                logging.warning("key {} not found in ground truth transcription though provided, skipping".format(key))
+                logging.warning(
+                    "key {} not found in ground truth transcription though provided, skipping".format(
+                        key
+                    )
+                )
                 continue
         else:
             text = None
@@ -855,25 +1017,21 @@ def list_scoring(
                 "Resampling the ground truth audio to match the generated audio"
             )
             gt_wav = librosa.resample(gt_wav, orig_sr=gt_sr, target_sr=gen_sr)
-        
+
         # Step5: cache for batch processing
         utterance_info = (key, gen_wav, gt_wav, gen_sr, text)
 
         cache_info.append(utterance_info)
         if len(cache_info) == batch_size:
             # Process after a batch is collected
-            for utt_info in cache_info:
-                key, gen_wav, gt_wav, gen_sr, text = utt_info
-                utt_score = {"key": key}
-                utt_score.update(
-                    use_score_modules(score_modules, gen_wav, gt_wav, gen_sr, text)
-                )
-                score_info.append(utt_score)
-                if output_file is not None:
-                    f.write(f"{utt_score}\n")
+            score_info.extend(process_cache_info(cache_info, score_modules, f))
+            cache_info = []
         else:
             # continue collect the batch
             continue
+
+    # Process left-over batch
+    score_info.extend(process_cache_info(cache_info, score_modules, f))
 
     logging.info("Scoring completed and save score at {}".format(output_file))
     return score_info

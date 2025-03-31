@@ -3,9 +3,10 @@
 # Copyright 2024 Jiatong Shi
 #  Apache 2.0  (http://www.apache.org/licenses/LICENSE-2.0)
 
+import logging
+
 import numpy as np
 import torch
-import logging
 
 try:
     import torchaudio

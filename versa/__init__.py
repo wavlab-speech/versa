@@ -42,10 +42,45 @@ except ImportError:
     )
 
 from versa.corpus_metrics.espnet_wer import espnet_levenshtein_metric, espnet_wer_setup
+from versa.corpus_metrics.fad import fad_scoring, fad_setup
 from versa.corpus_metrics.owsm_wer import owsm_levenshtein_metric, owsm_wer_setup
 from versa.corpus_metrics.whisper_wer import (
     whisper_levenshtein_metric,
     whisper_wer_setup,
+)
+from versa.utterance_metrics.asr_matching import asr_match_metric, asr_match_setup
+from versa.utterance_metrics.audiobox_aesthetics_score import (
+    audiobox_aesthetics_score,
+    audiobox_aesthetics_setup,
+)
+from versa.utterance_metrics.emotion import emo2vec_setup, emo_sim
+from versa.utterance_metrics.nomad import nomad, nomad_setup
+from versa.utterance_metrics.noresqa import noresqa_metric, noresqa_model_setup
+from versa.utterance_metrics.owsm_lid import language_id, owsm_lid_model_setup
+from versa.utterance_metrics.pysepm import pysepm_metric
+from versa.utterance_metrics.qwen2_audio import (
+    qwen2_channel_type_metric,
+    qwen2_language_metric,
+    qwen2_laughter_crying_metric,
+    qwen2_model_setup,
+    qwen2_overlapping_speech_metric,
+    qwen2_pitch_range_metric,
+    qwen2_recording_quality_metric,
+    qwen2_speaker_age_metric,
+    qwen2_speaker_count_metric,
+    qwen2_speaker_gender_metric,
+    qwen2_speaking_style_metric,
+    qwen2_speech_background_environment_metric,
+    qwen2_speech_clarity_metric,
+    qwen2_speech_emotion_metric,
+    qwen2_speech_impairment_metric,
+    qwen2_speech_purpose_metric,
+    qwen2_speech_rate_metric,
+    qwen2_speech_register_metric,
+    qwen2_speech_volume_level_metric,
+    qwen2_vocabulary_complexity_metric,
+    qwen2_voice_pitch_metric,
+    qwen2_voice_type_metric,
 )
 from versa.utterance_metrics.scoreq import (
     scoreq_nr,
@@ -53,23 +88,11 @@ from versa.utterance_metrics.scoreq import (
     scoreq_ref,
     scoreq_ref_setup,
 )
-from versa.utterance_metrics.nomad import nomad_setup, nomad
-from versa.utterance_metrics.emotion import emo2vec_setup, emo_sim
-from versa.utterance_metrics.owsm_lid import owsm_lid_model_setup, language_id
-from versa.utterance_metrics.sheet_ssqa import sheet_ssqa, sheet_ssqa_setup
-from versa.utterance_metrics.squim import squim_metric, squim_metric_no_ref
 from versa.utterance_metrics.se_snr import se_snr, se_snr_setup
-from versa.utterance_metrics.pysepm import pysepm_metric
-from versa.utterance_metrics.srmr import srmr_metric
-from versa.corpus_metrics.fad import fad_scoring, fad_setup
-from versa.utterance_metrics.noresqa import noresqa_model_setup, noresqa_metric
+from versa.utterance_metrics.sheet_ssqa import sheet_ssqa, sheet_ssqa_setup
 from versa.utterance_metrics.speaking_rate import (
     speaking_rate_metric,
     speaking_rate_model_setup,
 )
-from versa.utterance_metrics.asr_matching import asr_match_metric, asr_match_setup
-from versa.utterance_metrics.audiobox_aesthetics_score import (
-    audiobox_aesthetics_setup,
-    audiobox_aesthetics_score,
-)
-from versa.utterance_metrics.qwen2_audio import qwen2_model_setup, qwen2_speaker_age_metric, qwen2_speaker_count_metric, qwen2_speaker_gender_metric, qwen2_speech_emotion_metric, qwen2_language_metric
+from versa.utterance_metrics.squim import squim_metric, squim_metric_no_ref
+from versa.utterance_metrics.srmr import srmr_metric
