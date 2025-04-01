@@ -1,3 +1,5 @@
+<div align="left"><img src="assets/imgs/versa-light-char.png" width="550"/></div>
+
 # VERSA: Versatile Evaluation of Speech and Audio
 
 [![GitHub stars](https://img.shields.io/github/stars/wavlab-speech/versa?style=social)](https://github.com/wavlab-speech/versa/stargazers)
