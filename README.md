@@ -1,4 +1,4 @@
-<div align="left"><img src="assets/imgs/versa-light-char.png" width="550"/></div>
+<div align="left"><img src="assets/images/versa-light-char.png" width="550"/></div>
 
 # VERSA: Versatile Evaluation of Speech and Audio
 
