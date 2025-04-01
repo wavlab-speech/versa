@@ -1026,6 +1026,7 @@ def list_scoring(
             gt_sr = None
 
         # Step3: load text information if provided
+        text = None
         if text_info is not None:
             if key not in text_info.keys():
                 logging.warning(
@@ -1034,8 +1035,8 @@ def list_scoring(
                     )
                 )
                 continue
-        else:
-            text = None
+            else:
+                text = text_info[key]
 
         # Step4: check if the sampling rate of generated and gt audio are the same
         if gt_sr is not None and gen_sr > gt_sr:
