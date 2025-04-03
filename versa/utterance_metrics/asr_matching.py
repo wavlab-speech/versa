@@ -108,11 +108,15 @@ def asr_match_metric(wer_utils, pred_x, gt_x, cache_pred_text=None, fs=16000):
     )
     assert total == len(pred_chars), (total, len(pred_chars))
 
-    asr_match_error_rate = (
-        result["asr_match_delete"]
-        + result["asr_match_insert"]
-        + result["asr_match_replace"]
-    ) / len(ref_chars)
+    if len(ref_chars) == 0:
+        # a fix work around for the asr match when reference is empty
+        asr_match_error_rate = 1
+    else:
+        asr_match_error_rate = (
+            result["asr_match_delete"]
+            + result["asr_match_insert"]
+            + result["asr_match_replace"]
+        ) / len(ref_chars)
     return {"asr_match_error_rate": asr_match_error_rate, "whisper_hyp_text": inf_text}
 
 
