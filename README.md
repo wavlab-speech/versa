@@ -3,7 +3,6 @@
 # VERSA: Versatile Evaluation of Speech and Audio
 
 [![GitHub stars](https://img.shields.io/github/stars/wavlab-speech/versa?style=social)](https://github.com/wavlab-speech/versa/stargazers)
-[![PyPI version](https://badge.fury.io/py/versa.svg)](https://badge.fury.io/py/versa)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 VERSA (Versatile Evaluation of Speech and Audio) is a comprehensive toolkit for evaluating speech and audio quality. It provides seamless access to over 80 evaluation/profiling metrics with 10x variants, enabling researchers and developers to assess audio quality through multiple dimensions.
@@ -128,24 +127,22 @@ VERSA organizes metrics into four categories:
 If you use VERSA in your research, please cite our papers:
 
 ```bibtex
-@misc{shi2024versaversatileevaluationtoolkit,
-      title={VERSA: A Versatile Evaluation Toolkit for Speech, Audio, and Music}, 
-      author={Jiatong Shi and Hye-jin Shim and Jinchuan Tian and Siddhant Arora and Haibin Wu and Darius Petermann and Jia Qi Yip and You Zhang and Yuxun Tang and Wangyou Zhang and Dareen Safar Alharthi and Yichen Huang and Koichi Saito and Jionghao Han and Yiwen Zhao and Chris Donahue and Shinji Watanabe},
-      year={2024},
-      eprint={2412.17667},
-      archivePrefix={arXiv},
-      primaryClass={cs.SD},
-      url={https://arxiv.org/abs/2412.17667}, 
+@inproceedings{shi2025versa,
+title={{VERSA}: A Versatile Evaluation Toolkit for Speech, Audio, and Music},
+author={Jiatong Shi and Hye-jin Shim and Jinchuan Tian and Siddhant Arora and Haibin Wu and Darius Petermann and Jia Qi Yip and You Zhang and Yuxun Tang and Wangyou Zhang and Dareen Safar Alharthi and Yichen Huang and Koichi Saito and Jionghao Han and Yiwen Zhao and Chris Donahue and Shinji Watanabe},
+booktitle={2025 Annual Conference of the North American Chapter of the Association for Computational Linguistics -- System Demonstration Track},
+year={2025},
+url={https://openreview.net/forum?id=zU0hmbnyQm}
 }
 
-@misc{shi2024espnetcodeccomprehensivetrainingevaluation,
-      title={ESPnet-Codec: Comprehensive Training and Evaluation of Neural Codecs for Audio, Music, and Speech}, 
-      author={Jiatong Shi and Jinchuan Tian and Yihan Wu and Jee-weon Jung and Jia Qi Yip and Yoshiki Masuyama and William Chen and Yuning Wu and Yuxun Tang and Massa Baali and Dareen Alharhi and Dong Zhang and Ruifan Deng and Tejes Srivastava and Haibin Wu and Alexander H. Liu and Bhiksha Raj and Qin Jin and Ruihua Song and Shinji Watanabe},
-      year={2024},
-      eprint={2409.15897},
-      archivePrefix={arXiv},
-      primaryClass={eess.AS},
-      url={https://arxiv.org/abs/2409.15897}, 
+@inproceedings{shi2024versaversatileevaluationtoolkit,
+  author={Shi, Jiatong and Tian, Jinchuan and Wu, Yihan and Jung, Jee-Weon and Yip, Jia Qi and Masuyama, Yoshiki and Chen, William and Wu, Yuning and Tang, Yuxun and Baali, Massa and Alharthi, Dareen and Zhang, Dong and Deng, Ruifan and Srivastava, Tejes and Wu, Haibin and Liu, Alexander and Raj, Bhiksha and Jin, Qin and Song, Ruihua and Watanabe, Shinji},
+  booktitle={2024 IEEE Spoken Language Technology Workshop (SLT)}, 
+  title={ESPnet-Codec: Comprehensive Training and Evaluation of Neural Codecs For Audio, Music, and Speech}, 
+  year={2024},
+  pages={562-569},
+  keywords={Training;Measurement;Codecs;Speech coding;Conferences;Focusing;Neural codecs;codec evaluation},
+  doi={10.1109/SLT61566.2024.10832289}
 }
 ```
 
