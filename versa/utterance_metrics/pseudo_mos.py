@@ -131,6 +131,9 @@ def pseudo_mos_metric(pred, fs, predictor_dict, predictor_fs, use_gpu=False):
                 # we use general version dataset label: sarulab (1)
                 data_type[1] = 0
                 d = torch.tensor(data_type, dtype=torch.float32).unsqueeze(0)
+                if use_gpu:
+                    spec_info = spec_info.to("cuda")
+                    d = d.to("cuda")
             else:
                 raise RuntimeError(
                     "utmosv2 is not installed. Use tools/install_utmosv2.sh to install."

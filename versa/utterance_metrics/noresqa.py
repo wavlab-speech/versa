@@ -112,12 +112,12 @@ def noresqa_metric(model, gt_x, pred_x, fs, metric_type=1):
 
     with torch.no_grad():
         if metric_type == 0:
-            noresqa_pout, noresqa_qout = utils.model_prediction_noresqa(
+            noresqa_pout, noresqa_qout = model_prediction_noresqa(
                 test_feat, nmr_feat, model
             )
             return {"noresqa_score": noresqa_pout}
         elif metric_type == 1:
-            mos_score = utils.model_prediction_noresqa_mos(test_feat, nmr_feat, model)
+            mos_score = model_prediction_noresqa_mos(test_feat, nmr_feat, model)
             return {"noresqa_score": mos_score}
 
 

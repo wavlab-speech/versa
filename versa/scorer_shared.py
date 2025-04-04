@@ -496,7 +496,7 @@ def load_score_modules(score_config, use_gt=True, use_gt_text=False, use_gpu=Fal
                 noresqa_model_setup,
             )
 
-            noresqa_model = noresqa_model_setup(use_gpu=use_gpu)
+            noresqa_model = noresqa_model_setup(metric_type=config.get("metric_type", 0), use_gpu=use_gpu)
             score_modules["noresqa"] = {
                 "module": noresqa_metric,
                 "args": {
