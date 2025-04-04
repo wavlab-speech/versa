@@ -906,7 +906,13 @@ def use_score_modules(score_modules, gen_wav, gt_wav, gen_sr, text=None):
         elif key == "srmr":
             score = score_modules[key]["module"](gen_wav, fs=gen_sr)
         elif key == "noresqa":
-            score = score_modules[key]["module"](gen_wav, gt_wav, fs=gen_sr)
+            score = score_modules[key]["module"](
+                score_modules[key]["args"]["model"],
+                gen_wav,
+                gt_wav,
+                fs=gen_sr,
+                metric_type=score_modules[key]["args"]["metric_type"],
+            )
         elif key == "speaking_rate":
             cache_text = None
             if general_cache.get("whisper_hyp_text", None) is not None:

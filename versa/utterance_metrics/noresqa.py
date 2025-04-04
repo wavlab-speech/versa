@@ -99,13 +99,13 @@ def noresqa_model_setup(model_tag="default", metric_type=0, use_gpu=False):
     return model
 
 
-def noresqa_metric(model, gt_x, pred_x, fs, metric_type=1, device="cpu"):
+def noresqa_metric(model, gt_x, pred_x, fs, metric_type=1):
     # NOTE(hyejin): only work for 16000 Hz
     nmr_feat, test_feat = utils.feats_loading(
         pred_x, gt_x, noresqa_or_noresqaMOS=metric_type
     )
-    test_feat = torch.from_numpy(test_feat).float().to(device).unsqueeze(0)
-    nmr_feat = torch.from_numpy(nmr_feat).float().to(device).unsqueeze(0)
+    test_feat = torch.from_numpy(test_feat).float().to(model.device).unsqueeze(0)
+    nmr_feat = torch.from_numpy(nmr_feat).float().to(model.device).unsqueeze(0)
 
     with torch.no_grad():
         if metric_type == 0:

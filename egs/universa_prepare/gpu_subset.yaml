@@ -72,7 +72,7 @@
 # scoreq (reference-based) metric
 # -- scoreq_ref: scoreq reference-based model
 - name: scoreq_ref
-  data_domain: natrual
+  data_domain: natural
   model_cache: versa_cache/scoreq_pt-models
 
 # scoreq (non-reference-based) metric
