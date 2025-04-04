@@ -1,9 +1,9 @@
+import numpy as np
 import pytest
 import torch
 from packaging.version import parse as V
 
-import numpy as np
-from versa.utterance_metrics.asr_matching import asr_match_setup, asr_match_metric
+from versa.utterance_metrics.asr_matching import asr_match_metric, asr_match_setup
 
 
 @pytest.mark.parametrize(

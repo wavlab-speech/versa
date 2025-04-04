@@ -33,11 +33,8 @@ except ImportError:
 
 try:
     from model import NORESQA
-    from utils import (
-        feats_loading,
-        model_prediction_noresqa,
-        model_prediction_noresqa_mos,
-    )
+    from utils import (feats_loading, model_prediction_noresqa,
+                       model_prediction_noresqa_mos)
 
 except ImportError:
     logger.info(
@@ -104,9 +101,7 @@ def noresqa_metric(model, gt_x, pred_x, fs, metric_type=1):
     # NOTE(hyejin): only work for 16000 Hz
     gt_x = librosa.resample(gt_x, orig_sr=fs, target_sr=16000)
     pred_x = librosa.resample(pred_x, orig_sr=fs, target_sr=16000)
-    nmr_feat, test_feat = feats_loading(
-        pred_x, gt_x, noresqa_or_noresqaMOS=metric_type
-    )
+    nmr_feat, test_feat = feats_loading(pred_x, gt_x, noresqa_or_noresqaMOS=metric_type)
     test_feat = torch.from_numpy(test_feat).float().to(model.device).unsqueeze(0)
     nmr_feat = torch.from_numpy(nmr_feat).float().to(model.device).unsqueeze(0)
 

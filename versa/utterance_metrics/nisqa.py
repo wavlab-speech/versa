@@ -3,11 +3,11 @@
 # Copyright 2025 Jiatong Shi
 #  Apache 2.0  (http://www.apache.org/licenses/LICENSE-2.0)
 
+import librosa
 import numpy as np
 import torch
 
 import versa.utterance_metrics.nisqa_utils.nisqa_lib as NL
-import librosa
 
 
 def nisqa_model_setup(nisqa_model_path=None, use_gpu=False):
