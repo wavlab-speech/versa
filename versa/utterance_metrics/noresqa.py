@@ -89,6 +89,7 @@ def noresqa_model_setup(model_tag="default", metric_type=0, use_gpu=False):
 
         # change device as needed
         model.to(device)
+        model.device = device
         model.eval()
 
         sfmax = nn.Softmax(dim=1)
