@@ -70,11 +70,11 @@ def noresqa_model_setup(model_tag="default", metric_type=0, use_gpu=False):
         )
 
         if metric_type == 0:
-            model_checkpoint_path = "./Noresqa/models/model_noresqa.pth"
+            model_checkpoint_path = "{}/models/model_noresqa.pth".format(base_path)
             state = torch.load(model_checkpoint_path, map_location="cpu")["state_base"]
 
         elif metric_type == 1:
-            model_checkpoint_path = "./Noresqa/models/model_noresqa_mos.pth"
+            model_checkpoint_path = "{}/models/model_noresqa_mos.pth".format(base_path)
             state = torch.load(model_checkpoint_path, map_location="cpu")["state_dict"]
 
         pretrained_dict = {}

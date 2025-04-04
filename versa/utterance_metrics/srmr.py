@@ -40,7 +40,7 @@ def srmr_metric(
     )
 
     return {
-        "srmr": srmr_score,
+        "srmr": srmr_score[0],
     }
 
 
