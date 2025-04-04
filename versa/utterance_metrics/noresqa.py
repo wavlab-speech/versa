@@ -101,7 +101,9 @@ def noresqa_model_setup(model_tag="default", metric_type=0, use_gpu=False):
 
 def noresqa_metric(model, gt_x, pred_x, fs, metric_type=1):
     # NOTE(hyejin): only work for 16000 Hz
-    nmr_feat, test_feat = utils.feats_loading(
+    gt_x = librosa.resample(gt_x, orig_sr=fs, target_sr=16000)
+    pred_x = librosa.resample(pred_x, orig_sr=fs, target_sr=16000)
+    nmr_feat, test_feat = feats_loading(
         pred_x, gt_x, noresqa_or_noresqaMOS=metric_type
     )
     test_feat = torch.from_numpy(test_feat).float().to(model.device).unsqueeze(0)
