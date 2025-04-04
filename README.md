@@ -57,16 +57,18 @@ python versa/bin/scorer.py \
     --score_config egs/speech.yaml \
     --gt test/test_samples/test1 \
     --pred test/test_samples/test2 \
-    --output_file test_result
+    --output_file test_result \
+    --io dir
 
 # With SCP-style input
 python versa/bin/scorer.py \
     --score_config egs/speech.yaml \
     --gt test/test_samples/test1.scp \
     --pred test/test_samples/test2.scp \
-    --output_file test_result
+    --output_file test_result \
+    --io soundfile
 
-# With Kaldi-ARK style input
+# With Kaldi-ARK style input (compatible with ESPnet)
 python versa/bin/scorer.py \
     --score_config egs/speech.yaml \
     --gt test/test_samples/test1.scp \
@@ -80,7 +82,8 @@ python versa/bin/scorer.py \
     --gt test/test_samples/test1.scp \
     --pred test/test_samples/test2.scp \
     --output_file test_result \
-    --text test/test_samples/text
+    --text test/test_samples/text \
+    --io soundfile
 ```
 
 ### Distributed Evaluation with Slurm

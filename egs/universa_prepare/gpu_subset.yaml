@@ -1,0 +1,147 @@
+# Universal Metrics Configuration for Versa
+# This file contains the configuration for various universal metrics used in speech quality assessment.
+
+# Word error rate with ESPnet-OWSM model
+# More model_tag can be from the ESPnet huggingface https://huggingface.co/espnet .
+# The default model is `espnet/owsm_v3.1_ebf`.
+# --lid: the nbest language tag
+- name: lid
+  model_tag: default
+  nbest: 1
+
+# nomad (reference-based) metric
+# -- nomad: nomad reference-based model
+- name: nomad
+  model_cache: versa_cache/nomad_pt-models
+
+# Emotion similarity calculated based on emo2vec
+# --emo2vec_similarity: the emotion similarity with emo2vec
+- name: emo2vec_similarity
+
+# noresqa related metrics
+# -- noresqa: non-matching reference based speech quality assessment
+- name: noresqa
+  metric_type: 1 #0: NORESQA-score, 1: NORESQA-MOS
+
+# nisqa score for speech quality assessment
+#  -- nisqa_mos_pred: NISQA MOS prediction
+#  -- nisqa_noi_pred: NISQA noise prediction
+#  -- nisqa_dis_pred: NISQA distortion prediction
+#  -- nisqa_col_pred: NISQA color prediction
+#  --nisqa_loud_pred: NISQA loudness prediction
+# NOTE(jiatong): pretrain model can be downloaded with `./tools/setup_nisqa.sh`
+- name: nisqa
+  nisqa_model_path: ./tools/NISQA/weights/nisqa.tar
+
+# discrete speech metrics
+# -- speech_bert: speech bert score
+# -- speech_bleu: speech bleu score
+# -- speech_token_distance: speech token distance score
+- name: discrete_speech
+
+# An overall model on MOS-bench from Sheet toolkit
+# --sheet_ssqa: the mos prediction from sheet_ssqa
+- name: sheet_ssqa
+
+# pseudo subjective metrics
+# -- utmos: UT-MOS score
+# -- dnsmos: DNS-MOS score
+# -- plcmos: PLC-MOS score
+# -- aecmos: AEC-MOS score
+- name: pseudo_mos
+  predictor_types: ["utmos", "dnsmos", "plcmos", "singmos", "utmosv2"]
+  predictor_args:
+    utmos:
+      fs: 16000
+    dnsmos:
+      fs: 16000
+    plcmos:
+      fs: 16000
+    singmos:
+      fs: 16000
+    utmosv2:
+      fs: 16000
+
+# Word error rate with OpenAI-Whisper model
+# -- whisper_wer: word error rate of openai-whisper
+- name: whisper_wer
+  model_tag: default
+  beam_size: 1
+  text_cleaner: whisper_basic
+
+# scoreq (reference-based) metric
+# -- scoreq_ref: scoreq reference-based model
+- name: scoreq_ref
+  data_domain: natrual
+  model_cache: versa_cache/scoreq_pt-models
+
+# scoreq (non-reference-based) metric
+# -- scoreq_nr: scoreq non-reference-based model
+- name: scoreq_nr
+  data_domain: natural
+  model_cache: versa_cache/scoreq_pt-models
+
+# Speech Enhancement-based Metrics
+# model tag can be any ESPnet-SE huggingface repo
+# -- se_si_snr: the SI-SNR from a rerference speech enhancement model
+- name: se_snr
+  model_tag: default
+
+# PAM: Prompting Audio-Language Models for Audio Quality Assessment
+# https://github.com/soham97/PAM/tree/main
+
+- name: pam
+  repro: true
+  cache_dir: versa_cache/pam
+  io: soundfile
+  # TEXT ENCODER CONFIG
+  text_model: 'gpt2'
+  text_len: 77
+  transformer_embed_dim: 768
+  freeze_text_encoder_weights: True
+  # AUDIO ENCODER CONFIG
+  audioenc_name: 'HTSAT'
+  out_emb: 768
+  sampling_rate: 44100
+  duration: 7
+  fmin: 50
+  fmax: 8000 #14000 
+  n_fft: 1024 # 1028 
+  hop_size: 320
+  mel_bins: 64
+  window_size: 1024
+  # PROJECTION SPACE CONFIG 
+  d_proj: 1024
+  temperature: 0.003
+  # TRAINING AND EVALUATION CONFIG
+  num_classes: 527
+  batch_size: 1024
+  demo: False
+
+# Speaking rate calculating
+# --speaking_rate: correct matching words/character counts
+- name: speaking_rate
+  model_tag: default
+  beam_size: 1
+  text_cleaner: whisper_basic
+
+# Audiobox Aesthetics (Unified automatic quality assessment for speech, music, and sound.)
+- name: audiobox_aesthetics
+  batch_size: 1
+  cache_dir: versa_cache/audiobox
+
+# ASR-match calculating
+# --asr_match_error_rate: correct matching words/character counts
+- name: asr_match
+  model_tag: default
+  beam_size: 1
+  text_cleaner: whisper_basic
+
+# speaker related metrics
+# -- spk_similarity: speaker cosine similarity
+- name: speaker
+  model_tag: default
+
+# asvspoof related metrics
+# -- asvspoof_score: evaluate how the generated speech is likely to be classifiied by a deepfake classifier
+- name: asvspoof_score
