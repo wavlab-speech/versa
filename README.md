@@ -4,6 +4,9 @@
 
 [![GitHub stars](https://img.shields.io/github/stars/wavlab-speech/versa?style=social)](https://github.com/wavlab-speech/versa/stargazers)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![arXiv](https://img.shields.io/badge/arXiv-2412.17667-b31b1b.svg)](https://arxiv.org/abs/2412.17667)
+[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
+
 
 VERSA (Versatile Evaluation of Speech and Audio) is a comprehensive toolkit for evaluating speech and audio quality. It provides seamless access to over 80 evaluation/profiling metrics with 10x variants, enabling researchers and developers to assess audio quality through multiple dimensions.
 
@@ -57,16 +60,18 @@ python versa/bin/scorer.py \
     --score_config egs/speech.yaml \
     --gt test/test_samples/test1 \
     --pred test/test_samples/test2 \
-    --output_file test_result
+    --output_file test_result \
+    --io dir
 
 # With SCP-style input
 python versa/bin/scorer.py \
     --score_config egs/speech.yaml \
     --gt test/test_samples/test1.scp \
     --pred test/test_samples/test2.scp \
-    --output_file test_result
+    --output_file test_result \
+    --io soundfile
 
-# With Kaldi-ARK style input
+# With Kaldi-ARK style input (compatible with ESPnet)
 python versa/bin/scorer.py \
     --score_config egs/speech.yaml \
     --gt test/test_samples/test1.scp \
@@ -80,7 +85,8 @@ python versa/bin/scorer.py \
     --gt test/test_samples/test1.scp \
     --pred test/test_samples/test2.scp \
     --output_file test_result \
-    --text test/test_samples/text
+    --text test/test_samples/text \
+    --io soundfile
 ```
 
 ### Distributed Evaluation with Slurm

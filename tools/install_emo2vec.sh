@@ -8,8 +8,6 @@ fi
 
 # # NOTE(jiatong): a versa-specialized implementation for emo2vec
 git clone https://github.com/ftshijt/emotion2vec.git
-cd scoreq
-pip install -e .
 
 # Note(jiatong): default downloading the base model
 cd emotion2vec/emo2vec_versa

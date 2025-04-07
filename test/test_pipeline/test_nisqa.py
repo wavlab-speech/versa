@@ -11,7 +11,6 @@ from versa.scorer_shared import (
     load_summary,
 )
 
-
 TEST_INFO = {
     "nisqa_mos_pred": 0.4997170865535736,
     "nisqa_noi_pred": 1.481737494468689,

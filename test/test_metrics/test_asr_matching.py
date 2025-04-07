@@ -1,9 +1,9 @@
-import pytest
 import numpy as np
 import wave
 from pathlib import Path
 from packaging.version import parse as V
 from versa.utterance_metrics.asr_matching import asr_match_setup, asr_match_metric
+import torch
 
 # -------------------------------
 # Helper: Generate a fixed WAV file

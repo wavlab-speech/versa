@@ -11,14 +11,9 @@ import logging
 import torch
 import yaml
 
-from versa.scorer_shared import (
-    audio_loader_setup,
-    corpus_scoring,
-    list_scoring,
-    load_corpus_modules,
-    load_score_modules,
-    load_summary,
-)
+from versa.scorer_shared import (audio_loader_setup, corpus_scoring,
+                                 list_scoring, load_corpus_modules,
+                                 load_score_modules, load_summary)
 
 
 def get_parser() -> argparse.Namespace:

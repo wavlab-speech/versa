@@ -8,7 +8,8 @@ logger = logging.getLogger(__name__)
 import numpy as np
 
 try:
-    from srmrpy import srmr  # Import the srmr package for speech quality metrics
+    from srmrpy import \
+        srmr  # Import the srmr package for speech quality metrics
 except ImportError:
     logger.info("srmr is not installed. Please use `tools/install_srmr.sh` to install")
     srmr = None
@@ -40,7 +41,7 @@ def srmr_metric(
     )
 
     return {
-        "srmr": srmr_score,
+        "srmr": srmr_score[0],
     }
 
 

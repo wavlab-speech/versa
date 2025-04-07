@@ -10,13 +10,8 @@ import soundfile as sf
 import yaml
 from tqdm import tqdm
 
-from versa.utils_shared import (
-    check_all_same,
-    check_minimum_length,
-    find_files,
-    load_audio,
-    wav_normalize,
-)
+from versa.utils_shared import (check_all_same, check_minimum_length,
+                                find_files, load_audio, wav_normalize)
 
 
 def audio_loader_setup(audio, io):
@@ -89,7 +84,8 @@ def load_score_modules(score_config, use_gt=True, use_gt_text=False, use_gpu=Fal
         elif config["name"] == "nisqa":
 
             logging.info("Loading NISQA evaluation...")
-            from versa.utterance_metrics.nisqa import nisqa_metric, nisqa_model_setup
+            from versa.utterance_metrics.nisqa import (nisqa_metric,
+                                                       nisqa_model_setup)
 
             # Load the NISQA model
             nisqa_model = nisqa_model_setup(
@@ -450,9 +446,7 @@ def load_score_modules(score_config, use_gt=True, use_gt_text=False, use_gpu=Fal
 
             logging.info("Loading asvspoof score metric without reference...")
             from versa.utterance_metrics.asvspoof_score import (
-                asvspoof_metric,
-                deepfake_detection_model_setup,
-            )
+                asvspoof_metric, deepfake_detection_model_setup)
 
             deepfake_detection_model = deepfake_detection_model_setup(use_gpu=use_gpu)
             score_modules["asvspoof_score"] = {
@@ -502,12 +496,12 @@ def load_score_modules(score_config, use_gt=True, use_gt_text=False, use_gpu=Fal
 
             logging.info("Loading noresqa metrics with reference")
 
-            from versa.utterance_metrics.noresqa import (
-                noresqa_metric,
-                noresqa_model_setup,
-            )
+            from versa.utterance_metrics.noresqa import (noresqa_metric,
+                                                         noresqa_model_setup)
 
-            noresqa_model = noresqa_model_setup(use_gpu=use_gpu)
+            noresqa_model = noresqa_model_setup(
+                metric_type=config.get("metric_type", 0), use_gpu=use_gpu
+            )
             score_modules["noresqa"] = {
                 "module": noresqa_metric,
                 "args": {
@@ -582,7 +576,8 @@ def load_score_modules(score_config, use_gt=True, use_gt_text=False, use_gpu=Fal
 
         elif config["name"] == "audiobox_aesthetics":
             logging.info("Loading audiobox aesthetics metric")
-            from versa import audiobox_aesthetics_score, audiobox_aesthetics_setup
+            from versa import (audiobox_aesthetics_score,
+                               audiobox_aesthetics_setup)
 
             audiobox_model = audiobox_aesthetics_setup(
                 model_path=config.get("model_path", None),
@@ -898,8 +893,18 @@ def use_score_modules(score_modules, gen_wav, gt_wav, gen_sr, text=None):
                 gen_wav,
                 gen_sr,
             )
-        elif key in ["pysepm", "noresqa"]:
+        elif key == "pysepm":
             score = score_modules[key]["module"](gen_wav, gt_wav, fs=gen_sr)
+        elif key == "srmr":
+            score = score_modules[key]["module"](gen_wav, fs=gen_sr)
+        elif key == "noresqa":
+            score = score_modules[key]["module"](
+                score_modules[key]["args"]["model"],
+                gen_wav,
+                gt_wav,
+                fs=gen_sr,
+                metric_type=score_modules[key]["args"]["metric_type"],
+            )
         elif key == "speaking_rate":
             cache_text = None
             if general_cache.get("whisper_hyp_text", None) is not None:
