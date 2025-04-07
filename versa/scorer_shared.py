@@ -100,7 +100,7 @@ def load_score_modules(score_config, use_gt=True, use_gt_text=False, use_gpu=Fal
             )
             score_modules["nisqa"] = {
                 "module": nisqa_metric,
-                "args": {"nisqa_model": nisqa_model},
+                "model": nisqa_model,
             }
             logging.info("Initiate NISQA evaluation successfully.")
 
@@ -116,9 +116,7 @@ def load_score_modules(score_config, use_gt=True, use_gt_text=False, use_gpu=Fal
 
             score_modules["discrete_speech"] = {
                 "module": discrete_speech_metric,
-                "args": {
-                    "discrete_speech_predictors": discrete_speech_setup(use_gpu=use_gpu)
-                },
+                "model": discrete_speech_setup(use_gpu=use_gpu),
             }
             logging.info("Initiate discrete speech evaluation successfully.")
 
@@ -166,6 +164,19 @@ def load_score_modules(score_config, use_gt=True, use_gt_text=False, use_gpu=Fal
 
             score_modules["stoi"] = {"module": stoi_metric}
             logging.info("Initiate stoi evaluation successfully.")
+
+        elif config["name"] == "estoi":                                             
+            if not use_gt:                                                         
+                logging.warning(                                                   
+                    "Cannot use estoi metric because no gt audio is provided"       
+                )                                                                  
+                continue                                                           
+                                                                                   
+            logging.info("Loading stoi evaluation...")                             
+            from versa import estoi_metric                                          
+                                                                                   
+            score_modules["estoi"] = {"module": estoi_metric}                        
+            logging.info("Initiate stoi evaluation successfully.") 
 
         elif config["name"] == "visqol":
             if not use_gt:
@@ -809,7 +820,7 @@ def use_score_modules(score_modules, gen_wav, gt_wav, gen_sr, text=None):
         elif key == "nisqa":
             try:
                 score = score_modules[key]["module"](
-                    score_modules[key]["args"]["nisqa_model"],
+                    score_modules[key]["model"],
                     gen_wav,
                     gen_sr,
                 )
@@ -822,7 +833,7 @@ def use_score_modules(score_modules, gen_wav, gt_wav, gen_sr, text=None):
                 continue
         elif key == "discrete_speech":
             score = score_modules[key]["module"](
-                score_modules[key]["args"]["discrete_speech_predictors"],
+                score_modules[key]["model"],
                 gen_wav,
                 gt_wav,
                 gen_sr,
@@ -831,9 +842,7 @@ def use_score_modules(score_modules, gen_wav, gt_wav, gen_sr, text=None):
             score = score_modules[key]["module"](
                 gen_wav, gen_sr, **score_modules[key]["args"]
             )
-        elif key == "pesq":
-            score = score_modules[key]["module"](gen_wav, gt_wav, gen_sr)
-        elif key == "stoi":
+        elif key in ["pesq", "stoi", "estoi"]:
             score = score_modules[key]["module"](gen_wav, gt_wav, gen_sr)
         elif key == "visqol":
             score = score_modules[key]["module"](
@@ -871,41 +880,25 @@ def use_score_modules(score_modules, gen_wav, gt_wav, gen_sr, text=None):
             )
             if key == "whisper_wer":
                 general_cache["whisper_hyp_text"] = score["whisper_hyp_text"]
-        elif key == "scoreq_ref":
+        elif key in ["scoreq_ref", "emotion"]:
             score = score_modules[key]["module"](
                 score_modules[key]["model"], gen_wav, gt_wav, gen_sr
             )
-        elif key == "scoreq_nr":
+        elif key in ["scoreq_nr", "se_snr"]:
             score = score_modules[key]["module"](
                 score_modules[key]["model"], gen_wav, gen_sr
             )
-        elif key == "emotion":
-            score = score_modules[key]["module"](
-                score_modules[key]["model"], gen_wav, gt_wav, gen_sr
-            )
-        elif key == "se_snr":
-            score = score_modules[key]["module"](
-                score_modules[key]["model"], gen_wav, gen_sr
-            )
-        elif key == "pam":
+        elif key in ["pam", "asvspoof_score", "srmr"]:
             score = score_modules[key]["module"](
                 score_modules[key]["args"]["model"], gen_wav, fs=gen_sr
             )
-        elif key == "asvspoof_score":
-            score = score_modules[key]["module"](
-                score_modules[key]["args"]["model"], gen_wav, fs=gen_sr
-            )
-        elif key == "vad":
+        elif key in ["vad", "lid"]:
             score = score_modules[key]["module"](
                 score_modules[key]["args"],
                 gen_wav,
                 gen_sr,
             )
-        elif key == "pysepm":
-            score = score_modules[key]["module"](gen_wav, gt_wav, fs=gen_sr)
-        elif key == "srmr":
-            score = score_modules[key]["module"](gen_wav, fs=gen_sr)
-        elif key == "noresqa":
+        elif key in ["pysepm", "noresqa"]:
             score = score_modules[key]["module"](gen_wav, gt_wav, fs=gen_sr)
         elif key == "speaking_rate":
             cache_text = None
@@ -932,12 +925,6 @@ def use_score_modules(score_modules, gen_wav, gt_wav, gen_sr, text=None):
             )
             if cache_text is None:
                 general_cache["whisper_hyp_text"] = score["whisper_hyp_text"]
-        elif key == "lid":
-            score = score_modules[key]["module"](
-                score_modules[key]["args"],
-                gen_wav,
-                gen_sr,
-            )
         elif key == "audiobox_aesthetics":
             score = score_modules[key]["module"](
                 score_modules[key]["args"]["model"],
