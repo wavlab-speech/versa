@@ -20,6 +20,15 @@ def stoi_metric(pred_x, gt_x, fs):
     return {"stoi": score}
 
 
+def estoi_metric(pred_x, gt_x, fs):                                                 
+    if pred_x.shape[0] != gt_x.shape[0]:                                           
+        min_length = min(pred_x.shape[0], gt_x.shape[0])                           
+        pred_x = pred_x[:min_length]                                               
+        gt_x = gt_x[:min_length]                                                   
+    score = stoi(gt_x, pred_x, fs, extended=True)                                 
+    return {"estoi": score}
+
+
 if __name__ == "__main__":
     a = np.random.random(16000)
     b = np.random.random(16000)
