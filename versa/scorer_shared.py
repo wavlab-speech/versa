@@ -38,6 +38,12 @@ def load_score_modules(score_config, use_gt=True, use_gt_text=False, use_gpu=Fal
     for config in score_config:
         print(config, flush=True)
         if config["name"] == "mcd_f0":
+            if not use_gt:
+                logging.warning(
+                    "Cannot use mcd/f0 metrics because no gt audio is provided"
+                )
+                continue
+
             logging.info("Loading MCD & F0 evaluation...")
             from versa import mcd_f0
 
