@@ -1,12 +1,8 @@
-[
-build-system
-]
+[build-system]
 requires = ["setuptools>=42", "wheel"]
 build-backend = "setuptools.build_meta"
 
-[
-tool.black
-]
+[tool.black]
 line-length = 88
 target-version = ["py38", "py39", "py310"]
 include = '\.pyi?
@@ -24,4 +20,4 @@ exclude = '''
   | build
   | dist
 )/
-'''[
+'''
