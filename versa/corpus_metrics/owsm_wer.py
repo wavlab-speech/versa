@@ -94,8 +94,7 @@ def owsm_predict(
 
     # Detect language using the first 30s of speech
     if src_lang == "none":
-        from espnet2.bin.s2t_inference_language import \
-            Speech2Language as Speech2Lang
+        from espnet2.bin.s2t_inference_language import Speech2Language as Speech2Lang
 
         # default 30 seconds chunk for owsm training
         src_lang = model(
