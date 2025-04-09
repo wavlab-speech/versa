@@ -16,5 +16,5 @@ keys = info[0].keys()
 
 for key in keys:
     if key == "key":
-        continue 
-    print("key {}: {}".format(key, sum([element[key] for element in info]) / len(info)) )
+        continue
+    print("key {}: {}".format(key, sum([element[key] for element in info]) / len(info)))

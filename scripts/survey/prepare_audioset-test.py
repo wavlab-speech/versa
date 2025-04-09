@@ -5,10 +5,13 @@ import tarfile
 # Initialize the Hugging Face API
 api = HfApi()
 
+
 def main():
     # Set up argument parsing
     parser = argparse.ArgumentParser(description="Split 'mix.wav' files into chunks.")
-    parser.add_argument('--output_dir', type=str, help="Where AudioSet files will be saved.")
+    parser.add_argument(
+        "--output_dir", type=str, help="Where AudioSet files will be saved."
+    )
 
     # Parse the arguments
     args = parser.parse_args()
@@ -19,7 +22,7 @@ def main():
     local_save_dir = args.output_dir
     audio_dump = os.path.join(local_save_dir, "audio_files")
 
-    # Create the local directory if it doesn't exist    
+    # Create the local directory if it doesn't exist
     os.makedirs(local_save_dir, exist_ok=True)
 
     # List files in the dataset repository (specify repo_type="dataset")
@@ -27,7 +30,8 @@ def main():
 
     # Filter files matching the desired pattern and path
     files_to_download = [
-        file for file in repo_files
+        file
+        for file in repo_files
         if file.startswith(repo_path) and file.endswith(".tar") and "eval" in file
     ]
 
@@ -47,6 +51,7 @@ def main():
 
             # Download the file manually using requests
             import requests
+
             response = requests.get(file_url, stream=True)
             if response.status_code == 200:
                 with open(local_file_path, "wb") as f:
@@ -54,18 +59,21 @@ def main():
                         if chunk:
                             f.write(chunk)
             else:
-                print(f"Failed to download {file_url}, status code: {response.status_code}")
+                print(
+                    f"Failed to download {file_url}, status code: {response.status_code}"
+                )
 
         # Extract the .tar file
         print(f"Extracting {local_file_path} to {audio_dump}...")
         try:
             with tarfile.open(local_file_path, "r") as tar:
                 tar.extractall(
-                    path=audio_dump, 
+                    path=audio_dump,
                     members=[
-                        member for member in tar.getmembers()
+                        member
+                        for member in tar.getmembers()
                         if member.isfile()  # Only extract files, skip directories
-                    ]
+                    ],
                 )
         except Exception as e:
             print(f"Error extracting {local_file_path}: {e}")
@@ -78,6 +86,7 @@ def main():
             print(f"Error deleting {local_file_path}: {e}")
 
     print("All files downloaded and extracted.")
+
 
 if __name__ == "__main__":
     main()
