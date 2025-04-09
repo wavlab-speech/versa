@@ -1,18 +1,20 @@
-
 #!/bin/bash
 #
 # Enhanced Slurm Launcher for VERSA Processing
 # -------------------------------------------
 # This script splits input audio files and launches Slurm jobs for parallel processing
-# using both GPU and CPU resources.
+# using either GPU, CPU, or both resources based on user selection.
 #
-# Usage: ./launcher.sh <pred_wavscp> <gt_wavscp> <score_dir> <split_size>
+# Usage: ./launcher.sh <pred_wavscp> <gt_wavscp> <score_dir> <split_size> [--cpu-only|--gpu-only]
 #   <pred_wavscp>: Path to prediction wav.scp file
 #   <gt_wavscp>: Path to ground truth wav.scp file (use "None" if not available)
 #   <score_dir>: Directory to store results
 #   <split_size>: Number of chunks to split the data into
+#   --cpu-only: Optional flag to run only CPU jobs
+#   --gpu-only: Optional flag to run only GPU jobs
 #
 # Example: ./launcher.sh data/pred.scp data/gt.scp results/experiment1 10
+# Example: ./launcher.sh data/pred.scp data/gt.scp results/experiment1 10 --cpu-only
 
 set -e  # Exit immediately if a command exits with non-zero status
 
@@ -23,14 +25,16 @@ RED='\033[0;31m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
-# Display help message if no arguments provided
-if [ $# -ne 4 ]; then
-    echo -e "${RED}Error: Incorrect number of arguments${NC}"
-    echo -e "${BLUE}Usage: $0 <pred_wavscp> <gt_wavscp> <score_dir> <split_size>${NC}"
+# Check for minimum required arguments
+if [ $# -lt 4 ]; then
+    echo -e "${RED}Error: Insufficient arguments${NC}"
+    echo -e "${BLUE}Usage: $0 <pred_wavscp> <gt_wavscp> <score_dir> <split_size> [--cpu-only|--gpu-only]${NC}"
     echo -e "  <pred_wavscp>: Path to prediction wav script file"
     echo -e "  <gt_wavscp>: Path to ground truth wav script file (use \"None\" if not available)"
     echo -e "  <score_dir>: Directory to store results"
     echo -e "  <split_size>: Number of chunks to split the data into"
+    echo -e "  --cpu-only: Optional flag to run only CPU jobs"
+    echo -e "  --gpu-only: Optional flag to run only GPU jobs"
     exit 1
 fi
 
@@ -39,6 +43,27 @@ PRED_WAVSCP=$1
 GT_WAVSCP=$2
 SCORE_DIR=$3
 SPLIT_SIZE=$4
+
+# Default to running both CPU and GPU jobs
+RUN_CPU=true
+RUN_GPU=true
+
+# Check for optional flags
+if [ $# -ge 5 ]; then
+    if [ "$5" = "--cpu-only" ]; then
+        RUN_GPU=false
+        RUN_CPU=true
+        echo -e "${YELLOW}Running in CPU-only mode${NC}"
+    elif [ "$5" = "--gpu-only" ]; then
+        RUN_GPU=true
+        RUN_CPU=false
+        echo -e "${YELLOW}Running in GPU-only mode${NC}"
+    else
+        echo -e "${RED}Error: Unknown option '$5'${NC}"
+        echo -e "${BLUE}Valid options are: --cpu-only, --gpu-only${NC}"
+        exit 1
+    fi
+fi
 
 # Validate inputs
 if [ ! -f "${PRED_WAVSCP}" ]; then
@@ -65,7 +90,7 @@ GPU_TIME=${GPU_TIME:-2-0:00:00}      # 2 days
 CPU_TIME=${CPU_TIME:-2-0:00:00}      # 2 days
 CPUS_PER_TASK=${CPUS:-8}             # 8 CPUs per task
 MEM_PER_CPU=${MEM:-2000}             # 2000MB per CPU
-GPU_TYPE=${GPU_TYPE:-A6000}          # GPU type
+GPU_TYPE=${GPU_TYPE:-}               # GPU type
 
 # Print configuration summary
 echo -e "${BLUE}=== Configuration Summary ===${NC}"
@@ -73,10 +98,20 @@ echo -e "Prediction WAV script: ${PRED_WAVSCP}"
 echo -e "Ground truth WAV script: ${GT_WAVSCP}"
 echo -e "Output directory: ${SCORE_DIR}"
 echo -e "Split size: ${SPLIT_SIZE}"
-echo -e "GPU partition: ${GPU_PART}"
-echo -e "CPU partition: ${CPU_PART}"
+if $RUN_GPU; then
+    echo -e "GPU processing: Enabled"
+    echo -e "GPU partition: ${GPU_PART}"
+    echo -e "GPU type: ${GPU_TYPE}"
+else
+    echo -e "GPU processing: Disabled"
+fi
+if $RUN_CPU; then
+    echo -e "CPU processing: Enabled"
+    echo -e "CPU partition: ${CPU_PART}"
+else
+    echo -e "CPU processing: Disabled"
+fi
 echo -e "Resources per job: ${CPUS_PER_TASK} CPUs, ${MEM_PER_CPU}MB per CPU"
-echo -e "GPU type: ${GPU_TYPE}"
 echo ""
 
 # Create directory structure
@@ -129,53 +164,76 @@ for ((i=0; i<${#pred_list[@]}; i++)); do
     
     echo -e "${BLUE}Processing chunk $((i+1))/${#pred_list[@]}: ${sub_pred_wavscp}${NC}"
 
-    # Submit GPU job
-    gpu_job_id=$(sbatch \
-        --parsable \
-        -p "${GPU_PART}" \
-        --time "${GPU_TIME}" \
-        --cpus-per-task "${CPUS_PER_TASK}" \
-        --mem-per-cpu "${MEM_PER_CPU}M" \
-        --gres=gpu:"${GPU_TYPE}":1 \
-        -J "gpu_${job_prefix}" \
-        -o "${SCORE_DIR}/logs/gpu_${job_prefix}_%j.out" \
-        -e "${SCORE_DIR}/logs/gpu_${job_prefix}_%j.err" \
-        ./egs/run_gpu.sh \
-            "${sub_pred_wavscp}" \
-            "${sub_gt_wavscp}" \
-            "${SCORE_DIR}/result/$(basename "${sub_pred_wavscp}").result.gpu.txt" \
-            egs/speech_gpu.yaml)
+    # Submit GPU job if enabled
+    if $RUN_GPU; then
 
+        # Set up GPU resource specification based on whether GPU_TYPE is empty
+        if [ -n "${GPU_TYPE}" ]; then
+            GPU_GRES="--gres=gpu:${GPU_TYPE}:1"
+        else
+            GPU_GRES="--gres=gpu:1"
+        fi
 
-    # Submit CPU job
-    cpu_job_id=$(sbatch \
-        --parsable \
-        -p "${CPU_PART}" \
-        --time "${CPU_TIME}" \
-        --cpus-per-task "${CPUS_PER_TASK}" \
-        --mem-per-cpu "${MEM_PER_CPU}M" \
-        -J "cpu_${job_prefix}" \
-        -o "${SCORE_DIR}/logs/cpu_${job_prefix}_%j.out" \
-        -e "${SCORE_DIR}/logs/cpu_${job_prefix}_%j.err" \
-        ./egs/run_cpu.sh \
-            "${sub_pred_wavscp}" \
-            "${sub_gt_wavscp}" \
-            "${SCORE_DIR}/result/$(basename "${sub_pred_wavscp}").result.cpu.txt" \
-            egs/speech_cpu.yaml)
+        gpu_job_id=$(sbatch \
+            --parsable \
+            -p "${GPU_PART}" \
+            --time "${GPU_TIME}" \
+            --cpus-per-task "${CPUS_PER_TASK}" \
+            --mem-per-cpu "${MEM_PER_CPU}M" \
+            --gres=gpu:"${GPU_TYPE}":1 \
+            -J "gpu_${job_prefix}" \
+            -o "${SCORE_DIR}/logs/gpu_${job_prefix}_%j.out" \
+            -e "${SCORE_DIR}/logs/gpu_${job_prefix}_%j.err" \
+            ./egs/run_gpu.sh \
+                "${sub_pred_wavscp}" \
+                "${sub_gt_wavscp}" \
+                "${SCORE_DIR}/result/$(basename "${sub_pred_wavscp}").result.gpu.txt" \
+                egs/speech_gpu.yaml)
 
-    echo "GPU:${gpu_job_id} CPU:${cpu_job_id} CHUNK:$((i+1))/${#pred_list[@]} FILE:${job_prefix}" >> "${JOB_IDS_FILE}"
-    echo -e "  Submitted jobs: GPU=${gpu_job_id}, CPU=${cpu_job_id}"
+        echo "GPU:${gpu_job_id} CHUNK:$((i+1))/${#pred_list[@]} FILE:${job_prefix}" >> "${JOB_IDS_FILE}"
+        echo -e "  Submitted GPU job: ${gpu_job_id}"
+    fi
+
+    # Submit CPU job if enabled
+    if $RUN_CPU; then
+        cpu_job_id=$(sbatch \
+            --parsable \
+            -p "${CPU_PART}" \
+            --time "${CPU_TIME}" \
+            --cpus-per-task "${CPUS_PER_TASK}" \
+            --mem-per-cpu "${MEM_PER_CPU}M" \
+            -J "cpu_${job_prefix}" \
+            -o "${SCORE_DIR}/logs/cpu_${job_prefix}_%j.out" \
+            -e "${SCORE_DIR}/logs/cpu_${job_prefix}_%j.err" \
+            ./egs/run_cpu.sh \
+                "${sub_pred_wavscp}" \
+                "${sub_gt_wavscp}" \
+                "${SCORE_DIR}/result/$(basename "${sub_pred_wavscp}").result.cpu.txt" \
+                egs/speech_cpu.yaml)
+
+        echo "CPU:${cpu_job_id} CHUNK:$((i+1))/${#pred_list[@]} FILE:${job_prefix}" >> "${JOB_IDS_FILE}"
+        echo -e "  Submitted CPU job: ${cpu_job_id}"
+    fi
 done
 
-# Create a job to merge results when all jobs are done
-all_jobs=$(awk '{printf "%s,", $1}' "${JOB_IDS_FILE}" | sed 's/GPU://g' | sed 's/,$//g')
-cpu_jobs=$(awk '{printf "%s,", $1}' "${JOB_IDS_FILE}" | sed 's/CPU://g' | sed 's/,$//g')
-
-# You can create a merge script that depends on completion of all jobs
+# Create instructions for merging results
 echo -e "${GREEN}All jobs submitted. Job IDs saved to: ${JOB_IDS_FILE}${NC}"
-echo -e "${YELLOW}To create a dependent job that processes all results after completion, use:${NC}"
+
+# Get job IDs for dependency specification
+if $RUN_GPU && $RUN_CPU; then
+    all_gpu_jobs=$(grep "GPU:" "${JOB_IDS_FILE}" | cut -d':' -f2 | cut -d' ' -f1 | paste -sd, -)
+    all_cpu_jobs=$(grep "CPU:" "${JOB_IDS_FILE}" | cut -d':' -f2 | cut -d' ' -f1 | paste -sd, -)
+    all_jobs="${all_gpu_jobs},${all_cpu_jobs}"
+    job_type="GPU and CPU"
+elif $RUN_GPU; then
+    all_jobs=$(grep "GPU:" "${JOB_IDS_FILE}" | cut -d':' -f2 | cut -d' ' -f1 | paste -sd, -)
+    job_type="GPU"
+else
+    all_jobs=$(grep "CPU:" "${JOB_IDS_FILE}" | cut -d':' -f2 | cut -d' ' -f1 | paste -sd, -)
+    job_type="CPU"
+fi
+
+echo -e "${YELLOW}To create a dependent job that processes all ${job_type} results after completion, use:${NC}"
 echo -e "sbatch --dependency=afterok:${all_jobs} ./merge_results.sh ${SCORE_DIR}/result ${SCORE_DIR}/final_results.txt"
 
 echo -e "${GREEN}Done! Monitor jobs with 'squeue -u $(whoami)'${NC}"
-
-
