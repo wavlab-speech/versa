@@ -43,10 +43,10 @@ For metrics marked without "x" in the "Auto-Install" column of our metrics table
 
 ```bash
 # Test core functionality
-python versa/test/test_general.py
+python versa/test/test_pipeline/test_general.py
 
 # Test specific metrics that require additional installation
-python versa/test/test_{metric}.py
+python versa/test/test_pipeline/test_{metric}.py
 ```
 
 
