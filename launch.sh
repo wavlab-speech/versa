@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# Enhanced Slurm Launcher for VERSA Processing
+# Slurm Launcher for VERSA Processing
 # -------------------------------------------
 # This script splits input audio files and launches Slurm jobs for parallel processing
 # using either GPU, CPU, or both resources based on user selection.
