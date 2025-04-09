@@ -422,7 +422,7 @@ def load_score_modules(score_config, use_gt=True, use_gt_text=False, use_gpu=Fal
             pam_model = pam_model_setup(model_config=config, use_gpu=use_gpu)
             score_modules["pam"] = {
                 "module": pam_metric,
-                "args": {"model": pam_model},
+                "model": pam_model,
             }
             logging.info("Initiate pam metric successfully.")
         elif config["name"] == "vad":
@@ -451,7 +451,7 @@ def load_score_modules(score_config, use_gt=True, use_gt_text=False, use_gpu=Fal
             deepfake_detection_model = deepfake_detection_model_setup(use_gpu=use_gpu)
             score_modules["asvspoof_score"] = {
                 "module": asvspoof_metric,
-                "args": {"model": deepfake_detection_model},
+                "model": deepfake_detection_model,
             }
             logging.info("Initiate asvspoof score metric successfully.")
 
@@ -883,9 +883,9 @@ def use_score_modules(score_modules, gen_wav, gt_wav, gen_sr, text=None):
             score = score_modules[key]["module"](
                 score_modules[key]["model"], gen_wav, gen_sr
             )
-        elif key in ["pam", "asvspoof_score", "srmr"]:
+        elif key in ["pam", "asvspoof_score"]:
             score = score_modules[key]["module"](
-                score_modules[key]["args"]["model"], gen_wav, fs=gen_sr
+                score_modules[key]["model"], gen_wav, fs=gen_sr
             )
         elif key in ["vad", "lid"]:
             score = score_modules[key]["module"](
