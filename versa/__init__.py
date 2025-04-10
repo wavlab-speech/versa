@@ -1,6 +1,6 @@
 import logging
 
-__version__ == "0.0.1" # noqa: F401
+__version__ = "0.0.1" # noqa: F401
 
 from versa.sequence_metrics.mcd_f0 import mcd_f0
 from versa.sequence_metrics.signal_metric import signal_metric
