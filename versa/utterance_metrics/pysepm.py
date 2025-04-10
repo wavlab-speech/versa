@@ -104,7 +104,7 @@ def cd(pred_x, gt_x, fs):
 
 def composite(pred_x, gt_x, fs):
     """
-    Compute the composite objective measure scores (Csig, Cbak, Covl) for speech quality.
+    Compute the composite objective measure scores (c_sig, c_bak, c_ovl) for speech quality.
 
     Args:
         pred_x (np.array): Audio signal to be evaluated signal.
@@ -181,9 +181,9 @@ def pysepm_metric(pred_x, gt_x, fs, frame_len=0.03, overlap=0.75):
         "pysepm_llr": llr_score,
         "pysepm_wss": wss_score,
         "pysepm_cd": cep_dist_score,
-        "pysepm_Csig": composite_score[0],
-        "pysepm_Cbak": composite_score[1],
-        "pysepm_Covl": composite_score[2],
+        "pysepm_c_sig": composite_score[0],
+        "pysepm_c_bak": composite_score[1],
+        "pysepm_c_ovl": composite_score[2],
         "pysepm_csii_high": csii_score[0],
         "pysepm_csii_mid": csii_score[1],
         "pysepm_csii_low": csii_score[2],
