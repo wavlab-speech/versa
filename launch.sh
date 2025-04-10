@@ -84,6 +84,8 @@ fi
 # Configure Slurm partitions (can be modified based on your cluster setup)
 GPU_PART=${GPU_PARTITION:-general}
 CPU_PART=${CPU_PARTITION:-general}
+GPU_PART=gpuA40x4
+CPU_PART=cpu
 
 # Configure resource requirements
 GPU_TIME=${GPU_TIME:-2-0:00:00}      # 2 days
@@ -180,7 +182,8 @@ for ((i=0; i<${#pred_list[@]}; i++)); do
             --time "${GPU_TIME}" \
             --cpus-per-task "${CPUS_PER_TASK}" \
             --mem-per-cpu "${MEM_PER_CPU}M" \
-            --gres=gpu:"${GPU_TYPE}":1 \
+            --account bbjs-delta-gpu \
+            ${GPU_GRES} \
             -J "gpu_${job_prefix}" \
             -o "${SCORE_DIR}/logs/gpu_${job_prefix}_%j.out" \
             -e "${SCORE_DIR}/logs/gpu_${job_prefix}_%j.err" \
@@ -202,6 +205,7 @@ for ((i=0; i<${#pred_list[@]}; i++)); do
             --time "${CPU_TIME}" \
             --cpus-per-task "${CPUS_PER_TASK}" \
             --mem-per-cpu "${MEM_PER_CPU}M" \
+            --account bbjs-delta-cpu \
             -J "cpu_${job_prefix}" \
             -o "${SCORE_DIR}/logs/cpu_${job_prefix}_%j.out" \
             -e "${SCORE_DIR}/logs/cpu_${job_prefix}_%j.err" \
