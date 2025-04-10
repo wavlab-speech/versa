@@ -10,6 +10,8 @@ import soundfile as sf
 import yaml
 from tqdm import tqdm
 
+
+from versa.metrics import STR_METRIC, NUM_METRIC
 from versa.utils_shared import (
     check_all_same,
     check_minimum_length,
@@ -922,7 +924,6 @@ def use_score_modules(score_modules, gen_wav, gt_wav, gen_sr, text=None):
                 gen_sr,
                 custom_prompt=score_modules[key]["prompt"],
             )
-            print("score: {}".format(score), flush=True)
         else:
             raise NotImplementedError(f"Not supported {key}")
 
@@ -1040,7 +1041,7 @@ def list_scoring(
 def load_summary(score_info):
     summary = {}
     for key in score_info[0].keys():
-        if "text" in key or "vad" in key or "language" in key or key == "key":
+        if key in STR_METRIC or key == "key":
             # NOTE(jiatong): skip text cases
             continue
         summary[key] = sum([score[key] for score in score_info])

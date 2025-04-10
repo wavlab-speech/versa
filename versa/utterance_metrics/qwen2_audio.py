@@ -94,7 +94,7 @@ def qwen2_model_setup(
     }
 
 
-def qwen2_base_metric(qwen_utils, pred_x, fs=16000, custom_prompt=None, max_length=500):
+def qwen2_base_metric(qwen_utils, pred_x, fs=16000, custom_prompt=None, max_length=2048):
     """Calculate the base metric from Qwen2Audio results.
 
     Args:
@@ -135,7 +135,7 @@ def qwen2_base_metric(qwen_utils, pred_x, fs=16000, custom_prompt=None, max_leng
     for key in inputs.keys():
         inputs[key] = inputs[key].to(qwen_utils["model"].device)
 
-    generate_ids = model.generate(**inputs, max_length=500)
+    generate_ids = model.generate(**inputs, max_length=max_length)
     generate_ids = generate_ids[:, inputs["input_ids"].size(1) :]
     response = processor.batch_decode(
         generate_ids, skip_special_tokens=True, clean_up_tokenization_spaces=True
