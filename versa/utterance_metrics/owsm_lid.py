@@ -37,5 +37,5 @@ def language_id(model, pred_x, fs):
 
 if __name__ == "__main__":
     a = np.random.random(16000)
-    model = owsm_model_setup()
+    model = owsm_lid_model_setup()
     print("metrics: {}".format(language_id(model, a, 16000)))
