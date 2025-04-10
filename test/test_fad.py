@@ -5,8 +5,8 @@ import os
 import yaml
 
 from versa.scorer_shared import (
-    find_files,
     corpus_scoring,
+    find_files,
     load_corpus_modules,
     load_summary,
 )
