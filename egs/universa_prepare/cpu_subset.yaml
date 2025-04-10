@@ -1,0 +1,58 @@
+# Universal Metrics Configuration for Versa
+# This file contains the configuration for various universal metrics used in speech quality assessment.
+
+# visqol metric
+# -- visqol: visual quality of speech
+- name: visqol
+  model: default
+
+# srmr related metrics
+# -- srmr: speech-to-reverberation modulation energy ratio
+- name: srmr
+  n_cochlear_filters: 23
+  low_freq: 125
+  min_cf: 4
+  max_cf: 128
+  fast: True
+  norm: False
+
+# pysepm related metrics
+# -- pysepm_fwsegsnr: frequency-weighted segmental SNR
+# -- pysepm_llr: Log likelihood ratio
+# -- pysepm_wss: weighted spectral slope
+# -- pysepm_cd: cepstral distance objective speech quality measure
+# -- pysepm_Csig, pysepm_Cbak, pysepm_Covl: composite objective speech quality
+# -- pysepm_csii_high, pysepm_csii_mid, pysepm_csii_low: coherence and speech intelligibility index 
+# -- pysepm_ncm: normalized-covariance measure
+- name: pysepm
+
+# mcd f0 related metrics
+#  -- mcd: mel cepstral distortion
+#  -- f0_corr: f0 correlation
+#  -- f0_rmse: f0 root mean square error
+- name: mcd_f0
+  f0min: 40
+  f0max: 800
+  mcep_shift: 5
+  mcep_fftl: 1024
+  mcep_dim: 39
+  mcep_alpha: 0.466
+  seq_mismatch_tolerance: 0.1
+  power_threshold: -20
+  dtw: True
+
+# pesq related metrics
+# -- pesq: perceptual evaluation of speech quality
+- name: pesq
+
+# stoi related metrics
+# -- stoi: short-time objective intelligibility
+- name: stoi
+
+# signal related metrics
+# -- sir: signal to interference ratio
+# -- sar: signal to artifact ratio
+# -- sdr: signal to distortion ratio
+# -- ci-sdr: scale-invariant signal to distortion ratio
+# -- si-snri: scale-invariant signal to noise ratio improvement
+- name: signal_metric

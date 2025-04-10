@@ -12,7 +12,11 @@ from versa.scorer_shared import (
 )
 
 TEST_INFO = {
-    "qwen2_speaker_age_metric": "20s",
+    "nisqa_mos_pred": 0.4997170865535736,
+    "nisqa_noi_pred": 1.481737494468689,
+    "nisqa_dis_pred": 2.110642671585083,
+    "nisqa_col_pred": 0.9634456634521484,
+    "nisqa_loud_pred": 1.287371039390564,
 }
 
 
@@ -28,7 +32,7 @@ def info_update():
 
     logging.info("The number of utterances = %d" % len(gen_files))
 
-    with open("egs/separate_metrics/qwen2_audio.yaml", "r", encoding="utf-8") as f:
+    with open("egs/separate_metrics/nisqa.yaml", "r", encoding="utf-8") as f:
         score_config = yaml.full_load(f)
 
     score_modules = load_score_modules(
@@ -42,16 +46,17 @@ def info_update():
     score_info = list_scoring(
         gen_files, score_modules, gt_files, output_file=None, io="soundfile"
     )
-    summary = score_info[0]
+    summary = load_summary(score_info)
     print("Summary: {}".format(load_summary(score_info)), flush=True)
+    exit(0)  # for debug
 
-    summary_value = summary["qwen2_speaker_age_metric"]
-    if TEST_INFO["qwen2_speaker_age_metric"] != summary_value:
-        raise ValueError(
-            "Value issue in the test case, might be some issue in scorer {}".format(
-                "qwen2_speaker_age_metric"
+    for key in summary:
+        if abs(TEST_INFO[key] - summary[key]) > 1e-4:
+            raise ValueError(
+                "Value issue in the test case, might be some issue in scorer {}".format(
+                    key
+                )
             )
-        )
     print("check successful", flush=True)
 
 

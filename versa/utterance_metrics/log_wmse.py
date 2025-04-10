@@ -1,13 +1,15 @@
 #!/usr/bin/env python3
 #  Apache 2.0  (http://www.apache.org/licenses/LICENSE-2.0)
 
-import logging
+"""Module for audio quality evaluation using LogWMSE metric."""
 
-logger = logging.getLogger(__name__)
+import logging
 
 import librosa
 import numpy as np
 import torch
+
+logger = logging.getLogger(__name__)
 
 try:
     import torchaudio
@@ -20,9 +22,22 @@ except ImportError:
 
 
 def log_wmse(unproc_x, proc_x, gt_x, fs):
+    """Calculate LogWMSE metric between audio samples.
 
+    Args:
+        unproc_x (torch.Tensor): Unprocessed audio (raw, noisy recording).
+            Shape: [batch, audio_channels, sample]
+        proc_x (torch.Tensor): Processed audio (denoised recording).
+            Shape: [batch, audio_stems, audio_channels, sample]
+        gt_x (torch.Tensor): Target audio (clean reference).
+            Shape: [batch, audio_stems, audio_channels, sample]
+        fs (int): Sampling rate.
+
+    Returns:
+        dict: Dictionary containing the LogWMSE score.
+    """
     # Instantiate logWMSE
-    # Set `return_as_loss=False` to resturn as a positive metric (Default: True)
+    # Set `return_as_loss=False` to return as a positive metric (Default: True)
     # Set `bypass_filter=True` to bypass frequency weighting (Default: False)
     inst_log_wmse = LogWMSE(
         audio_length=1.0,
@@ -30,13 +45,12 @@ def log_wmse(unproc_x, proc_x, gt_x, fs):
         return_as_loss=True,  # optional
     )
 
-    log_wmse = inst_log_wmse(unproc_x, proc_x, gt_x)
+    log_wmse_score = inst_log_wmse(unproc_x, proc_x, gt_x)
 
-    return {"torch log-wmse": log_wmse.detach().numpy()}
+    return {"torch log-wmse": log_wmse_score.detach().numpy()}
 
 
 if __name__ == "__main__":
-
     """
     Reference:
     https://github.com/crlandsc/torch-log-wmse
@@ -49,7 +63,7 @@ if __name__ == "__main__":
     *
     audio_length: length of the audio
     sample_rate: 44100 the metric performs an internal resampling to 44.1kHz for consistency
-    audio_stems: # of audio stems (e.g.  vocals, drums, bass, other)
+    audio_stems: # of audio stems (e.g. vocals, drums, bass, other)
     audio_channels: mono=1, stereo=2
     batch: batch size
     """

@@ -1,0 +1,10 @@
+# nisqa score for speech quality assessment
+#  -- nisqa_mos_pred: NISQA MOS prediction
+#  -- nisqa_noi_pred: NISQA noise prediction
+#  -- nisqa_dis_pred: NISQA distortion prediction
+#  -- nisqa_col_pred: NISQA color prediction
+#  --nisqa_loud_pred: NISQA loudness prediction
+
+# NOTE(jiatong): pretrain model can be downloaded with `./tools/setup_nisqa.sh`
+- name: nisqa
+  nisqa_model_path: ./tools/NISQA/weights/nisqa.tar

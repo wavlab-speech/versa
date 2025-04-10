@@ -3,9 +3,9 @@
 # Copyright 2024 Jiatong Shi
 #  Apache 2.0  (http://www.apache.org/licenses/LICENSE-2.0)
 
-import logging
+"""Module for discrete speech metrics evaluation."""
 
-logger = logging.getLogger(__name__)
+import logging
 
 import librosa
 import numpy as np
@@ -15,8 +15,18 @@ try:
 except ImportError:
     raise ImportError("Please install discrete_speech_metrics and retry")
 
+logger = logging.getLogger(__name__)
+
 
 def discrete_speech_setup(use_gpu=False):
+    """Set up discrete speech metrics.
+
+    Args:
+        use_gpu (bool, optional): Whether to use GPU. Defaults to False.
+
+    Returns:
+        dict: Dictionary containing the initialized metrics.
+    """
     # NOTE(jiatong) existing discrete speech metrics only works for 16khz
     # We keep the paper best setting. To use other settings, please conduct the
     # test on your own.
@@ -50,6 +60,20 @@ def discrete_speech_setup(use_gpu=False):
 
 
 def discrete_speech_metric(discrete_speech_predictors, pred_x, gt_x, fs):
+    """Calculate discrete speech metrics.
+
+    Args:
+        discrete_speech_predictors (dict): Dictionary of speech metrics.
+        pred_x (np.ndarray): Predicted audio signal.
+        gt_x (np.ndarray): Ground truth audio signal.
+        fs (int): Sampling rate.
+
+    Returns:
+        dict: Dictionary containing the metric scores.
+
+    Raises:
+        NotImplementedError: If an unsupported metric is provided.
+    """
     scores = {}
 
     if fs != 16000:
@@ -62,7 +86,7 @@ def discrete_speech_metric(discrete_speech_predictors, pred_x, gt_x, fs):
         elif key == "speech_bleu" or key == "speech_token_distance":
             score = discrete_speech_predictors[key].score(gt_x, pred_x)
         else:
-            raise NotImplementedError("Not supported {}".format(key))
+            raise NotImplementedError(f"Not supported {key}")
         scores[key] = score
     return scores
 

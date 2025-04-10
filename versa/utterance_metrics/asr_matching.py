@@ -5,22 +5,23 @@
 
 import logging
 
-logger = logging.getLogger(__name__)
-
 import librosa
 import numpy as np
 import torch
 from Levenshtein import opcodes
 
+logger = logging.getLogger(__name__)
+
 try:
     import whisper
 except ImportError:
     logger.info(
-        "Whisper is not properly installed. Please install following https://github.com/openai/whisper"
+        "Whisper is not properly installed. "
+        "Please install following https://github.com/openai/whisper"
     )
     whisper = None
 
-from espnet2.text.cleaner import TextCleaner
+from espnet2.text.cleaner import TextCleaner  # noqa: E402
 
 TARGET_FS = 16000
 CHUNK_SIZE = 30  # seconds
@@ -29,6 +30,17 @@ CHUNK_SIZE = 30  # seconds
 def asr_match_setup(
     model_tag="default", beam_size=5, text_cleaner="whisper_basic", use_gpu=True
 ):
+    """Set up ASR matching utilities.
+
+    Args:
+        model_tag (str): Whisper model tag.
+        beam_size (int): Beam size for decoding.
+        text_cleaner (str): Text cleaner type.
+        use_gpu (bool): Whether to use GPU.
+
+    Returns:
+        dict: WER utilities.
+    """
     if model_tag == "default":
         model_tag = "large"
     device = "cuda" if use_gpu else "cpu"
@@ -47,14 +59,15 @@ def asr_match_metric(wer_utils, pred_x, gt_x, cache_pred_text=None, fs=16000):
 
     Args:
         wer_utils (dict): a utility dict for WER calculation.
-            including: whisper model ("model"), text cleaner ("textcleaner"), and
-            beam size ("beam size")
+            including: whisper model ("model"), text cleaner ("cleaner"), and
+            beam size ("beam_size")
         pred_x (np.ndarray): test signal (time,)
         gt_x (np.ndarray): ground truth signal (time,)
         cache_pred_text (string): transcription from cache (previous modules)
         fs (int): sampling rate in Hz
+
     Returns:
-        ret (dict): ditionary containing the speaking word rate
+        dict: dictionary containing the speaking word rate
     """
     # Process the speech to be evaluated
     if cache_pred_text is not None:
@@ -82,8 +95,8 @@ def asr_match_metric(wer_utils, pred_x, gt_x, cache_pred_text=None, fs=16000):
     pred_text = wer_utils["cleaner"](inf_text)
 
     # Process error rate
-    ref_chars = [c for c in ref_text]
-    pred_chars = [c for c in pred_text]
+    ref_chars = list(ref_text)
+    pred_chars = list(pred_text)
     result = {
         "asr_match_delete": 0,
         "asr_match_insert": 0,
@@ -92,9 +105,9 @@ def asr_match_metric(wer_utils, pred_x, gt_x, cache_pred_text=None, fs=16000):
     }
     for op, ref_st, ref_et, inf_st, inf_et in opcodes(ref_chars, pred_chars):
         if op == "insert":
-            result["asr_match_" + op] = result["asr_match_" + op] + inf_et - inf_st
+            result["asr_match_" + op] += inf_et - inf_st
         else:
-            result["asr_match_" + op] = result["asr_match_" + op] + ref_et - ref_st
+            result["asr_match_" + op] += ref_et - ref_st
     total = (
         result["asr_match_delete"]
         + result["asr_match_replace"]
@@ -108,15 +121,19 @@ def asr_match_metric(wer_utils, pred_x, gt_x, cache_pred_text=None, fs=16000):
     )
     assert total == len(pred_chars), (total, len(pred_chars))
 
-    asr_match_error_rate = (
-        result["asr_match_delete"]
-        + result["asr_match_insert"]
-        + result["asr_match_replace"]
-    ) / len(ref_chars)
+    if len(ref_chars) == 0:
+        # a fix work around for the asr match when reference is empty
+        asr_match_error_rate = 1
+    else:
+        asr_match_error_rate = (
+            result["asr_match_delete"]
+            + result["asr_match_insert"]
+            + result["asr_match_replace"]
+        ) / len(ref_chars)
     return {"asr_match_error_rate": asr_match_error_rate, "whisper_hyp_text": inf_text}
 
 
 if __name__ == "__main__":
     a = np.random.random(16000)
     wer_utils = asr_match_setup()
-    print("metrics: {}".format(asr_match_metric(wer_utils, a, None, 16000)))
+    print(f"metrics: {asr_match_metric(wer_utils, a, a, None, 16000)}")

@@ -70,11 +70,11 @@ def noresqa_model_setup(model_tag="default", metric_type=0, use_gpu=False):
         )
 
         if metric_type == 0:
-            model_checkpoint_path = "./Noresqa/models/model_noresqa.pth"
+            model_checkpoint_path = "{}/models/model_noresqa.pth".format(base_path)
             state = torch.load(model_checkpoint_path, map_location="cpu")["state_base"]
 
         elif metric_type == 1:
-            model_checkpoint_path = "./Noresqa/models/model_noresqa_mos.pth"
+            model_checkpoint_path = "{}/models/model_noresqa_mos.pth".format(base_path)
             state = torch.load(model_checkpoint_path, map_location="cpu")["state_dict"]
 
         pretrained_dict = {}
@@ -89,6 +89,7 @@ def noresqa_model_setup(model_tag="default", metric_type=0, use_gpu=False):
 
         # change device as needed
         model.to(device)
+        model.device = device
         model.eval()
 
         sfmax = nn.Softmax(dim=1)
@@ -99,22 +100,22 @@ def noresqa_model_setup(model_tag="default", metric_type=0, use_gpu=False):
     return model
 
 
-def noresqa_metric(model, gt_x, pred_x, fs, metric_type=1, device="cpu"):
+def noresqa_metric(model, gt_x, pred_x, fs, metric_type=1):
     # NOTE(hyejin): only work for 16000 Hz
-    nmr_feat, test_feat = utils.feats_loading(
-        pred_x, gt_x, noresqa_or_noresqaMOS=metric_type
-    )
-    test_feat = torch.from_numpy(test_feat).float().to(device).unsqueeze(0)
-    nmr_feat = torch.from_numpy(nmr_feat).float().to(device).unsqueeze(0)
+    gt_x = librosa.resample(gt_x, orig_sr=fs, target_sr=16000)
+    pred_x = librosa.resample(pred_x, orig_sr=fs, target_sr=16000)
+    nmr_feat, test_feat = feats_loading(pred_x, gt_x, noresqa_or_noresqaMOS=metric_type)
+    test_feat = torch.from_numpy(test_feat).float().to(model.device).unsqueeze(0)
+    nmr_feat = torch.from_numpy(nmr_feat).float().to(model.device).unsqueeze(0)
 
     with torch.no_grad():
         if metric_type == 0:
-            noresqa_pout, noresqa_qout = utils.model_prediction_noresqa(
+            noresqa_pout, noresqa_qout = model_prediction_noresqa(
                 test_feat, nmr_feat, model
             )
             return {"noresqa_score": noresqa_pout}
         elif metric_type == 1:
-            mos_score = utils.model_prediction_noresqa_mos(test_feat, nmr_feat, model)
+            mos_score = model_prediction_noresqa_mos(test_feat, nmr_feat, model)
             return {"noresqa_score": mos_score}
 
 

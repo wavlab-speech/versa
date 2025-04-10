@@ -45,6 +45,12 @@ def load_score_modules(score_config, use_gt=True, use_gt_text=False, use_gpu=Fal
     for config in score_config:
         print(config, flush=True)
         if config["name"] == "mcd_f0":
+            if not use_gt:
+                logging.warning(
+                    "Cannot use mcd/f0 metrics because no gt audio is provided"
+                )
+                continue
+
             logging.info("Loading MCD & F0 evaluation...")
             from versa import mcd_f0
 
@@ -88,6 +94,24 @@ def load_score_modules(score_config, use_gt=True, use_gt_text=False, use_gpu=Fal
             score_modules["warpq"] = {"model": warpq_setup(), "module": warpq}
             logging.info("Initiate WARP-Q metric...")
 
+        elif config["name"] == "nisqa":
+
+            logging.info("Loading NISQA evaluation...")
+            from versa.utterance_metrics.nisqa import nisqa_metric, nisqa_model_setup
+
+            # Load the NISQA model
+            nisqa_model = nisqa_model_setup(
+                nisqa_model_path=config.get(
+                    "model_path", "./tools/NISQA/weights/nisqa.tar"
+                ),
+                use_gpu=use_gpu,
+            )
+            score_modules["nisqa"] = {
+                "module": nisqa_metric,
+                "model": nisqa_model,
+            }
+            logging.info("Initiate NISQA evaluation successfully.")
+
         elif config["name"] == "discrete_speech":
             if not use_gt:
                 logging.warning(
@@ -100,9 +124,7 @@ def load_score_modules(score_config, use_gt=True, use_gt_text=False, use_gpu=Fal
 
             score_modules["discrete_speech"] = {
                 "module": discrete_speech_metric,
-                "args": {
-                    "discrete_speech_predictors": discrete_speech_setup(use_gpu=use_gpu)
-                },
+                "model": discrete_speech_setup(use_gpu=use_gpu),
             }
             logging.info("Initiate discrete speech evaluation successfully.")
 
@@ -149,6 +171,19 @@ def load_score_modules(score_config, use_gt=True, use_gt_text=False, use_gpu=Fal
             from versa import stoi_metric
 
             score_modules["stoi"] = {"module": stoi_metric}
+            logging.info("Initiate stoi evaluation successfully.")
+
+        elif config["name"] == "estoi":
+            if not use_gt:
+                logging.warning(
+                    "Cannot use estoi metric because no gt audio is provided"
+                )
+                continue
+
+            logging.info("Loading stoi evaluation...")
+            from versa import estoi_metric
+
+            score_modules["estoi"] = {"module": estoi_metric}
             logging.info("Initiate stoi evaluation successfully.")
 
         elif config["name"] == "visqol":
@@ -399,7 +434,7 @@ def load_score_modules(score_config, use_gt=True, use_gt_text=False, use_gpu=Fal
             pam_model = pam_model_setup(model_config=config, use_gpu=use_gpu)
             score_modules["pam"] = {
                 "module": pam_metric,
-                "args": {"model": pam_model},
+                "model": pam_model,
             }
             logging.info("Initiate pam metric successfully.")
         elif config["name"] == "vad":
@@ -430,7 +465,7 @@ def load_score_modules(score_config, use_gt=True, use_gt_text=False, use_gpu=Fal
             deepfake_detection_model = deepfake_detection_model_setup(use_gpu=use_gpu)
             score_modules["asvspoof_score"] = {
                 "module": asvspoof_metric,
-                "args": {"model": deepfake_detection_model},
+                "model": deepfake_detection_model,
             }
             logging.info("Initiate asvspoof score metric successfully.")
 
@@ -480,7 +515,9 @@ def load_score_modules(score_config, use_gt=True, use_gt_text=False, use_gpu=Fal
                 noresqa_model_setup,
             )
 
-            noresqa_model = noresqa_model_setup(use_gpu=use_gpu)
+            noresqa_model = noresqa_model_setup(
+                metric_type=config.get("metric_type", 0), use_gpu=use_gpu
+            )
             score_modules["noresqa"] = {
                 "module": noresqa_metric,
                 "args": {
@@ -790,9 +827,23 @@ def use_score_modules(score_modules, gen_wav, gt_wav, gen_sr, text=None):
             score = score_modules[key]["module"](
                 score_modules[key]["model"], gen_wav, gt_wav, gen_sr
             )
+        elif key == "nisqa":
+            try:
+                score = score_modules[key]["module"](
+                    score_modules[key]["model"],
+                    gen_wav,
+                    gen_sr,
+                )
+            except ValueError as e:
+                logging.warning(
+                    "Value error in NISQA metric. Usually due to silence audio: {}".format(
+                        e
+                    )
+                )
+                continue
         elif key == "discrete_speech":
             score = score_modules[key]["module"](
-                score_modules[key]["args"]["discrete_speech_predictors"],
+                score_modules[key]["model"],
                 gen_wav,
                 gt_wav,
                 gen_sr,
@@ -801,9 +852,7 @@ def use_score_modules(score_modules, gen_wav, gt_wav, gen_sr, text=None):
             score = score_modules[key]["module"](
                 gen_wav, gen_sr, **score_modules[key]["args"]
             )
-        elif key == "pesq":
-            score = score_modules[key]["module"](gen_wav, gt_wav, gen_sr)
-        elif key == "stoi":
+        elif key in ["pesq", "stoi", "estoi"]:
             score = score_modules[key]["module"](gen_wav, gt_wav, gen_sr)
         elif key == "visqol":
             score = score_modules[key]["module"](
@@ -841,31 +890,19 @@ def use_score_modules(score_modules, gen_wav, gt_wav, gen_sr, text=None):
             )
             if key == "whisper_wer":
                 general_cache["whisper_hyp_text"] = score["whisper_hyp_text"]
-        elif key == "scoreq_ref":
+        elif key in ["scoreq_ref", "emotion"]:
             score = score_modules[key]["module"](
                 score_modules[key]["model"], gen_wav, gt_wav, gen_sr
             )
-        elif key == "scoreq_nr":
+        elif key in ["scoreq_nr", "se_snr"]:
             score = score_modules[key]["module"](
                 score_modules[key]["model"], gen_wav, gen_sr
             )
-        elif key == "emotion":
+        elif key in ["pam", "asvspoof_score"]:
             score = score_modules[key]["module"](
-                score_modules[key]["model"], gen_wav, gt_wav, gen_sr
+                score_modules[key]["model"], gen_wav, fs=gen_sr
             )
-        elif key == "se_snr":
-            score = score_modules[key]["module"](
-                score_modules[key]["model"], gen_wav, gen_sr
-            )
-        elif key == "pam":
-            score = score_modules[key]["module"](
-                score_modules[key]["args"]["model"], gen_wav, fs=gen_sr
-            )
-        elif key == "asvspoof_score":
-            score = score_modules[key]["module"](
-                score_modules[key]["args"]["model"], gen_wav, fs=gen_sr
-            )
-        elif key == "vad":
+        elif key in ["vad", "lid"]:
             score = score_modules[key]["module"](
                 score_modules[key]["args"],
                 gen_wav,
@@ -876,7 +913,13 @@ def use_score_modules(score_modules, gen_wav, gt_wav, gen_sr, text=None):
         elif key == "srmr":
             score = score_modules[key]["module"](gen_wav, fs=gen_sr)
         elif key == "noresqa":
-            score = score_modules[key]["module"](gen_wav, gt_wav, fs=gen_sr)
+            score = score_modules[key]["module"](
+                score_modules[key]["args"]["model"],
+                gen_wav,
+                gt_wav,
+                fs=gen_sr,
+                metric_type=score_modules[key]["args"]["metric_type"],
+            )
         elif key == "speaking_rate":
             cache_text = None
             if general_cache.get("whisper_hyp_text", None) is not None:
@@ -902,12 +945,6 @@ def use_score_modules(score_modules, gen_wav, gt_wav, gen_sr, text=None):
             )
             if cache_text is None:
                 general_cache["whisper_hyp_text"] = score["whisper_hyp_text"]
-        elif key == "lid":
-            score = score_modules[key]["module"](
-                score_modules[key]["args"],
-                gen_wav,
-                gen_sr,
-            )
         elif key == "audiobox_aesthetics":
             score = score_modules[key]["module"](
                 score_modules[key]["args"]["model"],
@@ -995,6 +1032,7 @@ def list_scoring(
             gt_sr = None
 
         # Step3: load text information if provided
+        text = None
         if text_info is not None:
             if key not in text_info.keys():
                 logging.warning(
@@ -1003,8 +1041,8 @@ def list_scoring(
                     )
                 )
                 continue
-        else:
-            text = None
+            else:
+                text = text_info[key]
 
         # Step4: check if the sampling rate of generated and gt audio are the same
         if gt_sr is not None and gen_sr > gt_sr:
