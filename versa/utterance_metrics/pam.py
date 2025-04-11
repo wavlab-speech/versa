@@ -1,16 +1,17 @@
 #!/usr/bin/env python3
 
-
 from __future__ import annotations
 
 import warnings
 from pathlib import Path
+from typing import Dict, Optional, Union, List, Any
 
 warnings.filterwarnings("ignore")
 import argparse
 import os
 import re
 import sys
+from dataclasses import dataclass
 
 import torch
 import torchaudio
@@ -27,6 +28,7 @@ import collections
 import numpy as np
 import torch.nn.functional as F
 
+# Constants
 HF_REPO = "microsoft/msclap"
 CLAP_VERSION = "CLAP_weights_2023.pth"
 PAM_PROMPTS = [
@@ -38,21 +40,47 @@ AUDIO_DURATION = 7
 SAMPLES = RESAMPLE_RATE * AUDIO_DURATION
 
 
+@dataclass
+class PAMConfig:
+    """Configuration class for PAM model."""
+    audioenc_name: str
+    sampling_rate: int
+    window_size: int
+    hop_size: int
+    mel_bins: int
+    fmin: int
+    fmax: int
+    num_classes: int
+    out_emb: int
+    text_model: str
+    transformer_embed_dim: int
+    d_proj: int
+    text_len: int
+
+
 class PAM:
     """
-    A class for PAM metric.
+    A class for Perceptual Audio Metric (PAM).
+    PAM evaluates audio quality using text prompts and CLAP embeddings.
     """
 
     def __init__(
-        self, model_fp: Path | str | None = None, model_config=None, use_cuda=False
+        self, 
+        model_fp: Optional[Union[Path, str]] = None, 
+        model_config: Optional[Dict[str, Any]] = None, 
+        use_cuda: bool = False
     ):
-        self.np_str_obj_array_pattern = re.compile(r"[SaUO]")
+        """
+        Initialize PAM model.
+        
+        Args:
+            model_fp: Path to the model weights file
+            model_config: Model configuration dictionary
+            use_cuda: Whether to use CUDA for computation
+        """
         self.file_path = os.path.realpath(__file__)
-        self.default_collate_err_msg_format = (
-            "default_collate: batch must contain tensors, numpy arrays, numbers, "
-            "dicts or lists; found {}"
-        )
         self.config = model_config
+        self.device = torch.device("cuda" if use_cuda and torch.cuda.is_available() else "cpu")
 
         # Automatically download model if not provided
         if not model_fp:
@@ -60,34 +88,19 @@ class PAM:
 
         self.model_fp = model_fp
         self.use_cuda = use_cuda
-        self.clap, self.tokenizer, self.args = self.load_clap()
+        self.clap, self.tokenizer, self.args = self._load_clap()
 
         # Two prompt strategy
         self.pam_prompts = PAM_PROMPTS
-        self.get_text_embeddings()
+        self._get_text_embeddings()
 
-    def read_config_as_args(self, yml_config, args=None, is_config_str=False):
-        return_dict = {}
+    def _parse_config(self, config_dict: Dict[str, Any]) -> argparse.Namespace:
+        """Parse configuration dictionary into argparse namespace."""
+        return argparse.Namespace(**config_dict)
 
-        if args != None:
-            for k, v in yml_config.items():
-                if k in args.__dict__:
-                    args.__dict__[k] = v
-                else:
-                    sys.stderr.write(
-                        "Ignored unknown parameter {} in yaml.\n".format(k)
-                    )
-        else:
-            for k, v in yml_config.items():
-                return_dict[k] = v
-
-        args = args if args != None else return_dict
-        return argparse.Namespace(**args)
-
-    def load_clap(self):
-        r"""Load CLAP model with args from config file"""
-
-        args = self.read_config_as_args(self.config, is_config_str=True)
+    def _load_clap(self) -> tuple:
+        """Load CLAP model with args from config file."""
+        args = self._parse_config(self.config)
 
         self.token_keys = ["input_ids", "attention_mask"]
 
@@ -107,205 +120,255 @@ class PAM:
         )
 
         # Load pretrained weights for model
-        model_state_dict = torch.load(self.model_fp, map_location=torch.device("cpu"))[
-            "model"
-        ]
+        checkpoint = torch.load(self.model_fp, map_location=self.device)
+        model_state_dict = checkpoint["model"]
 
-        # We unwrap the DDP model and save. If the model is not unwrapped and saved, then the model needs to unwrapped before `load_state_dict`:
-        # Reference link: https://discuss.pytorch.org/t/how-to-load-dataparallel-model-which-trained-using-multiple-gpus/146005
+        # Load state dict
         clap.load_state_dict(model_state_dict, strict=False)
-
         clap.eval()  # set clap in eval mode
+        
+        # Setup tokenizer
         tokenizer = AutoTokenizer.from_pretrained(args.text_model)
         tokenizer.add_special_tokens({"pad_token": "!"})
 
-        if self.use_cuda and torch.cuda.is_available():
-            clap = clap.cuda()
+        # Move model to appropriate device
+        clap = clap.to(self.device)
 
         return clap, tokenizer, args
 
-    def default_collate(self, batch):
-        r"""Puts each data field into a tensor with outer dimension batch size"""
-        elem = batch[0]
-        elem_type = type(elem)
-        if isinstance(elem, torch.Tensor):
-            out = None
-            if torch.utils.data.get_worker_info() is not None:
-                # If we're in a background process, concatenate directly into a
-                # shared memory tensor to avoid an extra copy
-                numel = sum([x.numel() for x in batch])
-                storage = elem.storage()._new_shared(numel)
-                out = elem.new(storage)
-            return torch.stack(batch, 0, out=out)
-        elif (
-            elem_type.__module__ == "numpy"
-            and elem_type.__name__ != "str_"
-            and elem_type.__name__ != "string_"
-        ):
-            if elem_type.__name__ == "ndarray" or elem_type.__name__ == "memmap":
-                # array of string classes and object
-                if self.np_str_obj_array_pattern.search(elem.dtype.str) is not None:
-                    raise TypeError(
-                        self.default_collate_err_msg_format.format(elem.dtype)
-                    )
-
-                return self.default_collate([torch.as_tensor(b) for b in batch])
-            elif elem.shape == ():  # scalars
-                return torch.as_tensor(batch)
-        elif isinstance(elem, float):
-            return torch.tensor(batch, dtype=torch.float64)
-        elif isinstance(elem, int):
-            return torch.tensor(batch)
-        elif isinstance(elem, str):
-            return batch
-        elif isinstance(elem, collections.abc.Mapping):
-            return {key: self.default_collate([d[key] for d in batch]) for key in elem}
-        elif isinstance(elem, tuple) and hasattr(elem, "_fields"):  # namedtuple
-            return elem_type(
-                *(self.default_collate(samples) for samples in zip(*batch))
-            )
-        elif isinstance(elem, collections.abc.Sequence):
-            # check to make sure that the elements in batch have consistent size
-            it = iter(batch)
-            elem_size = len(next(it))
-            if not all(len(elem) == elem_size for elem in it):
-                raise RuntimeError(
-                    "each element in list of batch should be of equal size"
-                )
-            transposed = zip(*batch)
-            return [self.default_collate(samples) for samples in transposed]
-
-        raise TypeError(self.default_collate_err_msg_format.format(elem_type))
-
-    def preprocess_text(self, text_queries):
-        r"""Load list of class labels and return tokenized text"""
+    def _preprocess_text(self, text_queries: List[str]) -> Dict[str, torch.Tensor]:
+        """
+        Tokenize text queries.
+        
+        Args:
+            text_queries: List of text prompts
+            
+        Returns:
+            Dictionary of tokenized text tensors
+        """
         tokenized_texts = []
-        for ttext in text_queries:
+        for text in text_queries:
             if "gpt" in self.args.text_model:
-                ttext = ttext + " <|endoftext|>"
+                text = text + " <|endoftext|>"
+            
             tok = self.tokenizer.encode_plus(
-                text=ttext,
+                text=text,
                 add_special_tokens=True,
                 max_length=self.args.text_len,
                 padding="max_length",
                 return_tensors="pt",
             )
+            
             for key in self.token_keys:
-                tok[key] = (
-                    tok[key].reshape(-1).cuda()
-                    if self.use_cuda and torch.cuda.is_available()
-                    else tok[key].reshape(-1)
-                )
+                tok[key] = tok[key].reshape(-1).to(self.device)
+            
             tokenized_texts.append(tok)
 
+        # Batch tokenized texts
         tokenized_texts_batch = {
             key: torch.cat([d[key].reshape(1, -1) for d in tokenized_texts])
             for key in tokenized_texts[0]
         }
+        
         return tokenized_texts_batch
 
-    def get_text_embeddings(self):
-        r"""Save text embeddings of PAM prompts"""
-        preprocessed_text = self.preprocess_text(self.pam_prompts)
-        self.pam_embeddings = self._get_text_embeddings(preprocessed_text)
-
-    def _get_text_embeddings(self, preprocessed_text):
-        r"""Load preprocessed text and return text embeddings"""
+    def _get_text_embeddings(self) -> None:
+        """Compute and store text embeddings for PAM prompts."""
+        preprocessed_text = self._preprocess_text(self.pam_prompts)
         with torch.no_grad():
-            return self.clap.caption_encoder(preprocessed_text)
+            self.pam_embeddings = self.clap.caption_encoder(preprocessed_text)
 
-    def _get_audio_embeddings(self, preprocessed_audio):
-        r"""Load preprocessed audio and return a audio embeddings"""
+    def _get_audio_embeddings(self, audio_tensor: torch.Tensor) -> torch.Tensor:
+        """
+        Compute audio embeddings.
+        
+        Args:
+            audio_tensor: Audio input tensor
+            
+        Returns:
+            Audio embeddings
+        """
         with torch.no_grad():
-            return self.clap.audio_encoder(preprocessed_audio)[0]
+            return self.clap.audio_encoder(audio_tensor)[0]
 
-    def compute_similarity(self, audio_embeddings):
-        r"""Compute similarity between text and audio embeddings"""
-        audio_embeddings = audio_embeddings / torch.norm(
-            audio_embeddings, dim=-1, keepdim=True
-        )
-        text_embeddings = self.pam_embeddings / torch.norm(
-            self.pam_embeddings, dim=-1, keepdim=True
-        )
+    def _compute_similarity(self, audio_embeddings: torch.Tensor) -> torch.Tensor:
+        """
+        Compute similarity between text and audio embeddings.
+        
+        Args:
+            audio_embeddings: Audio embeddings tensor
+            
+        Returns:
+            Similarity scores
+        """
+        # Normalize embeddings
+        audio_embeddings = F.normalize(audio_embeddings, dim=-1)
+        text_embeddings = F.normalize(self.pam_embeddings, dim=-1)
 
+        # Compute similarity with temperature scaling
         logit_scale = self.clap.logit_scale.exp()
         similarity = logit_scale * text_embeddings @ audio_embeddings.T
+        
         return similarity.T
 
-    def evaluate(self, audio_tensor):
-        r"""Compute PAM score using audio tensors"""
-        if self.use_cuda and torch.cuda.is_available():
-            audio_tensor = audio_tensor.cuda()
+    def evaluate(self, audio_tensor: torch.Tensor) -> float:
+        """
+        Compute PAM score for input audio tensor.
+        
+        Args:
+            audio_tensor: Audio input tensor
+            
+        Returns:
+            PAM score (quality score between 0 and 1)
+        """
+        # Move audio to device
+        audio_tensor = audio_tensor.to(self.device)
 
-        audio_embedddings = self._get_audio_embeddings(audio_tensor)
-        sim = self.compute_similarity(audio_embedddings)
-        prob = F.softmax(sim, dim=1)
-        pam_score = prob[:, 0]
-
-        pam_score = pam_score.detach().mean().item()
+        # Get embeddings and compute similarity
+        audio_embeddings = self._get_audio_embeddings(audio_tensor)
+        similarity = self._compute_similarity(audio_embeddings)
+        
+        # Apply softmax to get probability distribution
+        probabilities = F.softmax(similarity, dim=1)
+        
+        # PAM score is the probability of "clear and clean" prompt
+        pam_score = probabilities[:, 0].detach().mean().item()
 
         return pam_score
 
 
-def load_audio(audio_file, sample_rate, repro=True):
-    r"""Loads audio file and returns raw audio."""
-    if type(audio_file) == str:
-        audio_file, sample_rate = torchaudio.load(audio_file)
+def load_audio(
+    audio_file: Union[str, torch.Tensor], 
+    sample_rate: int, 
+    repro: bool = True
+) -> torch.Tensor:
+    """
+    Load and preprocess audio file.
+    
+    Args:
+        audio_file: Path to audio file or audio tensor
+        sample_rate: Sample rate of the input audio
+        repro: If True, use reproducible processing (taking first 7 seconds)
+        
+    Returns:
+        Processed audio tensor
+    """
+    # Load audio file if path is provided
+    if isinstance(audio_file, str):
+        audio, sample_rate = torchaudio.load(audio_file)
     else:
-        audio = audio_file
+        audio = audio_file.clone()  # Create a copy to avoid modifying the original
+    
+    # Ensure audio is a FloatTensor
     audio = torch.FloatTensor(audio)
 
     # Resample audio if needed
-    resampler = T.Resample(sample_rate, RESAMPLE_RATE)
-    audio = resampler(audio)
+    if sample_rate != RESAMPLE_RATE:
+        resampler = T.Resample(sample_rate, RESAMPLE_RATE)
+        audio = resampler(audio)
 
-    # process audio to be a multiple of 7 seconds
+    # Convert to mono if stereo
+    if audio.shape[0] > 1:
+        audio = torch.mean(audio, dim=0, keepdim=True)
+    
+    # Reshape to 1D
     audio = audio.reshape(-1)
+    
+    # Process audio to be exactly AUDIO_DURATION seconds
     if SAMPLES >= audio.shape[0]:
-        repeat_factor = int(np.ceil((SAMPLES) / audio.shape[0]))
-        # Repeast audio_time_series by repeat_factor to match audio_duration
+        # Audio is shorter than required duration, repeat to match
+        repeat_factor = int(np.ceil(SAMPLES / audio.shape[0]))
         audio = audio.repeat(repeat_factor)
-        # remove excess part of audio_time_series
-        audio = audio[0:SAMPLES]
+        # Trim to exact length
+        audio = audio[:SAMPLES]
     else:
+        # Audio is longer than required duration
         if repro:
-            # retain only first 7 seconds
-            start_index = 0
-            audio = audio[start_index : start_index + SAMPLES]
+            # Take first AUDIO_DURATION seconds
+            audio = audio[:SAMPLES]
         else:
+            # Take chunks of AUDIO_DURATION seconds plus remaining portion
             cutoff = int(np.floor(audio.shape[0] / SAMPLES))
-            # cutoff audio
-            initial_audio_series = audio[0 : cutoff * SAMPLES]
-            # remaining audio repeat and cut off
-            remaining = audio[cutoff * SAMPLES :]
-            if remaining.shape[0] != 0:
-                remaining = audio[-SAMPLES:]
-                audio = torch.cat([initial_audio_series, remaining])
+            initial_audio = audio[:cutoff * SAMPLES]
+            
+            remaining = audio[cutoff * SAMPLES:]
+            if remaining.shape[0] > 0:
+                # If remaining is non-empty, take the last AUDIO_DURATION seconds
+                remaining = audio[-SAMPLES:] if remaining.shape[0] <= SAMPLES else remaining[:SAMPLES]
+                audio = torch.cat([initial_audio, remaining])
             else:
-                audio = initial_audio_series
+                audio = initial_audio
 
     return audio
 
 
-def pam_model_setup(model_config, use_gpu=False):
+def pam_model_setup(model_config: Dict[str, Any], use_gpu: bool = False) -> PAM:
+    """
+    Initialize PAM model with given configuration.
+    
+    Args:
+        model_config: Model configuration dictionary
+        use_gpu: Whether to use GPU for computation
+        
+    Returns:
+        Initialized PAM model
+    """
     model = PAM(model_config=model_config, use_cuda=use_gpu)
     return model
 
 
-def pam_metric(model, pred_x, gt_x=None, fs=None):
-    # NOTE(jiatong): only work for 16000 Hz
-
+def pam_metric(
+    model: PAM, 
+    pred_x: Union[str, torch.Tensor, np.ndarray], 
+    gt_x: Optional[Union[str, torch.Tensor, np.ndarray]] = None, 
+    fs: int = 16000
+) -> Dict[str, float]:
+    """
+    Compute PAM metric for given audio.
+    
+    Args:
+        model: PAM model
+        pred_x: Predicted audio (file path or tensor)
+        gt_x: Ground truth audio (unused, kept for API compatibility)
+        fs: Sample rate of the input audio
+        
+    Returns:
+        Dictionary containing PAM score
+    """
+    # Convert numpy array to tensor if needed
+    if isinstance(pred_x, np.ndarray):
+        pred_x = torch.FloatTensor(pred_x)
+    
+    # Load and preprocess audio
     audio = load_audio(pred_x, fs, repro=True)
+    
+    # Ensure audio has batch dimension
     if len(audio.shape) < 2:
-        audio = audio[None, :]
+        audio = audio.unsqueeze(0)
+    
+    # Compute PAM score
     pam_score = model.evaluate(audio)
 
     return {"pam_score": pam_score}
 
 
 if __name__ == "__main__":
+    # Example usage
     a = np.random.random(16000)
-    with open("egs/separate_metrics/pam.yaml", "r", encoding="utf-8") as f:
-        config = yaml.full_load(f)[0]
-    model = pam_model_setup(config, True)
-    print("metrics: {}".format(pam_metric(model, a, fs=16000)))
+    
+    # Load configuration from YAML file
+    try:
+        with open("egs/separate_metrics/pam.yaml", "r", encoding="utf-8") as f:
+            config = yaml.safe_load(f)[0]
+    except (FileNotFoundError, yaml.YAMLError) as e:
+        print(f"Error loading configuration: {e}")
+        sys.exit(1)
+    
+    # Initialize model and compute metric
+    try:
+        model = pam_model_setup(config, use_gpu=torch.cuda.is_available())
+        result = pam_metric(model, a, fs=16000)
+        print(f"PAM score: {result['pam_score']:.4f}")
+    except Exception as e:
+        print(f"Error computing PAM metric: {e}")
+        sys.exit(1)
