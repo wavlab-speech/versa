@@ -12,7 +12,7 @@ VERSA (Versatile Evaluation of Speech and Audio) is a comprehensive toolkit for 
 
 ## 🚀 Features
 
-- **Comprehensive**: 80+ metrics covering perceptual quality, intelligibility, and technical measurements (check [full metrics documentation](https://github.com/wavlab-speech/versa/blob/main/supported_metrics.md) for a complete list)
+- **Comprehensive**: 80+ metrics covering perceptual quality, intelligibility, and technical measurements (check [full metrics documentation](https://github.com/wavlab-speech/versa/blob/main/docs/supported_metrics.md) for a complete list)
 - **Integrated**: Tightly integrated with [ESPnet](https://github.com/espnet/espnet.git)
 - **Flexible**: Support for various input formats (file paths, SCP files, Kaldi-style ARKs)
 - **Scalable**: Built-in support for distributed evaluation using Slurm
