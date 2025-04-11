@@ -22,13 +22,13 @@ Before pushing your changes, you can run the same checks locally:
 pip install -e .[dev]
 
 # Run Black formatting check
-black --check .
+black --check versa test scripts *.py
 
 # Apply Black formatting
-black .
+black versa test scripts *.py
 
 # Run Flake8 linting
-flake8 .
+flake8 versa test scripts *.py
 ```
 
 ### Running Tests
