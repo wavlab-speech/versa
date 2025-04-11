@@ -10,6 +10,7 @@ import soundfile as sf
 import yaml
 from tqdm import tqdm
 
+from versa.metrics import STR_METRIC, NUM_METRIC
 from versa.utils_shared import (
     check_all_same,
     check_minimum_length,
@@ -43,6 +44,12 @@ def load_score_modules(score_config, use_gt=True, use_gt_text=False, use_gpu=Fal
     for config in score_config:
         print(config, flush=True)
         if config["name"] == "mcd_f0":
+            if not use_gt:
+                logging.warning(
+                    "Cannot use mcd/f0 metrics because no gt audio is provided"
+                )
+                continue
+
             logging.info("Loading MCD & F0 evaluation...")
             from versa import mcd_f0
 
@@ -100,7 +107,7 @@ def load_score_modules(score_config, use_gt=True, use_gt_text=False, use_gpu=Fal
             )
             score_modules["nisqa"] = {
                 "module": nisqa_metric,
-                "args": {"nisqa_model": nisqa_model},
+                "model": nisqa_model,
             }
             logging.info("Initiate NISQA evaluation successfully.")
 
@@ -116,9 +123,7 @@ def load_score_modules(score_config, use_gt=True, use_gt_text=False, use_gpu=Fal
 
             score_modules["discrete_speech"] = {
                 "module": discrete_speech_metric,
-                "args": {
-                    "discrete_speech_predictors": discrete_speech_setup(use_gpu=use_gpu)
-                },
+                "model": discrete_speech_setup(use_gpu=use_gpu),
             }
             logging.info("Initiate discrete speech evaluation successfully.")
 
@@ -165,6 +170,19 @@ def load_score_modules(score_config, use_gt=True, use_gt_text=False, use_gpu=Fal
             from versa import stoi_metric
 
             score_modules["stoi"] = {"module": stoi_metric}
+            logging.info("Initiate stoi evaluation successfully.")
+
+        elif config["name"] == "estoi":
+            if not use_gt:
+                logging.warning(
+                    "Cannot use estoi metric because no gt audio is provided"
+                )
+                continue
+
+            logging.info("Loading stoi evaluation...")
+            from versa import estoi_metric
+
+            score_modules["estoi"] = {"module": estoi_metric}
             logging.info("Initiate stoi evaluation successfully.")
 
         elif config["name"] == "visqol":
@@ -415,7 +433,7 @@ def load_score_modules(score_config, use_gt=True, use_gt_text=False, use_gpu=Fal
             pam_model = pam_model_setup(model_config=config, use_gpu=use_gpu)
             score_modules["pam"] = {
                 "module": pam_metric,
-                "args": {"model": pam_model},
+                "model": pam_model,
             }
             logging.info("Initiate pam metric successfully.")
         elif config["name"] == "vad":
@@ -446,7 +464,7 @@ def load_score_modules(score_config, use_gt=True, use_gt_text=False, use_gpu=Fal
             deepfake_detection_model = deepfake_detection_model_setup(use_gpu=use_gpu)
             score_modules["asvspoof_score"] = {
                 "module": asvspoof_metric,
-                "args": {"model": deepfake_detection_model},
+                "model": deepfake_detection_model,
             }
             logging.info("Initiate asvspoof score metric successfully.")
 
@@ -811,7 +829,7 @@ def use_score_modules(score_modules, gen_wav, gt_wav, gen_sr, text=None):
         elif key == "nisqa":
             try:
                 score = score_modules[key]["module"](
-                    score_modules[key]["args"]["nisqa_model"],
+                    score_modules[key]["model"],
                     gen_wav,
                     gen_sr,
                 )
@@ -824,7 +842,7 @@ def use_score_modules(score_modules, gen_wav, gt_wav, gen_sr, text=None):
                 continue
         elif key == "discrete_speech":
             score = score_modules[key]["module"](
-                score_modules[key]["args"]["discrete_speech_predictors"],
+                score_modules[key]["model"],
                 gen_wav,
                 gt_wav,
                 gen_sr,
@@ -833,9 +851,7 @@ def use_score_modules(score_modules, gen_wav, gt_wav, gen_sr, text=None):
             score = score_modules[key]["module"](
                 gen_wav, gen_sr, **score_modules[key]["args"]
             )
-        elif key == "pesq":
-            score = score_modules[key]["module"](gen_wav, gt_wav, gen_sr)
-        elif key == "stoi":
+        elif key in ["pesq", "stoi", "estoi"]:
             score = score_modules[key]["module"](gen_wav, gt_wav, gen_sr)
         elif key == "visqol":
             score = score_modules[key]["module"](
@@ -873,31 +889,19 @@ def use_score_modules(score_modules, gen_wav, gt_wav, gen_sr, text=None):
             )
             if key == "whisper_wer":
                 general_cache["whisper_hyp_text"] = score["whisper_hyp_text"]
-        elif key == "scoreq_ref":
+        elif key in ["scoreq_ref", "emotion"]:
             score = score_modules[key]["module"](
                 score_modules[key]["model"], gen_wav, gt_wav, gen_sr
             )
-        elif key == "scoreq_nr":
+        elif key in ["scoreq_nr", "se_snr"]:
             score = score_modules[key]["module"](
                 score_modules[key]["model"], gen_wav, gen_sr
             )
-        elif key == "emotion":
+        elif key in ["pam", "asvspoof_score"]:
             score = score_modules[key]["module"](
-                score_modules[key]["model"], gen_wav, gt_wav, gen_sr
+                score_modules[key]["model"], gen_wav, fs=gen_sr
             )
-        elif key == "se_snr":
-            score = score_modules[key]["module"](
-                score_modules[key]["model"], gen_wav, gen_sr
-            )
-        elif key == "pam":
-            score = score_modules[key]["module"](
-                score_modules[key]["args"]["model"], gen_wav, fs=gen_sr
-            )
-        elif key == "asvspoof_score":
-            score = score_modules[key]["module"](
-                score_modules[key]["args"]["model"], gen_wav, fs=gen_sr
-            )
-        elif key == "vad":
+        elif key in ["vad", "lid"]:
             score = score_modules[key]["module"](
                 score_modules[key]["args"],
                 gen_wav,
@@ -940,12 +944,6 @@ def use_score_modules(score_modules, gen_wav, gt_wav, gen_sr, text=None):
             )
             if cache_text is None:
                 general_cache["whisper_hyp_text"] = score["whisper_hyp_text"]
-        elif key == "lid":
-            score = score_modules[key]["module"](
-                score_modules[key]["args"],
-                gen_wav,
-                gen_sr,
-            )
         elif key == "audiobox_aesthetics":
             score = score_modules[key]["module"](
                 score_modules[key]["args"]["model"],
@@ -962,7 +960,6 @@ def use_score_modules(score_modules, gen_wav, gt_wav, gen_sr, text=None):
                 gen_sr,
                 custom_prompt=score_modules[key]["prompt"],
             )
-            print("score: {}".format(score), flush=True)
         else:
             raise NotImplementedError(f"Not supported {key}")
 
@@ -1081,7 +1078,7 @@ def list_scoring(
 def load_summary(score_info):
     summary = {}
     for key in score_info[0].keys():
-        if "text" in key or "vad" in key or "language" in key or key == "key":
+        if key in STR_METRIC or key == "key":
             # NOTE(jiatong): skip text cases
             continue
         summary[key] = sum([score[key] for score in score_info])

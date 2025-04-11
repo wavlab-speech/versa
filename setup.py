@@ -55,6 +55,19 @@ setup(
         "espnet_model_zoo",
         "discrete-speech-metrics @ git+https://github.com/ftshijt/DiscreteSpeechMetrics.git@v1.0.2",
     ],
+    extras_require={
+        "dev": [
+            "pytest>=6.0.0",
+            "pytest-cov>=2.10.0",
+            "black>=22.3.0",
+            "flake8>=4.0.0",
+        ],
+    },
+    entry_points={
+        "console_scripts": [
+            "versa-score=versa.bin.scorer:main",
+        ],
+    },
     author="Jiatong Shi",
     author_email="ftshijt@gmail.com",
     description="A package for versatile evaluation of speech and audio",
