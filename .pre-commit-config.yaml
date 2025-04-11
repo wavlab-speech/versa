@@ -3,4 +3,4 @@ repos:
     rev: 25.1.0
     hooks:
     -   id: black
-        files: 'versa/|scripts/|test/|.*\.py$'
+        files: 'versa/|scripts/|test/|setup.py$'
