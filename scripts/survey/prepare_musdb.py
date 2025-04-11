@@ -6,6 +6,7 @@ from glob import glob
 from tqdm import tqdm
 import librosa
 
+
 def split_audio(file_path, chunk_length, output_dir, parent_folder):
     """Split the audio file into non-overlapping chunks and save them."""
     # Load the audio file using soundfile
@@ -36,20 +37,32 @@ def split_audio(file_path, chunk_length, output_dir, parent_folder):
         sf.write(output_file_path, chunk_waveform, sample_rate)
     print(f"Saved chunks for : {parent_folder}")
 
+
 def process_directory(main_directory, chunk_length, output_dir):
     """Process all subdirectories in the main directory and split 'mix.wav' files."""
-    for mix_wav_path in tqdm(glob(os.path.join(main_directory, '**/mixture.wav'), recursive=True)):
+    for mix_wav_path in tqdm(
+        glob(os.path.join(main_directory, "**/mixture.wav"), recursive=True)
+    ):
         # Get the parent folder name
-        parent_folder = mix_wav_path.split('/')[-2].replace(' ','_')
+        parent_folder = mix_wav_path.split("/")[-2].replace(" ", "_")
         # Split the 'mix.wav' into chunks
         split_audio(mix_wav_path, chunk_length, output_dir, parent_folder)
+
 
 def main():
     # Set up argument parsing
     parser = argparse.ArgumentParser(description="Split 'mix.wav' files into chunks.")
-    parser.add_argument('--main_directory', type=str, help="Path to the main directory containing subfolders.")
-    parser.add_argument('--output_dir', type=str, help="Directory where the chunks will be saved.")
-    parser.add_argument('--chunk_length', type=float, help="Length of each chunk in seconds.")
+    parser.add_argument(
+        "--main_directory",
+        type=str,
+        help="Path to the main directory containing subfolders.",
+    )
+    parser.add_argument(
+        "--output_dir", type=str, help="Directory where the chunks will be saved."
+    )
+    parser.add_argument(
+        "--chunk_length", type=float, help="Length of each chunk in seconds."
+    )
 
     # Parse the arguments
     args = parser.parse_args()
@@ -60,6 +73,7 @@ def main():
 
     # Process the directory
     process_directory(args.main_directory, args.chunk_length, args.output_dir)
+
 
 if __name__ == "__main__":
     main()
