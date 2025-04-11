@@ -58,7 +58,6 @@ NUM_METRIC = [
     "audiobox_aesthetics_CU",
     "audiobox_aesthetics_PC",
     "audiobox_aesthetics_PQ",
-
     "mcd",
     "f0_corr",
     "f0_rmse",
@@ -87,7 +86,6 @@ NUM_METRIC = [
     "pysepm_csii_mid",
     "pysepm_csii_low",
     "pysepm_ncm",
-
     "noresqa",
     "torch_squim_mos",
     "espnet_wer",

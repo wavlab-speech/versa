@@ -79,7 +79,6 @@ Examples:
 - For a monologue: 1
 - For an interview with host and guest: 2 
 - For a panel discussion with a moderator and three panelists: 4""",
-
     "speaker_gender": """Identify the perceived gender of the speaker(s).
 If multiple speakers, list each speaker with their perceived gender.
 Choose from:
@@ -87,7 +86,6 @@ Choose from:
 - Female
 - Non-binary/unclear
 - Multiple speakers with mixed genders""",
-
     "speaker_age": """Identify the age group of the speaker.
 Choose exactly one label from the following categories:
 - Child: under 13 years
@@ -95,7 +93,6 @@ Choose exactly one label from the following categories:
 - Young adult: 20-35 years
 - Middle-aged adult: 36-55 years
 - Senior: over 55 years""",
-
     "speech_impairment": """Assess whether there are any noticeable speech impairments or disorders in the speaker's voice.
 Choose exactly one category:
 - No apparent impairment: typical speech patterns
@@ -107,7 +104,6 @@ Choose exactly one category:
 - Dysarthria: slurred or unclear speech from muscle weakness
 - Apraxia: difficulty with motor planning for speech
 - Other impairment: speech pattern that suggests a different disorder""",
-
     # Voice Properties
     "voice_pitch": """Analyze the voice pitch/tone of the speaker.
 Choose exactly one category from the following:
@@ -116,14 +112,12 @@ Choose exactly one category from the following:
 - Medium: average pitch range
 - Low: noticeably below average pitch
 - Very low: significantly lower than average for their perceived gender""",
-
     "pitch_range": """Assess the pitch variation/intonation range in the speaker's voice.
 Choose exactly one category:
 - Wide range: highly expressive with significant variation between high and low tones
 - Moderate range: normal variation in pitch during speech
 - Narrow range: minimal pitch variation, relatively monotone delivery
 - Monotone: almost no pitch variation""",
-
     "voice_type": """Identify the dominant voice quality-related characteristic of the speaker.
 Choose exactly one category:
 - Clear: clean vocal production without noticeable texture issues
@@ -135,7 +129,6 @@ Choose exactly one category:
 - Resonant: rich, vibrant voice with good projection
 - Whispered: intentionally quiet with minimal vocal cord vibration
 - Tremulous: shaky or quivery voice quality""",
-
     "speech_volume_level": """Assess the overall volume or loudness level of the speaker.
 Choose exactly one category:
 - Very quiet: barely audible, whispering or very soft-spoken
@@ -144,7 +137,6 @@ Choose exactly one category:
 - Loud: above average volume, projecting voice
 - Very loud: shouting or extremely high volume
 - Variable: significant changes in volume throughout the recording""",
-
     # Speech Content
     "language": """Identify all languages spoken in the audio.
 List languages using their English names.
@@ -160,7 +152,6 @@ Choose from common languages:
 - German
 - Japanese
 - Other (specify if possible)""",
-
     "speech_register": """Determine the speech register used by the speaker.
 Choose exactly one category:
 - Formal register: careful pronunciation, complex grammar, specialized vocabulary
@@ -170,7 +161,6 @@ Choose exactly one category:
 - Intimate register: highly familiar language used with close relations
 - Technical register: specialized terminology for a specific field or profession
 - Slang register: highly informal with group-specific vocabulary""",
-
     "vocabulary_complexity": """Evaluate the vocabulary complexity level in the speech.
 Choose exactly one category:
 - Basic: simple, everyday vocabulary, mostly high-frequency words
@@ -178,7 +168,6 @@ Choose exactly one category:
 - Advanced: sophisticated vocabulary with specific terminology
 - Technical: specialized/domain-specific terminology
 - Academic: scholarly vocabulary with abstract concepts""",
-
     "speech_purpose": """Identify the primary purpose of the speech.
 Choose one category:
 - Informative: primarily explains or educates
@@ -188,7 +177,6 @@ Choose one category:
 - Conversational: casual exchange of information
 - Instructional: provides specific directions or guidance
 - Emotional expression: primarily conveys feelings or emotional state""",
-
     # Speech Delivery
     "speech_emotion": """Identify the dominant emotion expressed in this speech.
 Choose exactly one label from the following categories:
@@ -200,14 +188,12 @@ Choose exactly one label from the following categories:
 - Surprised: astonished, shocked tone
 - Disgusted: repulsed, revolted tone
 - Other: other emotion that cannot be classified by above classes""",
-
     "speech_clarity": """Rate the overall clarity and intelligibility of the speech.
 Choose one category:
 - High clarity: perfectly intelligible, professional quality
 - Medium clarity: generally understandable with occasional unclear segments
 - Low clarity: difficult to understand, frequent unclear segments
 - Very low clarity: mostly unintelligible""",
-
     "speech_rate": """Assess the rate of speech in the audio.
 Choose one category:
 - Very slow: deliberate, significantly slower than average speech
@@ -215,7 +201,6 @@ Choose one category:
 - Medium: average conversational pace
 - Fast: quicker than average conversational speech
 - Very fast: rapid delivery, difficult to follow""",
-
     "speaking_style": """Identify the predominant speaking style of the speaker.
 Choose exactly one category:
 - Formal: structured, proper, adherence to linguistic conventions
@@ -226,7 +211,6 @@ Choose exactly one category:
 - Dramatic: theatrical, performance-oriented speech
 - Authoritative: commanding, confident tone
 - Hesitant: uncertain, tentative speech with pauses""",
-
     "laughter_crying": """Identify if there is laughter, crying, or other emotional vocalizations in the audio.
 Choose exactly one category:
 - No laughter or crying: speech only
@@ -235,7 +219,6 @@ Choose exactly one category:
 - Contains both: both laughter and crying are present
 - Contains other emotional sounds: sighs, gasps, etc.
 - Contains multiple emotional vocalizations: combination of various emotional sounds""",
-
     # Interaction Patterns
     "overlapping_speech": """Determine if there is overlapping speech in the audio (people talking simultaneously).
 Choose exactly one category:
@@ -244,7 +227,6 @@ Choose exactly one category:
 - Moderate overlap: noticeable instances where speakers talk over each other
 - Significant overlap: frequent overlapping speech, making it difficult to follow
 - Constant overlap: multiple speakers talking simultaneously throughout most of the audio""",
-
     # Recording Environment
     "speech_background_environment": """Identify the dominant background environment or setting.
 Choose one category:
@@ -255,7 +237,6 @@ Choose one category:
 - Event/crowd: audience sounds, applause, crowd noise
 - Music background: music playing behind speech
 - Multiple environments: changes throughout recording""",
-
     "recording_quality": """Assess the technical quality of the audio recording.
 Choose one category:
 - Professional: studio-quality, broadcast standard
@@ -263,7 +244,6 @@ Choose one category:
 - Fair: noticeable recording artifacts but generally clear
 - Poor: significant recording issues affecting comprehension
 - Very poor: severe technical problems making content difficult to understand""",
-
     "channel_type": """Identify the likely recording channel or device type used to record this audio.
 Choose exactly one category:
 - Professional microphone: high-quality, full-range audio
@@ -283,11 +263,11 @@ def qwen2_model_setup(
     start_prompt: str = "The following is a conversation with an AI assistant. The assistant is helpful, honest, and harmless.",
 ) -> Dict[str, Any]:
     """Set up the Qwen2-Audio model for speech analysis.
-    
+
     Args:
         model_tag: Model identifier for Qwen2-Audio, defaults to Qwen2-Audio-7B-Instruct
         start_prompt: Initial system prompt for the model conversation
-        
+
     Returns:
         Dictionary containing model, processor, and conversation starter
     """
@@ -328,17 +308,17 @@ def qwen2_base_metric(
         fs: Sampling rate in Hz
         custom_prompt: Custom prompt for the model
         max_length: Maximum length for model generation
-        
+
     Returns:
         Model's response as a string
     """
     if custom_prompt is None:
         raise ValueError("Custom prompt must be provided for the qwen2-audio model.")
-    
+
     conversation = copy.deepcopy(qwen_utils["start_conversation"])
     processor = qwen_utils["processor"]
     model = qwen_utils["model"]
-    
+
     conversation.append(
         {
             "role": "user",
@@ -363,7 +343,7 @@ def qwen2_base_metric(
         inputs[key] = inputs[key].to(model.device)
 
     generate_ids = model.generate(**inputs, max_length=max_length)
-    generate_ids = generate_ids[:, inputs["input_ids"].size(1):]
+    generate_ids = generate_ids[:, inputs["input_ids"].size(1) :]
     response = processor.batch_decode(
         generate_ids, skip_special_tokens=True, clean_up_tokenization_spaces=True
     )[0]
@@ -372,13 +352,14 @@ def qwen2_base_metric(
 
 def create_metric_fn(metric_name: str) -> callable:
     """Factory function to create metric functions.
-    
+
     Args:
         metric_name: Name of the metric to create a function for
-        
+
     Returns:
         Function that calculates the specified metric
     """
+
     def metric_fn(
         qwen_utils: Dict[str, Any],
         pred_x: np.ndarray,
@@ -386,13 +367,13 @@ def create_metric_fn(metric_name: str) -> callable:
         custom_prompt: Optional[str] = None,
     ) -> Dict[str, str]:
         """Calculate the specified metric from Qwen2Audio results.
-        
+
         Args:
             qwen_utils: A utility dict for Qwen2Audio calculation
             pred_x: Test signal (time,)
             fs: Sampling rate in Hz
             custom_prompt: Custom prompt for the model
-            
+
         Returns:
             Dictionary containing the metric result
         """
@@ -400,10 +381,10 @@ def create_metric_fn(metric_name: str) -> callable:
             custom_prompt = DEFAULT_PROMPTS.get(metric_name)
             if custom_prompt is None:
                 raise ValueError(f"No default prompt found for metric: {metric_name}")
-                
+
         response = qwen2_base_metric(qwen_utils, pred_x, fs, custom_prompt)
         return {f"qwen_{metric_name}": response}
-    
+
     return metric_fn
 
 
@@ -437,7 +418,9 @@ qwen2_laughter_crying_metric = create_metric_fn("laughter_crying")
 qwen2_overlapping_speech_metric = create_metric_fn("overlapping_speech")
 
 # 6. Recording Environment
-qwen2_speech_background_environment_metric = create_metric_fn("speech_background_environment")
+qwen2_speech_background_environment_metric = create_metric_fn(
+    "speech_background_environment"
+)
 qwen2_recording_quality_metric = create_metric_fn("recording_quality")
 qwen2_channel_type_metric = create_metric_fn("channel_type")
 
