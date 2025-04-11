@@ -3,5 +3,4 @@ repos:
     rev: 25.1.0
     hooks:
     -   id: black
-        args: [--line-length=127]  # Match your flake8 line length
         files: 'versa/|scripts/|test/|.*\.py$'
