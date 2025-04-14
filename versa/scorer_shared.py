@@ -15,6 +15,7 @@ from versa.metrics import STR_METRIC, NUM_METRIC
 from versa.utils_shared import (
     check_all_same,
     check_minimum_length,
+    default_numpy_serializer,
     find_files,
     load_audio,
     wav_normalize,
@@ -803,7 +804,8 @@ def process_cache_info(cache_info, score_modules, output_file):
         )
         batch_score_info.append(utt_score)
         if output_file is not None:
-            output_file.write(f"{json.dumps(utt_score)}\n")
+            printable_result = json.dumps(utt_score, default=default_numpy_serializer)
+            output_file.write(f"{printable_result}\n")
     return batch_score_info
 
 
