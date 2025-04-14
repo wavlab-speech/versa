@@ -4,6 +4,7 @@
 #  Apache 2.0  (http://www.apache.org/licenses/LICENSE-2.0)
 import logging
 
+import json
 import kaldiio
 import librosa
 import soundfile as sf
@@ -346,7 +347,7 @@ def load_score_modules(score_config, use_gt=True, use_gt_text=False, use_gpu=Fal
 
             model = scoreq_ref_setup(
                 data_domain=config.get("data_domain", "synthetic"),
-                cache_dir=config.get("model_cache", "./scoreq_pt-models"),
+                cache_dir=config.get("model_cache", "versa_cache/scoreq_pt-models"),
                 use_gpu=use_gpu,
             )
 
@@ -362,7 +363,7 @@ def load_score_modules(score_config, use_gt=True, use_gt_text=False, use_gpu=Fal
 
             model = scoreq_nr_setup(
                 data_domain=config.get("data_domain", "synthetic"),
-                cache_dir=config.get("model_cache", "./scoreq_pt-models"),
+                cache_dir=config.get("model_cache", "versa_cache/scoreq_pt-models"),
                 use_gpu=use_gpu,
             )
 
@@ -377,7 +378,7 @@ def load_score_modules(score_config, use_gt=True, use_gt_text=False, use_gpu=Fal
             from versa import nomad, nomad_setup
 
             model = nomad_setup(
-                cache_dir=config.get("model_cache", "./scoreq_pt-models"),
+                cache_dir=config.get("model_cache", "versa_cache/nomad_pt-models"),
                 use_gpu=use_gpu,
             )
 
@@ -798,7 +799,7 @@ def process_cache_info(cache_info, score_modules, output_file):
         )
         batch_score_info.append(utt_score)
         if output_file is not None:
-            output_file.write(f"{utt_score}\n")
+            output_file.write(f"{json.dumps(utt_score)}\n")
     return batch_score_info
 
 
@@ -1090,7 +1091,9 @@ def load_summary(score_info):
     return summary
 
 
-def load_corpus_modules(score_config, cache_folder=".cache", use_gpu=False, io="kaldi"):
+def load_corpus_modules(
+    score_config, cache_folder="versa_cache", use_gpu=False, io="kaldi"
+):
     score_modules = {}
     for config in score_config:
         if config["name"] == "fad":
