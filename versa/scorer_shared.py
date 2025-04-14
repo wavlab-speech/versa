@@ -374,6 +374,10 @@ def load_score_modules(score_config, use_gt=True, use_gt_text=False, use_gpu=Fal
             logging.info("Initiate scoreq (with reference) successfully")
 
         elif config["name"] == "nomad":
+            if not use_gt:
+                logging.warning("Cannot use nomad because no gt audio is provided")
+                continue
+
             logging.info("Loading nomad metrics with reference")
             from versa import nomad, nomad_setup
 
