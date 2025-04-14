@@ -515,7 +515,9 @@ def load_score_modules(score_config, use_gt=True, use_gt_text=False, use_gpu=Fal
             )
 
             noresqa_model = noresqa_model_setup(
-                metric_type=config.get("metric_type", 0), use_gpu=use_gpu
+                metric_type=config.get("metric_type", 0),
+                cache_dir=config.get("cache_dir", "versa_cache/noresqa_model"),
+                use_gpu=use_gpu,
             )
             score_modules["noresqa"] = {
                 "module": noresqa_metric,
