@@ -102,7 +102,7 @@ def default_numpy_serializer(obj):
     if isinstance(obj, np.float32):
         return float(obj)  # convert float32 -> float
     if isinstance(obj, np.integer):
-        return int(obj)    # convert int64 etc. -> int
+        return int(obj)  # convert int64 etc. -> int
     if isinstance(obj, np.floating):
         return float(obj)  # convert other float types (e.g. float64) -> float
     if isinstance(obj, np.ndarray):
