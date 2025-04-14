@@ -33,15 +33,17 @@ For the second step, please add your metrics to the scoring list in `versa/score
 
 At this step, please define a unique key for your metric to differentiate it from others. By referring to the key, you can declare the setup function in `load_score_modules()` and the inference function in `use_score_modules()`. Please refer to the existing examples so that they are following the same setup.
 
+Additionally, please also register the resulting metrics in `versa/metrics.py` by indicating whether the metrics are numerical or string-type.
+
 ### Step3: Docs, Tests, Examples, and Code-wrapping up
 At this step, the major implementation has been done and we mainly focus on the docs, test functions, examples, and code-wrapping up.
 
 For Docs, please add your metrics to the `README.md` (List of Metrics Section). If the metrics need external tools from installers at `tools`, please include that with the `[ ]` mark in the first field (column).
 
-For Tests, please add the local test functions at the corresponding metrics scripts temporarily (we will enable CI test in later stages).
-- For metrics included in the default setup, you can add the test metric value in `test/test_general.py`
-- For metrics not included in the default installation, you can add the test function in `test/test_{metric_name}.py`
+For Tests, please add the local test functions at the corresponding metrics scripts temporarily.
+- For metrics included in the default setup, you can add the test metric value in `test/test_general.py`. Also, please add the test in `test/test_metrics/test_{metric_name}.py` for CI test. We have a [guideline](https://github.com/wavlab-speech/versa/blob/main/docs) for CI test if you would like to have a check,` 
+- For metrics not included in the default installation, you can add the test function in `test/test_pipeline/test_{metric_name}.py`
 
 For Examples, please put a separate `yaml` style configuration file in `egs/separate_metrics` following other examples.
 
-For Code-wrapping up, we highly recommend you use `black` and `isort` to format your added scripts.
+For Code-wrapping up, we highly recommend you use `black` and `isort` to format your added scripts. We have a simple code-style check in our CI test.
