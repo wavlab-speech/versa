@@ -11,7 +11,11 @@ import torch
 
 
 def sheet_ssqa_setup(
-    model_tag="default", model_path=None, model_config=None, use_gpu=False
+    model_tag="default",
+    model_path=None,
+    model_config=None,
+    cache_dir="versa_cache",
+    use_gpu=False,
 ):
     if use_gpu:
         device = "cuda"
@@ -25,6 +29,7 @@ def sheet_ssqa_setup(
     else:
         if model_tag == "default":
             model_tag = "unilight/sheet:v0.1.0"
+        torch.hub.set_dir(cache_dir)
         model = torch.hub.load(
             "unilight/sheet:v0.1.0", "default", trust_repo=True, force_reload=False
         )
