@@ -10,6 +10,9 @@ bash ./install_fairseq.sh
 git clone https://github.com/ftshijt/emotion2vec.git
 
 # Note(jiatong): default downloading the base model
-cd emotion2vec/emo2vec_versa
+cd emotion2vec
+pip install -e ./
+
+cd emo2vec_versa
 wget https://huggingface.co/emotion2vec/emotion2vec_base/resolve/main/emotion2vec_base.pt
 cd ../..
