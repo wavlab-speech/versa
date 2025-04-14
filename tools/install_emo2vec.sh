@@ -4,7 +4,7 @@ if [ -d "emotion2vec" ]; then
     rm -rf emotion2vec
 fi
 
-. ./install_fairseq.sh
+bash ./install_fairseq.sh
 
 # # NOTE(jiatong): a versa-specialized implementation for emo2vec
 git clone https://github.com/ftshijt/emotion2vec.git
