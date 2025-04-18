@@ -46,7 +46,12 @@ except ImportError:
     Noresqa = None
 
 
-def noresqa_model_setup(model_tag="default", metric_type=0, cache_dir="versa_cache/noresqa_model", use_gpu=False):
+def noresqa_model_setup(
+    model_tag="default",
+    metric_type=0,
+    cache_dir="versa_cache/noresqa_model",
+    use_gpu=False,
+):
     if use_gpu:
         device = "cuda"
     else:

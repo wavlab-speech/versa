@@ -95,3 +95,17 @@ def check_minimum_length(length, key_info):
         if length < 0.1:
             return False
     return True
+
+
+def default_numpy_serializer(obj):
+    """Convert numpy types to native Python types for JSON serialization."""
+    if isinstance(obj, np.float32):
+        return float(obj)  # convert float32 -> float
+    if isinstance(obj, np.integer):
+        return int(obj)  # convert int64 etc. -> int
+    if isinstance(obj, np.floating):
+        return float(obj)  # convert other float types (e.g. float64) -> float
+    if isinstance(obj, np.ndarray):
+        return obj.tolist()  # convert array -> list
+    # If not recognized, let the base class raise the TypeError
+    raise TypeError(f"Object of type {type(obj)} is not JSON serializable")
