@@ -4,6 +4,7 @@
 #  Apache 2.0  (http://www.apache.org/licenses/LICENSE-2.0)
 import logging
 
+import json
 import kaldiio
 import librosa
 import soundfile as sf
@@ -14,6 +15,7 @@ from versa.metrics import STR_METRIC, NUM_METRIC
 from versa.utils_shared import (
     check_all_same,
     check_minimum_length,
+    default_numpy_serializer,
     find_files,
     load_audio,
     wav_normalize,
@@ -346,7 +348,7 @@ def load_score_modules(score_config, use_gt=True, use_gt_text=False, use_gpu=Fal
 
             model = scoreq_ref_setup(
                 data_domain=config.get("data_domain", "synthetic"),
-                cache_dir=config.get("model_cache", "./scoreq_pt-models"),
+                cache_dir=config.get("model_cache", "versa_cache/scoreq_pt-models"),
                 use_gpu=use_gpu,
             )
 
@@ -362,7 +364,7 @@ def load_score_modules(score_config, use_gt=True, use_gt_text=False, use_gpu=Fal
 
             model = scoreq_nr_setup(
                 data_domain=config.get("data_domain", "synthetic"),
-                cache_dir=config.get("model_cache", "./scoreq_pt-models"),
+                cache_dir=config.get("model_cache", "versa_cache/scoreq_pt-models"),
                 use_gpu=use_gpu,
             )
 
@@ -373,11 +375,15 @@ def load_score_modules(score_config, use_gt=True, use_gt_text=False, use_gpu=Fal
             logging.info("Initiate scoreq (with reference) successfully")
 
         elif config["name"] == "nomad":
+            if not use_gt:
+                logging.warning("Cannot use nomad because no gt audio is provided")
+                continue
+
             logging.info("Loading nomad metrics with reference")
             from versa import nomad, nomad_setup
 
             model = nomad_setup(
-                cache_dir=config.get("model_cache", "./scoreq_pt-models"),
+                cache_dir=config.get("model_cache", "versa_cache/nomad_pt-models"),
                 use_gpu=use_gpu,
             )
 
@@ -515,7 +521,9 @@ def load_score_modules(score_config, use_gt=True, use_gt_text=False, use_gpu=Fal
             )
 
             noresqa_model = noresqa_model_setup(
-                metric_type=config.get("metric_type", 0), use_gpu=use_gpu
+                metric_type=config.get("metric_type", 0),
+                cache_dir=config.get("cache_dir", "versa_cache/noresqa_model"),
+                use_gpu=use_gpu,
             )
             score_modules["noresqa"] = {
                 "module": noresqa_metric,
@@ -796,7 +804,8 @@ def process_cache_info(cache_info, score_modules, output_file):
         )
         batch_score_info.append(utt_score)
         if output_file is not None:
-            output_file.write(f"{utt_score}\n")
+            printable_result = json.dumps(utt_score, default=default_numpy_serializer)
+            output_file.write(f"{printable_result}\n")
     return batch_score_info
 
 
@@ -1088,7 +1097,9 @@ def load_summary(score_info):
     return summary
 
 
-def load_corpus_modules(score_config, cache_folder=".cache", use_gpu=False, io="kaldi"):
+def load_corpus_modules(
+    score_config, cache_folder="versa_cache", use_gpu=False, io="kaldi"
+):
     score_modules = {}
     for config in score_config:
         if config["name"] == "fad":

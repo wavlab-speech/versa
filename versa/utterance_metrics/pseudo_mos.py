@@ -22,7 +22,9 @@ except ImportError:
     utmosv2 = None
 
 
-def pseudo_mos_setup(predictor_types, predictor_args, use_gpu=False):
+def pseudo_mos_setup(
+    predictor_types, predictor_args, cache_dir="versa_cache", use_gpu=False
+):
     # Supported predictor types: utmos, dnsmos, aecmos, plcmos
     # Predictor args: predictor specific args
     predictor_dict = {}
@@ -34,6 +36,7 @@ def pseudo_mos_setup(predictor_types, predictor_args, use_gpu=False):
 
     # first import utmos to resolve cross-import from the same model
     if "utmos" in predictor_types:
+        torch.hub.set_dir(cache_dir)
         utmos = torch.hub.load("ftshijt/SpeechMOS:main", "utmos22_strong").to(device)
         predictor_dict["utmos"] = utmos.float()
         predictor_fs["utmos"] = 16000
@@ -83,6 +86,7 @@ def pseudo_mos_setup(predictor_types, predictor_args, use_gpu=False):
         elif predictor == "utmos" or predictor == "utmosv2":
             continue  # already initialized
         elif predictor == "singmos":
+            torch.hub.set_dir(cache_dir)
             singmos = torch.hub.load(
                 "South-Twilight/SingMOS:v0.2.0", "singing_ssl_mos", trust_repo=True
             ).to(device)
