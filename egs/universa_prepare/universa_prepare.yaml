@@ -120,7 +120,7 @@
 # scoreq (reference-based) metric
 # -- scoreq_ref: scoreq reference-based model
 - name: scoreq_ref
-  data_domain: natrual
+  data_domain: natural
   model_cache: versa_cache/scoreq_pt-models
 
 # scoreq (non-reference-based) metric
@@ -131,7 +131,7 @@
 
 # Speech Enhancement-based Metrics
 # model tag can be any ESPnet-SE huggingface repo
-# -- se_si_snr: the SI-SNR from a rerference speech enhancement model
+# -- se_si_snr: the SI-SNR from a reference speech enhancement model
 - name: se_snr
   model_tag: default
 

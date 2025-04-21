@@ -2,7 +2,7 @@
 # -- vad_info: [{"start": 0.1, "end": 0.2}, {"start": 0.3, "end": 0.4}]
 - name: vad
   threshold: 0.5
-  min_speech_duration_ms: 250
-  max_speech_duration_s: 5
-  min_silence_duration_ms: 100
-  speech_pad_ms: 30
+  min_speech_duration_ms: 2000
+  max_speech_duration_s: 20
+  min_silence_duration_ms: 500
+  speech_pad_ms: 100

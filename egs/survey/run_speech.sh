@@ -1,8 +1,13 @@
+#!/bin/bash
+
 # Originally prepared by Haibin Wu (2024)
 # Adapted by Jiatong Shi (2025)
 
-stage=0
-pred_path=data/LibriSpeech/test-clean/prepared/ori.scp
+. ../activate_python.sh
+
+stage=2
+# pred_path=data/LibriSpeech/test-clean/prepared/ori.scp
+pred_path=librispeech_discrete_hifigan.scp
 gt_path=data/LibriSpeech/test-clean/prepared/ori.scp
 
 # download data
@@ -24,14 +29,14 @@ fi
 
 # Evaluation
 if [ $stage -eq 1 ]; then
-    result_path="test_result"
+    result_path="librispeech_discrete_hifigan"
 
     echo stage $stage: Evaluation
     if test -f ${result_path}; then
         echo ${result_path} exists
     else
         python versa/bin/scorer.py \
-            --score_config egs/survey/speech.yaml \
+            --score_config egs/survey/configs/speech.yaml \
             --use_gpu True \
             --gt ${gt_path} \
             --pred ${pred_path} \
@@ -45,7 +50,7 @@ fi
 # Word error rate evaluation
 # Currently use whisper_wer
 if [ $stage -eq 2 ]; then
-    wer_result_path="test_result_asr"
+    wer_result_path="librispeech_discrete_hifigan_asr"
 
     echo stage $stage: Word error rate evaluation
 

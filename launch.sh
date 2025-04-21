@@ -93,6 +93,8 @@ CPU_TIME=${CPU_TIME:-2-0:00:00}      # 2 days
 CPUS_PER_TASK=${CPUS:-8}             # 8 CPUs per task
 MEM_PER_CPU=${MEM:-2000}             # 2000MB per CPU
 GPU_TYPE=${GPU_TYPE:-}               # GPU type
+CPU_OTHER_OPTS=${CPU_OTHER_OPTS:-}   # other options for cpu
+GPU_OTHER_OPTS=${GPU_OTHER_OPTS:-}   # other options for gpu
 
 # Print configuration summary
 echo -e "${BLUE}=== Configuration Summary ===${NC}"
@@ -182,8 +184,7 @@ for ((i=0; i<${#pred_list[@]}; i++)); do
             --time "${GPU_TIME}" \
             --cpus-per-task "${CPUS_PER_TASK}" \
             --mem-per-cpu "${MEM_PER_CPU}M" \
-            --account bbjs-delta-gpu \
-            ${GPU_GRES} \
+            ${GPU_GRES} ${GPU_OTHER_OPTS} \
             -J "gpu_${job_prefix}" \
             -o "${SCORE_DIR}/logs/gpu_${job_prefix}_%j.out" \
             -e "${SCORE_DIR}/logs/gpu_${job_prefix}_%j.err" \
@@ -206,7 +207,7 @@ for ((i=0; i<${#pred_list[@]}; i++)); do
             --time "${CPU_TIME}" \
             --cpus-per-task "${CPUS_PER_TASK}" \
             --mem-per-cpu "${MEM_PER_CPU}M" \
-            --account bbjs-delta-cpu \
+            ${CPU_OTHER_OPTS} \
             -J "cpu_${job_prefix}" \
             -o "${SCORE_DIR}/logs/cpu_${job_prefix}_%j.out" \
             -e "${SCORE_DIR}/logs/cpu_${job_prefix}_%j.err" \
