@@ -28,8 +28,9 @@ def calculate_average_wer(file_path):
                 total_insert += wer_insert
                 total_replace += wer_replace
                 total_length += ref_text_length
-    print("wer: {}".format((total_delete + total_insert+ total_replace) / total_length))
-
+    print(
+        "wer: {}".format((total_delete + total_insert + total_replace) / total_length)
+    )
 
 
 if __name__ == "__main__":
