@@ -3,8 +3,7 @@
 if [ -d "emotion2vec" ]; then
     rm -rf emotion2vec
 fi
-
-bash ./install_fairseq.sh
+./install_fairseq.sh || { echo "fairseq installation exit"; }
 
 # # NOTE(jiatong): a versa-specialized implementation for emo2vec
 git clone https://github.com/ftshijt/emotion2vec.git

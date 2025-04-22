@@ -1,8 +1,5 @@
 #!/bin/bash
 
-# Exit on any error
-set -e
-
 # Repository information
 REPO_OWNER="ftshijt"
 REPO_NAME="fairseq"
