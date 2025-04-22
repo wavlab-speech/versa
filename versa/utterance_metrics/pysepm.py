@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
 #  Apache 2.0  (http://www.apache.org/licenses/LICENSE-2.0)
 
+import librosa
 import logging
 
 logger = logging.getLogger(__name__)
 import numpy as np
+
 
 try:
     import pysepm  # Import the pysepm package for speech quality metrics
