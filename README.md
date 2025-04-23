@@ -3,9 +3,11 @@
 # VERSA: Versatile Evaluation of Speech and Audio
 
 [![GitHub stars](https://img.shields.io/github/stars/wavlab-speech/versa?style=social)](https://github.com/wavlab-speech/versa/stargazers)
+![CI](https://github.com/wavlab-speech/versa/actions/workflows/ci.yml/badge.svg)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![arXiv](https://img.shields.io/badge/arXiv-2412.17667-b31b1b.svg)](https://arxiv.org/abs/2412.17667)
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
+
 
 
 VERSA (Versatile Evaluation of Speech and Audio) is a comprehensive toolkit for evaluating speech and audio quality. It provides seamless access to over 80 evaluation/profiling metrics with 10x variants, enabling researchers and developers to assess audio quality through multiple dimensions.
