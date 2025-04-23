@@ -418,11 +418,12 @@ def load_score_modules(score_config, use_gt=True, use_gt_text=False, use_gpu=Fal
         
         elif config["name"] == "w2v2_dimensional_emotion":
             from versa import w2v2_emo_dim_setup, w2v2_emo_dim_metric
-            emo_utils = w2v2_emo_dim_setup()
-            score_modules["dimensional_emotion"] = {
+            args_cache = w2v2_emo_dim_setup()
+            score_modules["w2v2_dimensional_emotion"] = {
                 "module": w2v2_emo_dim_metric,
-                "model": emo_utils["model"],
+                "args": args_cache,
             }
+            logging.info("Initiate w2v2_dimensional_emotion successfully")
 
         elif config["name"] == "se_snr":
             logging.info("Loading se_snr metrics with reference")
@@ -919,7 +920,7 @@ def use_score_modules(score_modules, gen_wav, gt_wav, gen_sr, text=None):
             score = score_modules[key]["module"](
                 score_modules[key]["model"], gen_wav, fs=gen_sr
             )
-        elif key in ["vad", "lid"]:
+        elif key in ["vad", "lid", "w2v2_dimensional_emotion"]:
             score = score_modules[key]["module"](
                 score_modules[key]["args"],
                 gen_wav,
