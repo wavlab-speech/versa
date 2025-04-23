@@ -414,6 +414,14 @@ def load_score_modules(score_config, use_gt=True, use_gt_text=False, use_gpu=Fal
                 "model": model,
             }
             logging.info("Initiate emo2vec successfully")
+        
+        elif config["name"] == "w2v2_dimensional_emotion":
+            from versa import w2v2_emo_dim_setup, w2v2_emo_dim_metric
+            emo_utils = w2v2_emo_dim_setup()
+            score_modules["dimensional_emotion"] = {
+                "module": w2v2_emo_dim_metric,
+                "model": emo_utils["model"],
+            }
 
         elif config["name"] == "se_snr":
             logging.info("Loading se_snr metrics with reference")
