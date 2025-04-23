@@ -42,6 +42,7 @@ def audio_loader_setup(audio, io):
 
 
 def load_score_modules(score_config, use_gt=True, use_gt_text=False, use_gpu=False):
+    assert score_config, "no scoring function is provided"
     score_modules = {}
     for config in score_config:
         print(config, flush=True)
