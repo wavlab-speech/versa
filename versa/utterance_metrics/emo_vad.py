@@ -14,13 +14,11 @@ import numpy as np
 
 logger = logging.getLogger(__name__)
 
+import torch
+import torch.nn as nn
 from transformers import Wav2Vec2Processor
 from transformers.models.wav2vec2.modeling_wav2vec2 import (
-    Wav2Vec2Model,
-    Wav2Vec2PreTrainedModel,
-)
-import torch.nn as nn
-import torch
+    Wav2Vec2Model, Wav2Vec2PreTrainedModel)
 
 
 class RegressionHead(nn.Module):
@@ -59,8 +57,8 @@ class EmotionModel(Wav2Vec2PreTrainedModel):
         self.init_weights()
 
     def forward(
-            self,
-            input_values,
+        self,
+        input_values,
     ):
 
         outputs = self.wav2vec2(input_values)
@@ -70,7 +68,10 @@ class EmotionModel(Wav2Vec2PreTrainedModel):
 
         return hidden_states, logits
 
-def w2v2_emo_dim_setup(model_tag="default", model_path=None, model_config=None, use_gpu=False):
+
+def w2v2_emo_dim_setup(
+    model_tag="default", model_path=None, model_config=None, use_gpu=False
+):
     if use_gpu:
         device = "cuda"
     else:
@@ -83,8 +84,10 @@ def w2v2_emo_dim_setup(model_tag="default", model_path=None, model_config=None, 
         if model_tag == "default":
             model_tag = "audeering/wav2vec2-large-robust-12-ft-emotion-msp-dim"
         model = EmotionModel.from_pretrained(model_tag).to(device)
-    processor = Wav2Vec2Processor.from_pretrained("audeering/wav2vec2-large-robust-12-ft-emotion-msp-dim")
-    emo_utils = {'model':model, 'processor':processor, 'device':device}
+    processor = Wav2Vec2Processor.from_pretrained(
+        "audeering/wav2vec2-large-robust-12-ft-emotion-msp-dim"
+    )
+    emo_utils = {"model": model, "processor": processor, "device": device}
     return emo_utils
 
 
@@ -102,13 +105,13 @@ def dim_emo_pred(emo_utils, pred_x, fs):
     # NOTE(jiatong): only work for 16000 Hz
     if fs != 16000:
         pred_x = librosa.resample(pred_x, orig_sr=fs, target_sr=16000)
-    pred_x = emo_utils['processor'](pred_x, sampling_rate=16000)
-    pred_x = pred_x['input_values'][0]
+    pred_x = emo_utils["processor"](pred_x, sampling_rate=16000)
+    pred_x = pred_x["input_values"][0]
     pred_x = pred_x.reshape(1, -1)
-    pred_x = torch.from_numpy(pred_x).to(emo_utils['device'])
+    pred_x = torch.from_numpy(pred_x).to(emo_utils["device"])
     with torch.no_grad():
-        avd_emo = emo_utils['model'](pred_x)[1].squeeze(0).cpu().numpy()
-    
+        avd_emo = emo_utils["model"](pred_x)[1].squeeze(0).cpu().numpy()
+
     return {"aro_val_dom_emo": avd_emo}
 
 
