@@ -11,6 +11,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
+      with:
+        ref: ${{ github.head_ref }}
+        fetch-depth: 0
     - name: Set up Python
       uses: actions/setup-python@v4
       with:
@@ -20,17 +23,21 @@ jobs:
         python -m pip install --upgrade pip
         pip install black flake8 pre-commit
         pip install -e .
-    - name: Run pre-commit hooks
+    - name: Run pre-commit hooks with auto-fix
       run: |
         pre-commit run --all-files
-    - name: Check formatting with Black
-      run: |
-        black --check versa scripts test *.py
+    - name: Commit auto-fixes
+      uses: stefanzweifel/git-auto-commit-action@v4
+      with:
+        commit_message: "style: auto-fix code formatting with pre-commit"
+        branch: ${{ github.head_ref }}
+    # Remove black check since pre-commit will handle it
     - name: Lint with flake8
       run: |
         flake8 versa scripts test *.py --count --select=E9,F63,F7,F82 --show-source --statistics
         flake8 versa scripts test *.py --count --exit-zero --max-line-length=127 --statistics
 
+  # Rest of the jobs remain unchanged
   install-tests:
     needs: code-quality
     runs-on: ${{ matrix.os }}
