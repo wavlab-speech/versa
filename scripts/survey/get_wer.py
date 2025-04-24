@@ -5,6 +5,7 @@ def calculate_average_wer(file_path):
     total_wer = 0
     line_count = 0
 
+    total_delete, total_insert, total_replace, total_length = 0, 0, 0, 0
     with open(file_path, "r") as file:
         for line in file:
             data = eval(line.strip())
@@ -16,18 +17,20 @@ def calculate_average_wer(file_path):
                 ref_text_length = data["whisper_wer_equal"] + wer_delete + wer_replace
 
             else:
+                continue
                 wer_delete = data["espnet_wer_delete"]
                 wer_insert = data["espnet_wer_insert"]
                 wer_replace = data["espnet_wer_replace"]
                 ref_text_length = data["espnet_wer_equal"] + wer_delete + wer_replace
 
             if ref_text_length > 0:
-                wer = (wer_delete + wer_insert + wer_replace) / ref_text_length
-                total_wer += wer
-                line_count += 1
-
-    average_wer = total_wer / line_count if line_count > 0 else 0
-    print("Average WER:", average_wer)
+                total_delete += wer_delete
+                total_insert += wer_insert
+                total_replace += wer_replace
+                total_length += ref_text_length
+    print(
+        "wer: {}".format((total_delete + total_insert + total_replace) / total_length)
+    )
 
 
 if __name__ == "__main__":

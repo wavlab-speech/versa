@@ -43,6 +43,8 @@ PRED_WAVSCP=$1
 GT_WAVSCP=$2
 SCORE_DIR=$3
 SPLIT_SIZE=$4
+IO_TYPE=${IO_TYPE:-soundfile}
+echo ${IO_TYPE}
 
 # Default to running both CPU and GPU jobs
 RUN_CPU=true
@@ -84,8 +86,6 @@ fi
 # Configure Slurm partitions (can be modified based on your cluster setup)
 GPU_PART=${GPU_PARTITION:-general}
 CPU_PART=${CPU_PARTITION:-general}
-GPU_PART=gpuA40x4
-CPU_PART=cpu
 
 # Configure resource requirements
 GPU_TIME=${GPU_TIME:-2-0:00:00}      # 2 days
@@ -93,6 +93,8 @@ CPU_TIME=${CPU_TIME:-2-0:00:00}      # 2 days
 CPUS_PER_TASK=${CPUS:-8}             # 8 CPUs per task
 MEM_PER_CPU=${MEM:-2000}             # 2000MB per CPU
 GPU_TYPE=${GPU_TYPE:-}               # GPU type
+CPU_OTHER_OPTS=${CPU_OTHER_OPTS:-}   # other options for cpu
+GPU_OTHER_OPTS=${GPU_OTHER_OPTS:-}   # other options for gpu
 
 # Print configuration summary
 echo -e "${BLUE}=== Configuration Summary ===${NC}"
@@ -182,8 +184,7 @@ for ((i=0; i<${#pred_list[@]}; i++)); do
             --time "${GPU_TIME}" \
             --cpus-per-task "${CPUS_PER_TASK}" \
             --mem-per-cpu "${MEM_PER_CPU}M" \
-            --account bbjs-delta-gpu \
-            ${GPU_GRES} \
+            ${GPU_GRES} ${GPU_OTHER_OPTS} \
             -J "gpu_${job_prefix}" \
             -o "${SCORE_DIR}/logs/gpu_${job_prefix}_%j.out" \
             -e "${SCORE_DIR}/logs/gpu_${job_prefix}_%j.err" \
@@ -191,7 +192,8 @@ for ((i=0; i<${#pred_list[@]}; i++)); do
                 "${sub_pred_wavscp}" \
                 "${sub_gt_wavscp}" \
                 "${SCORE_DIR}/result/$(basename "${sub_pred_wavscp}").result.gpu.txt" \
-                egs/speech_gpu.yaml)
+                egs/universa_prepare/gpu_subset.yaml \
+                ${IO_TYPE})
 
         echo "GPU:${gpu_job_id} CHUNK:$((i+1))/${#pred_list[@]} FILE:${job_prefix}" >> "${JOB_IDS_FILE}"
         echo -e "  Submitted GPU job: ${gpu_job_id}"
@@ -205,7 +207,7 @@ for ((i=0; i<${#pred_list[@]}; i++)); do
             --time "${CPU_TIME}" \
             --cpus-per-task "${CPUS_PER_TASK}" \
             --mem-per-cpu "${MEM_PER_CPU}M" \
-            --account bbjs-delta-cpu \
+            ${CPU_OTHER_OPTS} \
             -J "cpu_${job_prefix}" \
             -o "${SCORE_DIR}/logs/cpu_${job_prefix}_%j.out" \
             -e "${SCORE_DIR}/logs/cpu_${job_prefix}_%j.err" \
@@ -213,7 +215,8 @@ for ((i=0; i<${#pred_list[@]}; i++)); do
                 "${sub_pred_wavscp}" \
                 "${sub_gt_wavscp}" \
                 "${SCORE_DIR}/result/$(basename "${sub_pred_wavscp}").result.cpu.txt" \
-                egs/speech_cpu.yaml)
+            egs/universa_prepare/cpu_subset.yaml \
+                ${IO_TYPE})
 
         echo "CPU:${cpu_job_id} CHUNK:$((i+1))/${#pred_list[@]} FILE:${job_prefix}" >> "${JOB_IDS_FILE}"
         echo -e "  Submitted CPU job: ${cpu_job_id}"

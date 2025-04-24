@@ -12,3 +12,5 @@
 #            use `speech` for speech evaluation
 - name: visqol
   model: default
+
+- name: signal_metric

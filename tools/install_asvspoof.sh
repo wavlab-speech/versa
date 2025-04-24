@@ -1,2 +1,4 @@
+#!/bin/bash
+
 ## cloning the AASIST repo into the checkpoint folder
-git clone git@github.com:clovaai/aasist checkpoints/aasist
+git clone https://github.com/clovaai/aasist.git checkpoints/aasist

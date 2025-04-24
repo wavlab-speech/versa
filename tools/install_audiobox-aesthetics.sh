@@ -8,6 +8,6 @@ git clone https://github.com/ftshijt/audiobox-aesthetics.git
 cd audiobox-aesthetics
 
 pip install huggingface_hub
-
+pip install rich
 pip install -e .
 cd ..

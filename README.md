@@ -3,16 +3,18 @@
 # VERSA: Versatile Evaluation of Speech and Audio
 
 [![GitHub stars](https://img.shields.io/github/stars/wavlab-speech/versa?style=social)](https://github.com/wavlab-speech/versa/stargazers)
+![CI](https://github.com/wavlab-speech/versa/actions/workflows/ci.yml/badge.svg)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![arXiv](https://img.shields.io/badge/arXiv-2412.17667-b31b1b.svg)](https://arxiv.org/abs/2412.17667)
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
+
 
 
 VERSA (Versatile Evaluation of Speech and Audio) is a comprehensive toolkit for evaluating speech and audio quality. It provides seamless access to over 80 evaluation/profiling metrics with 10x variants, enabling researchers and developers to assess audio quality through multiple dimensions.
 
 ## 🚀 Features
 
-- **Comprehensive**: 80+ metrics covering perceptual quality, intelligibility, and technical measurements (check [full metrics documentation](https://github.com/wavlab-speech/versa/blob/main/supported_metrics.md) for a complete list)
+- **Comprehensive**: 80+ metrics covering perceptual quality, intelligibility, and technical measurements (check [full metrics documentation](https://github.com/wavlab-speech/versa/blob/main/docs/supported_metrics.md) for a complete list)
 - **Integrated**: Tightly integrated with [ESPnet](https://github.com/espnet/espnet.git)
 - **Flexible**: Support for various input formats (file paths, SCP files, Kaldi-style ARKs)
 - **Scalable**: Built-in support for distributed evaluation using Slurm
@@ -126,7 +128,7 @@ VERSA organizes metrics into four categories:
 3. **Non-match Metrics** - Metrics that work with non-matching references or information from other modalities
 4. **Distributional Metrics** - Metrics that evaluate statistical properties of audio collections
 
-*See the [full metrics documentation](https://github.com/wavlab-speech/versa/blob/main/supported_metrics.md) for a complete list with references.*
+*See the [full metrics documentation](https://github.com/wavlab-speech/versa/blob/main/docs/supported_metrics.md) for a complete list with references.*
 
 ## 📝 Citation
 
@@ -154,11 +156,11 @@ url={https://openreview.net/forum?id=zU0hmbnyQm}
 
 ## 🙏 Acknowledgement
 
-We sincerely thank all the authors of the open-source implementations listed in our [metrics documentation](https://github.com/wavlab-speech/versa/blob/main/supported_metrics.md).
+We sincerely thank all the authors of the open-source implementations listed in our [metrics documentation](https://github.com/wavlab-speech/versa/blob/main/docs/supported_metrics.md).
 
 ## 🤝 Contributing
 
-Contributions are welcome! Please feel free to submit a Pull Request. Please check the [contributing guideline](https://github.com/wavlab-speech/versa/blob/main/contributing.md) first.
+Contributions are welcome! Please feel free to submit a Pull Request. Please check the [contributing guideline](https://github.com/wavlab-speech/versa/blob/main/docs/contributing.md) first.
 
 ## 📄 License
 
