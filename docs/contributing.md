@@ -40,7 +40,7 @@ For Docs, please add your metrics to the `README.md` (List of Metrics Section). 
 
 For Tests, please add the local test functions at the corresponding metrics scripts temporarily (we will enable CI test in later stages).
 - For metrics included in the default setup, you can add the test metric value in `test/test_general.py`
-- For metrics not included in the default installation, you can add the test function in `test/test_{metric_name}.py`
+- For metrics not included in the default installation, you can add the test function in `test/test_metrics/test_{metric_name}.py`
 
 For Examples, please put a separate `yaml` style configuration file in `egs/separate_metrics` following other examples.
 
