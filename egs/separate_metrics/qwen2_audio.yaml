@@ -2,13 +2,55 @@
 # Inference pipeline follow the qwen2_audio release https://github.com/QwenLM/Qwen2-Audio
 
 # exmaple of using a customized prompt (we offer default ones)
-- name: qwen2_audio_speaker_age
-  prompt: What is the age of the speaker? Please answer in 'child', '20s', '30s', '40s', '50s', '60s', '70s', 'senior'. 
+# 1. Speaker Characteristics
+- name: qwen2_audio_speaker_count
 
 - name: qwen2_audio_speaker_gender
 
-- name: qwen2_audio_speech_emotion
+- name: qwen2_audio_speaker_age
 
+# To add customized prompt, use following item:
+# - name: qwen2_audio_speaker_age
+#   prompt: What is the age of the speaker? Please answer in 'child', '20s', '30s', '40s', '50s', '60s', '70s', 'senior'. 
+
+
+- name: qwen2_audio_speech_impairment
+
+# 2. Voice Properties
+- name: qwen2_audio_voice_pitch
+
+- name: qwen2_audio_pitch_range
+
+- name: qwen2_audio_voice_type
+
+- name: qwen2_audio_speech_volume_level
+
+# 3. Speech Content
 - name: qwen2_audio_language
 
-- name: qwen2_audio_speaker_count
+- name: qwen2_audio_speech_register
+
+- name: qwen2_audio_vocabulary_complexity
+
+- name: qwen2_audio_speech_purpose
+
+# 4. Speech Delivery
+- name: qwen2_audio_speech_emotion
+
+- name: qwen2_audio_speech_clarity
+
+- name: qwen2_audio_speech_rate
+
+- name: qwen2_audio_speaking_style
+
+- name: qwen2_audio_laughter_crying
+
+# 5. Interaction Patterns
+- name: qwen2_audio_overlapping_speech
+
+# 6. Recording Environment
+- name: qwen2_audio_speech_background_environment
+
+- name: qwen2_audio_recording_quality
+
+- name: qwen2_audio_channel_type
