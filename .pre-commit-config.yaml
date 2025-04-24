@@ -4,3 +4,12 @@ repos:
     hooks:
     -   id: black
         files: 'versa/|scripts/|test/|setup.py$'
+        # Black will auto-fix by default when run
+
+# Add this to enable auto-updates
+ci:
+  autofix_commit_msg: |
+    [pre-commit.ci] auto fixes from pre-commit hooks
+  autoupdate_schedule: weekly
+  autoupdate_commit_msg: |
+    [pre-commit.ci] pre-commit autoupdate
