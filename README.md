@@ -38,7 +38,7 @@ pip install .
 
 VERSA aligns with original APIs provided by algorithm developers rather than redistributing models. The core package includes many metrics by default, but some require additional installation.
 
-For metrics marked without "x" in the "Auto-Install" column of our metrics tables, please check the [installation guide](https://github.com/wavlab-speech/versa?tab=readme-ov-file#list-of-metrics) or use the installers provided in the `tools` directory.
+For metrics marked without "x" in the "Auto-Install" column of our metrics tables, please use the installers provided in the `tools` directory.
 
 
 ## 🧪 Quick Testing
