@@ -4,7 +4,7 @@ if [ -d "scoreq" ]; then
     rm -rf scoreq
 fi
 
-bash ./install_fairseq.sh
+./install_fairseq.sh || { echo "fairseq installation exit"; }
 
 # # NOTE(jiatong): a versa-specialized implementation for scoreq
 git clone https://github.com/ftshijt/scoreq.git

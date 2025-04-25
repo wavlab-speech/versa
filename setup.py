@@ -5,6 +5,7 @@ setup(
     version="0.0.1",
     packages=find_packages(),
     install_requires=[
+        "accelerate",
         "audioread",
         "ci-sdr",
         "Cython",
@@ -50,6 +51,7 @@ setup(
         "torch",
         "torch-complex",
         "torchaudio",
+        "torchlibrosa",
         "s3prl",
         "transformers>=4.36.2",
         "espnet_model_zoo",
