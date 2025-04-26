@@ -97,7 +97,7 @@ jobs:
     - name: Run metric tests
       run: |
         pytest -xvs test/test_metrics/test_stoi.py
-        pytest -xvs test/test/metrics/test_asr_matching.py
+        pytest -xvs test/test_metrics/test_asr_matching.py
         # Additional metric tests can be added here as they're developed
         # pytest -xvs test/test_metrics/test_pesq.py
         # pytest -xvs test/test_metrics/test_sisdr.py
