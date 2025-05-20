@@ -51,6 +51,7 @@ setup(
         "torch",
         "torch-complex",
         "torchaudio",
+        "torchlibrosa",
         "s3prl",
         "transformers>=4.36.2",
         "espnet_model_zoo",
