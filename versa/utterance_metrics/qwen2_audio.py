@@ -297,7 +297,7 @@ def qwen2_base_metric(
     pred_x: np.ndarray,
     fs: int = 16000,
     custom_prompt: Optional[str] = None,
-    max_length: int = 500,
+    max_length: int = 1000,
 ) -> str:
     """Calculate the base metric from Qwen2Audio results.
 
