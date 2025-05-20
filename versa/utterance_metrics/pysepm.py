@@ -175,21 +175,25 @@ def pysepm_metric(pred_x, gt_x, fs, frame_len=0.03, overlap=0.75):
     cep_dist_score = cd(pred_x, gt_x, fs)
 
     if fs == 8000:
-        composite_score = composite(pred_x, gt_x, fs)
+        composite_score = composite(pred_x, gt_x, 8000)
+        ncm_score = ncm(pred_x, gt_x, 8000)
     elif fs < 16000:
         logging.info("not support fs {}, resample to 8khz".format(fs))
         new_gt_x = librosa.resample(gt_x, orig_sr=fs, target_sr=8000)
         new_pred_x = librosa.resample(pred_x, orig_sr=fs, target_sr=8000)
+        composite_score = composite(pred_x, gt_x, 8000)
+        ncm_score = ncm(pred_x, gt_x, 8000)
     elif fs == 16000:
-        composite_score = composite(pred_x, gt_x, fs)
+        composite_score = composite(pred_x, gt_x, 16000)
+        ncm_score = ncm(pred_x, gt_x, 16000)
     else:
         logging.info("not support fs {}, resample to 16khz".format(fs))
         new_gt_x = librosa.resample(gt_x, orig_sr=fs, target_sr=16000)
         new_pred_x = librosa.resample(pred_x, orig_sr=fs, target_sr=16000)
-        composite_score = composite(pred_x, gt_x, fs)
+        composite_score = composite(pred_x, gt_x, 16000)
+        ncm_score = ncm(pred_x, gt_x, 16000)
 
     csii_score = csii(pred_x, gt_x, fs)
-    ncm_score = ncm(pred_x, gt_x, fs)
 
     return {
         "pysepm_fwsegsnr": fwsegsnr_score,

@@ -43,6 +43,9 @@ following categories:
     - qwen2_recording_quality_metric: Technical quality of recording
     - qwen2_channel_type_metric: Equipment used for recording
 
+7. Vocal Evaluation
+    - singing_technique: Singing Techniques (styles)
+
 Each function follows the same signature pattern:
     qwen_utils: Dictionary containing model, processor, and conversation
     pred_x: Audio signal as numpy array
@@ -255,6 +258,22 @@ Choose exactly one category:
 - Distant microphone: recorded from a distance, may have room echo
 - Radio/broadcast: compressed audio with limited frequency range
 - Surveillance/hidden mic: typically lower quality with background noise""",
+    # Vocal Evaluation
+    "singing_technique": """You are an expert in vocal performance and singing technique.
+Given the following audio clip of a singing voice, your task is to identify the predominant singing style used.
+Choose one of the following seven styles based on the vocal characteristics:
+
+Breathy: Light, airy voice with noticeable breathiness.
+Falsetto: High-pitched, flute-like sound, especially for male voices.
+Mixed Voice: A blend of chest and head voice, balanced resonance.
+Pharyngeal: Focused, twangy tone with forward placement in the pharynx.
+Glissando: Smooth, sliding transitions between notes.
+Vibrato: Regular, pulsating pitch variation while sustaining a note.
+Control: A neutral, well-supported tone without stylistic effects.
+
+Carefully listen to the tone quality, pitch control, resonance, and transitions in the audio.
+Then, output only the predicted singing style from the list above.
+""",
 }
 
 
@@ -424,6 +443,7 @@ qwen2_speech_background_environment_metric = create_metric_fn(
 qwen2_recording_quality_metric = create_metric_fn("recording_quality")
 qwen2_channel_type_metric = create_metric_fn("channel_type")
 
+singing_technique = create_metric_fn("singing_technique")
 
 if __name__ == "__main__":
     a = np.random.random(16000)
