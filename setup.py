@@ -28,7 +28,8 @@ setup(
         "mir-eval",
         "omegaconf",
         "onnxruntime",
-        "openai-whisper",
+        # NOTE(jiatong): use the latest commit for python 3.13
+        "openai-whisper @ git+https://github.com/openai/whisper.git",
         "opt-einsum",
         "pesq",
         "protobuf",

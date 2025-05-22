@@ -620,6 +620,7 @@ def load_score_modules(score_config, use_gt=True, use_gt_text=False, use_gpu=Fal
         elif "qwen_omni" in config["name"]:
             logging.info("Loading qwen omni model")
             from versa import qwen_omni_model_setup
+
             if "qwen_omni" not in score_modules.keys():
                 qwen_omni_model = qwen_omni_model_setup(
                     model_tag=config.get("model_tag", "default"),
@@ -631,6 +632,7 @@ def load_score_modules(score_config, use_gt=True, use_gt_text=False, use_gpu=Fal
 
             if config["name"] == "qwen_omni_singing_technique":
                 from versa import qwen_omni_singing_technique_metric
+
                 score_modules["qwen_omni_singing_technique"] = {
                     "module": qwen_omni_singing_technique_metric,
                     "prompt": config.get("prompt", None),
@@ -812,7 +814,7 @@ def load_score_modules(score_config, use_gt=True, use_gt_text=False, use_gpu=Fal
             # 7. Vocal Evaluation
             elif config["name"] == "qwen2_audio_singing_technique":
                 from versa import qwen2_singing_technique_metric
-                
+
                 score_modules["qwen2_audio_singing_technique"] = {
                     "module": qwen2_singing_technique_metric,
                     "prompt": config.get("prompt", None),
