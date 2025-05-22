@@ -11,7 +11,6 @@ jobs:
     steps:
     - uses: actions/checkout@v3
       with:
-        ref: ${{ github.event.pull_request.head.sha }}
         fetch-depth: 0
     - name: Set up Python
       uses: actions/setup-python@v4
@@ -29,7 +28,7 @@ jobs:
       uses: stefanzweifel/git-auto-commit-action@v4
       with:
         commit_message: "style: auto-fix code formatting with pre-commit"
-        branch: ${{ github.head_ref }}
+        branch: ${{ github.head_ref || github.ref_name }}
     # Remove black check since pre-commit will handle it
     - name: Lint with flake8
       run: |
