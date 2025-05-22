@@ -44,7 +44,7 @@ following categories:
     - qwen2_channel_type_metric: Equipment used for recording
 
 7. Vocal Evaluation
-    - singing_technique: Singing Techniques (styles)
+    - qwen2_singing_technique_metric: Singing Techniques (styles)
 
 Each function follows the same signature pattern:
     qwen_utils: Dictionary containing model, processor, and conversation
@@ -443,7 +443,7 @@ qwen2_speech_background_environment_metric = create_metric_fn(
 qwen2_recording_quality_metric = create_metric_fn("recording_quality")
 qwen2_channel_type_metric = create_metric_fn("channel_type")
 
-singing_technique = create_metric_fn("singing_technique")
+qwen2_singing_technique_metric = create_metric_fn("singing_technique")
 
 if __name__ == "__main__":
     a = np.random.random(16000)

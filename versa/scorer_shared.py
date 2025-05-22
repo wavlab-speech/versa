@@ -617,6 +617,26 @@ def load_score_modules(score_config, use_gt=True, use_gt_text=False, use_gpu=Fal
             }
             logging.info("Initiate audiobox aesthetics metric successfully")
 
+        elif "qwen_omni" in config["name"]:
+            logging.info("Loading qwen omni model")
+            from versa import qwen_omni_model_setup
+            if "qwen_omni" not in score_modules.keys():
+                qwen_omni_model = qwen_omni_model_setup(
+                    model_tag=config.get("model_tag", "default"),
+                )
+                score_modules["qwen_omni"] = {
+                    "module": qwen_omni_model,
+                    "start_prompt": config.get("start_prompt", None),
+                }
+
+            if config["name"] == "qwen_omni_singing_technique":
+                from versa import qwen_omni_singing_technique_metric
+                score_modules["qwen_omni_singing_technique"] = {
+                    "module": qwen_omni_singing_technique_metric,
+                    "prompt": config.get("prompt", None),
+                }
+            # To add qwen-omni modules for others
+
         elif "qwen2_audio" in config["name"]:
             logging.info("Loading qwen2-audio model")
             from versa import qwen2_model_setup
@@ -789,6 +809,15 @@ def load_score_modules(score_config, use_gt=True, use_gt_text=False, use_gpu=Fal
                     "prompt": config.get("prompt", None),
                 }
 
+            # 7. Vocal Evaluation
+            elif config["name"] == "qwen2_audio_singing_technique":
+                from versa import qwen2_singing_technique_metric
+                
+                score_modules["qwen2_audio_singing_technique"] = {
+                    "module": qwen2_singing_technique_metric,
+                    "prompt": config.get("prompt", None),
+                }
+
             logging.info(
                 "Initiate qwen2 audio metric: {} successfully".format(config["name"])
             )
@@ -800,9 +829,12 @@ def process_cache_info(cache_info, score_modules, output_file):
     for utt_info in cache_info:
         key, gen_wav, gt_wav, gen_sr, text = utt_info
         utt_score = {"key": key}
-        utt_score.update(
-            use_score_modules(score_modules, gen_wav, gt_wav, gen_sr, text)
-        )
+        try:
+            utt_score.update(
+                use_score_modules(score_modules, gen_wav, gt_wav, gen_sr, text)
+            )
+        except Exception as e:
+            print("error processing file: {} with error {}".format(key, e))
         batch_score_info.append(utt_score)
         if output_file is not None:
             printable_result = json.dumps(utt_score, default=default_numpy_serializer)
@@ -966,6 +998,15 @@ def use_score_modules(score_modules, gen_wav, gt_wav, gen_sr, text=None):
             # Support qwen2_audio metrics
             score = score_modules[key]["module"](
                 score_modules["qwen2_audio"]["module"],
+                gen_wav,
+                gen_sr,
+                custom_prompt=score_modules[key]["prompt"],
+            )
+        elif "qwen_omni" in key:
+            if key == "qwen_omni":
+                continue
+            score = score_modules[key]["module"](
+                score_modules["qwen_omni"]["module"],
                 gen_wav,
                 gen_sr,
                 custom_prompt=score_modules[key]["prompt"],

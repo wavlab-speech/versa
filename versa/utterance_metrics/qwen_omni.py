@@ -50,7 +50,7 @@ Each function follows the same signature pattern:
     custom_prompt: Optional custom prompt to override default
 
 7. Vocal Evaluation
-    - singing_technique: Singing Techniques (styles)
+    - qwen_omni_singing_technique_metric: Singing Techniques (styles)
 
 Each function returns a dictionary with a single key-value pair where
 the key is the metric name prefixed with "qwen_" and the value is the
@@ -59,20 +59,19 @@ model's response.
 
 import copy
 import logging
+import torch
 from typing import Dict, Optional, Any, Union
 
 import librosa
 import numpy as np
 
 try:
-    from qwen_omni_utils import process_mm_info
     from transformers import Qwen2_5OmniForConditionalGeneration, Qwen2_5OmniProcessor
 except ImportError:
     logging.warning(
         "If qwen2_5_omni is not found with key error, please install the latest version of transformers and retry."
     )
     Qwen2_5OmniForConditionalGeneration, Qwen2_5OmniProcessor = None, None
-    process_mm_info = None
 
 from versa.utterance_metrics.qwen2_audio import DEFAULT_PROMPTS
 
@@ -99,10 +98,11 @@ def qwen_omni_model_setup(
     processor = Qwen2_5OmniProcessor.from_pretrained(model_tag)
     model = Qwen2_5OmniForConditionalGeneration.from_pretrained(
         model_tag,
-        torch_dtype=torch.bfloat16,
-        device_map="auto",
+        torch_dtype="auto",
+        device_map="cuda",
         # attn_implementation="flash_attention_2", NOTE(jiatong): to add
     )
+    model.to("cuda")
     start_conversation = [
         {"role": "system", "content": [{"type": "text", "text": start_prompt}]}
     ]
@@ -145,7 +145,7 @@ def qwen_omni_base_metric(
             "role": "user",
             "content": [
                 {"type": "audio", "audio": None},
-                {"type": "text", "text": prompt},
+                {"type": "text", "text": custom_prompt},
             ],
         },
     )
@@ -251,7 +251,7 @@ qwen_omni_recording_quality_metric = create_metric_fn("recording_quality")
 qwen_omni_channel_type_metric = create_metric_fn("channel_type")
 
 
-singing_technique = create_metric_fn("singing_technique")
+qwen_omni_singing_technique_metric = create_metric_fn("singing_technique")
 
 if __name__ == "__main__":
     a = np.random.random(16000)

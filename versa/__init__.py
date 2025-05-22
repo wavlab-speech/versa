@@ -83,6 +83,11 @@ from versa.utterance_metrics.qwen2_audio import (
     qwen2_vocabulary_complexity_metric,
     qwen2_voice_pitch_metric,
     qwen2_voice_type_metric,
+    qwen2_singing_technique_metric,
+)
+from versa.utterance_metrics.qwen_omni import (
+    qwen_omni_model_setup,
+    qwen_omni_singing_technique_metric
 )
 from versa.utterance_metrics.scoreq import (
     scoreq_nr,
