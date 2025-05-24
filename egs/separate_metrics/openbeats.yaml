@@ -1,0 +1,12 @@
+# Metrics with OpenBEATs
+# Inference pipeline is released via VERSA!
+
+# 1. Class prediction
+
+# TODO(shikhar): Add checkpoints for fine-tuned models.
+# - name: openbeats_class_prediction
+#   model_path: /work/nvme/bbjs/sbharadwaj/7Msounds/exp/beats_iter1_large1.tune_lr1.0e-4_warmup40000_bins1600000_totalsteps400000/epoch_latest.pt
+
+# 2. Embedding extraction
+- name: openbeats_embedding_extraction
+  model_path: /work/nvme/bbjs/sbharadwaj/7Msounds/exp/beats_iter1_large1.tune_lr1.0e-4_warmup40000_bins1600000_totalsteps400000/epoch_latest.pt

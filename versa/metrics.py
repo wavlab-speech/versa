@@ -31,6 +31,8 @@ STR_METRIC = [
     "espnet_hyp_text",
     "owsm_hyp_text",
     "whisper_hyp_text",
+    "openbeats_class_prediction",
+    "openbeats_embedding_extraction",  # HACK: using STR_METRIC to bypass summarization
 ]
 
 NUM_METRIC = [

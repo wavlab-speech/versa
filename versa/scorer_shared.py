@@ -11,6 +11,7 @@ import soundfile as sf
 import yaml
 from tqdm import tqdm
 
+
 from versa.metrics import STR_METRIC, NUM_METRIC
 from versa.utils_shared import (
     check_all_same,
@@ -823,6 +824,46 @@ def load_score_modules(score_config, use_gt=True, use_gt_text=False, use_gpu=Fal
             logging.info(
                 "Initiate qwen2 audio metric: {} successfully".format(config["name"])
             )
+
+        elif config["name"] == "openbeats_class_prediction":
+            from versa import openbeats_setup, openbeats_class_prediction
+
+            assert (
+                "model_path" in config
+            ), "model_path is required for openbeats_class_prediction"
+            logging.info(
+                f"Loading OpenBEATs class prediction using checkpoint {config.get('model_path')}"
+            )
+            model = openbeats_setup(
+                model_path=config.get("model_path", None),
+                use_gpu=use_gpu,
+            )
+
+            score_modules["openbeats_class_prediction"] = {
+                "module": openbeats_class_prediction,
+                "model": model,
+            }
+            logging.info("Initialized OpenBEATs class prediction successfully.")
+
+        elif config["name"] == "openbeats_embedding_extraction":
+            from versa import openbeats_setup, openbeats_embedding_extraction
+
+            assert (
+                "model_path" in config
+            ), "model_path is required for openbeats_embedding_extraction"
+            logging.info(
+                f"Loading OpenBEATs embedding extraction using checkpoint {config.get('model_path')}"
+            )
+            model = openbeats_setup(
+                model_path=config.get("model_path", None),
+                use_gpu=use_gpu,
+            )
+
+            score_modules["openbeats_embedding_extraction"] = {
+                "module": openbeats_embedding_extraction,
+                "model": model,
+            }
+            logging.info("Initialized OpenBEATs embedding extraction successfully.")
     return score_modules
 
 
@@ -1012,6 +1053,18 @@ def use_score_modules(score_modules, gen_wav, gt_wav, gen_sr, text=None):
                 gen_wav,
                 gen_sr,
                 custom_prompt=score_modules[key]["prompt"],
+            )
+        elif key == "openbeats_class_prediction":
+            score = score_modules[key]["module"](
+                score_modules[key]["model"],
+                gen_wav,
+                gen_sr,
+            )
+        elif key == "openbeats_embedding_extraction":
+            score = score_modules[key]["module"](
+                score_modules[key]["model"],
+                gen_wav,
+                gen_sr,
             )
         else:
             raise NotImplementedError(f"Not supported {key}")
