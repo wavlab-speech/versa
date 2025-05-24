@@ -103,3 +103,9 @@ from versa.utterance_metrics.speaking_rate import (
 )
 from versa.utterance_metrics.squim import squim_metric, squim_metric_no_ref
 from versa.utterance_metrics.srmr import srmr_metric
+from versa.utterance_metrics.openbeats import (
+    openbeats_setup,
+    openbeats_class_prediction,
+    openbeats_embedding_extraction,
+)
+from versa import models
