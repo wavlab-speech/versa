@@ -27,7 +27,7 @@ except ImportError:
     logging.info("Please install pesq with `pip install pesq` and retry")
 
 try:
-    from versa.utterance_metrics.stoi import stoi_metric
+    from versa.utterance_metrics.stoi import stoi_metric, estoi_metric
 except ImportError:
     logging.info("Please install pystoi with `pip install pystoi` and retry")
 
