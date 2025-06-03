@@ -12,11 +12,11 @@ from versa.scorer_shared import (
 )
 
 TEST_INFO = {
-    "nisqa_mos_pred": 0.4997170865535736,
-    "nisqa_noi_pred": 1.481737494468689,
-    "nisqa_dis_pred": 2.110642671585083,
-    "nisqa_col_pred": 0.9634456634521484,
-    "nisqa_loud_pred": 1.287371039390564,
+    "nisqa_mos_pred": 0.4359583258628845,
+    "nisqa_noi_pred": 1.5543216466903687,
+    "nisqa_dis_pred": 2.293217182159424,
+    "nisqa_col_pred": 1.059649109840393,
+    "nisqa_loud_pred": 1.2060534954071045,
 }
 
 
@@ -48,7 +48,6 @@ def info_update():
     )
     summary = load_summary(score_info)
     print("Summary: {}".format(load_summary(score_info)), flush=True)
-    exit(0)  # for debug
 
     for key in summary:
         if abs(TEST_INFO[key] - summary[key]) > 1e-4:

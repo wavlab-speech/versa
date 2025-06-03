@@ -27,7 +27,7 @@ except ImportError:
     logging.info("Please install pesq with `pip install pesq` and retry")
 
 try:
-    from versa.utterance_metrics.stoi import stoi_metric
+    from versa.utterance_metrics.stoi import stoi_metric, estoi_metric
 except ImportError:
     logging.info("Please install pystoi with `pip install pystoi` and retry")
 
@@ -87,7 +87,7 @@ from versa.utterance_metrics.qwen2_audio import (
 )
 from versa.utterance_metrics.qwen_omni import (
     qwen_omni_model_setup,
-    qwen_omni_singing_technique_metric
+    qwen_omni_singing_technique_metric,
 )
 from versa.utterance_metrics.scoreq import (
     scoreq_nr,

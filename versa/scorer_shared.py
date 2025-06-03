@@ -416,6 +416,16 @@ def load_score_modules(score_config, use_gt=True, use_gt_text=False, use_gpu=Fal
             }
             logging.info("Initiate emo2vec successfully")
 
+        elif config["name"] == "w2v2_dimensional_emotion":
+            from versa import w2v2_emo_dim_setup, w2v2_emo_dim_metric
+
+            args_cache = w2v2_emo_dim_setup()
+            score_modules["w2v2_dimensional_emotion"] = {
+                "module": w2v2_emo_dim_metric,
+                "args": args_cache,
+            }
+            logging.info("Initiate w2v2_dimensional_emotion successfully")
+
         elif config["name"] == "se_snr":
             logging.info("Loading se_snr metrics with reference")
             from versa import se_snr, se_snr_setup
@@ -620,6 +630,7 @@ def load_score_modules(score_config, use_gt=True, use_gt_text=False, use_gpu=Fal
         elif "qwen_omni" in config["name"]:
             logging.info("Loading qwen omni model")
             from versa import qwen_omni_model_setup
+
             if "qwen_omni" not in score_modules.keys():
                 qwen_omni_model = qwen_omni_model_setup(
                     model_tag=config.get("model_tag", "default"),
@@ -631,6 +642,7 @@ def load_score_modules(score_config, use_gt=True, use_gt_text=False, use_gpu=Fal
 
             if config["name"] == "qwen_omni_singing_technique":
                 from versa import qwen_omni_singing_technique_metric
+
                 score_modules["qwen_omni_singing_technique"] = {
                     "module": qwen_omni_singing_technique_metric,
                     "prompt": config.get("prompt", None),
@@ -812,7 +824,7 @@ def load_score_modules(score_config, use_gt=True, use_gt_text=False, use_gpu=Fal
             # 7. Vocal Evaluation
             elif config["name"] == "qwen2_audio_singing_technique":
                 from versa import qwen2_singing_technique_metric
-                
+
                 score_modules["qwen2_audio_singing_technique"] = {
                     "module": qwen2_singing_technique_metric,
                     "prompt": config.get("prompt", None),
@@ -943,7 +955,7 @@ def use_score_modules(score_modules, gen_wav, gt_wav, gen_sr, text=None):
             score = score_modules[key]["module"](
                 score_modules[key]["model"], gen_wav, fs=gen_sr
             )
-        elif key in ["vad", "lid"]:
+        elif key in ["vad", "lid", "w2v2_dimensional_emotion"]:
             score = score_modules[key]["module"](
                 score_modules[key]["args"],
                 gen_wav,
