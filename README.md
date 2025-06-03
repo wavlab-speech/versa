@@ -98,14 +98,14 @@ python versa/bin/scorer.py \
 
 ```bash
 # Option 1: With ground truth speech
-./launch.sh \
+./launch_slurm.sh \
   <pred_speech_scp> \
   <gt_speech_scp> \
   <score_dir> \
   <split_job_num> 
 
 # Option 2: Without ground truth speech
-./launch.sh \
+./launch_slurm.sh \
   <pred_speech_scp> \
   None \
   <score_dir> \
