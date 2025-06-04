@@ -24,21 +24,52 @@ export PYTHONUNBUFFERED=1
 # export TRANSFORMERS_CACHE=/path/to/cache  # Set this to your preferred cache location
 
 # Define paths
-INPUT_DIR="/path/to/your/qwen_outputs"      # Replace with your input directory
-OUTPUT_DIR="/path/to/your/standardized_outputs"  # Replace with your output directory
-LOG_FILE="$OUTPUT_DIR/standardization_$(date +%Y%m%d_%H%M%S).log"
+# OUTPUT_DIR="/work/nvme/bbjs/shi3/evaluation/espnet/tools/versa/qwen_voicebank-nisqa-voicemos/standard_result/"
+# INPUT_DIR="/work/nvme/bbjs/shi3/evaluation/espnet/tools/versa/qwen_voicebank-nisqa-voicemos/result/voicebank-nisqa-voicemos.scp_$1.result.gpu.txt"
+# OUTPUT_PATH=${OUTPUT_DIR}/voicebank-nisqa-voicemos.scp_$1.result.gpu.txt
+# OUTPUT_DIR="/work/nvme/bbjs/shi3/evaluation/espnet/tools/versa/qwen_urgent24/standard_result"
+# INPUT_DIR="/work/nvme/bbjs/shi3/evaluation/espnet/tools/versa/qwen_urgent24/result/urgent_wav.scp_$1.result.gpu.txt"
+# OUTPUT_PATH=${OUTPUT_DIR}/urgent_wav.scp_$1.result.gpu.txt
+
+# OUTPUT_DIR="/work/nvme/bbjs/shi3/evaluation/espnet/tools/versa/owsm_part1/standard_result"
+# INPUT_DIR="/work/nvme/bbjs/shi3/evaluation/espnet/tools/versa/owsm_part1/result/owsm_all_wav_part1.scp_$1.result.gpu.txt"
+# OUTPUT_PATH=${OUTPUT_DIR}/owsm_all_wav_part1.scp_$1.result.gpu.txt
+
+# OUTPUT_DIR=/work/nvme/bbjs/shi3/evaluation/espnet/tools/versa/qwen_voicebank-nisqa_test/standard_result
+# INPUT_DIR="/work/nvme/bbjs/shi3/evaluation/espnet/tools/versa/qwen_voicebank-nisqa_test/result/voicebank-nisqa-voicemos_test.scp_${1}.result.cpu.txt"
+# OUTPUT_PATH=${OUTPUT_DIR}/voicebank-nisqa-voicemos_test_$1.result.gpu.txt
+
+# OUTPUT_DIR=/work/nvme/bbjs/shi3/evaluation/espnet/tools/versa/qwen_urgent_train_all/standard_result
+# INPUT_DIR=/work/nvme/bbjs/shi3/evaluation/espnet/tools/versa/qwen_urgent_train_all/result/urgent_train_noisy.scp_$1.result.gpu.txt
+# OUTPUT_PATH=${OUTPUT_DIR}/urgent_train_noisy.scp_$1.result.gpu.txt
+
+OUTPUT_DIR=/work/nvme/bbjs/shi3/evaluation/espnet/tools/versa/qwen_emotion/standard_result
+INPUT_DIR=/work/nvme/bbjs/shi3/evaluation/espnet/tools/versa/qwen_emotion/result/emotion.scp_$1.result.cpu.txt
+OUTPUT_PATH=${OUTPUT_DIR}/emotion.scp_$1.result.cpu.txt
+
+LOG_FILE="$OUTPUT_DIR/../logs/standardization_$(date +%Y%m%d_%H%M%S).log"
+# MODEL="Qwen/Qwen2.5-7B-Instruct-1M"
+# MODEL="Qwen/Qwen2.5-7B"
+MODEL=None
+BATCH_SIZE=64
+PATTERN="*.txt"
+
 
 # Create output directory if it doesn't exist
-mkdir -p $OUTPUT_DIR
+mkdir -p ${OUTPUT_DIR}
+mkdir -p ${OUTPUT_DIR}/../logs
 
 # Run the standardization script
 # Replace with actual paths to your script and any other parameters
-python batch_processing_script.py \
-    --directory $INPUT_DIR \
-    --output $OUTPUT_DIR \
-    --workers $SLURM_CPUS_PER_TASK \
+python qwen2_audio_jsonl_standardizer_batch.py \
+    $INPUT_DIR \
+    --output $OUTPUT_PATH \
+    --batch-size $BATCH_SIZE \
+    --model $MODEL \
+    --device "cuda" \
+    --pattern "*.txt" \
     --log-file $LOG_FILE \
-    --log-level INFO
+    --log-level INFO 
 
 # Check if the job completed successfully
 if [ $? -eq 0 ]; then

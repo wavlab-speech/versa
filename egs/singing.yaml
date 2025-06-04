@@ -14,3 +14,12 @@
 # --sheet_ssqa: the mos prediction from sheet_ssqa
 - name: sheet_ssqa
 
+# speaker related metrics
+# -- spk_similarity: speaker cosine similarity
+#                    model tag can be any ESPnet-SPK huggingface repo at 
+#                    https://huggingface.co/espnet
+- name: speaker
+  model_tag: default
+
+- name: qwen2_audio_singing_technique
+- name: qwen_omni_singing_technique

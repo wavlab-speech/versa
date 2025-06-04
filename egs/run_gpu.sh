@@ -4,19 +4,20 @@
 # ------------------------------------
 # This script processes audio files using GPU acceleration
 #
-# Usage: ./run_gpu.sh <pred_wavscp> <gt_wavscp> <output_file> <config_file> [io_type] [text_file]
+# Usage: ./run_gpu.sh <pred_wavscp> <gt_wavscp> <output_file> <config_file> [io_type] [text_file] [gpu_rank]
 set -e  # Exit immediately if a command exits with non-zero status
 
 # Check if minimum required arguments are provided
 if [ $# -lt 4 ]; then
     echo "Error: Insufficient number of arguments"
-    echo "Usage: $0 <pred_wavscp> <gt_wavscp> <output_file> <config_file> [io_type] [text_file]"
+    echo "Usage: $0 <pred_wavscp> <gt_wavscp> <output_file> <config_file> [io_type] [text_file] [gpu_rank]"
     echo "  pred_wavscp: Path to prediction wav.scp file"
     echo "  gt_wavscp: Path to ground truth wav.scp file (use 'None' if not available)"
     echo "  output_file: Path to output results file"
     echo "  config_file: Path to configuration file"
     echo "  io_type: Optional parameter - soundfile (default), dir, or kaldi"
     echo "  text_file: Optional path to text file for processing"
+    echo "  gpu_rank: Optional GPU rank/device ID (0, 1, 2, etc.)"
     exit 1
 fi
 
@@ -32,6 +33,9 @@ IO_TYPE=${5:-soundfile}
 # Optional text file parameter
 TEXT_FILE=${6:-}
 
+# Optional GPU rank parameter
+GPU_RANK=${7:-}
+
 # Validate IO type
 if [[ "$IO_TYPE" != "soundfile" && "$IO_TYPE" != "dir" && "$IO_TYPE" != "kaldi" ]]; then
     echo "Error: Invalid IO type '$IO_TYPE'"
@@ -43,6 +47,15 @@ fi
 if [ -n "$TEXT_FILE" ] && [ "$TEXT_FILE" != "" ] && [ ! -f "$TEXT_FILE" ]; then
     echo "Error: Text file '$TEXT_FILE' not found"
     exit 1
+fi
+
+# Validate GPU rank if provided
+if [ -n "$GPU_RANK" ] && [ "$GPU_RANK" != "" ]; then
+    if ! [[ "$GPU_RANK" =~ ^[0-9]+$ ]]; then
+        echo "Error: GPU rank must be a non-negative integer"
+        exit 1
+    fi
+    echo "GPU rank set to: $GPU_RANK"
 fi
 
 # Display job information
@@ -59,6 +72,11 @@ if [ -n "$TEXT_FILE" ] && [ "$TEXT_FILE" != "" ]; then
     echo "Text file: $TEXT_FILE"
 else
     echo "Text file: Not provided"
+fi
+if [ -n "$GPU_RANK" ] && [ "$GPU_RANK" != "" ]; then
+    echo "GPU rank: $GPU_RANK"
+else
+    echo "GPU rank: Auto-detect"
 fi
 echo "GPU(s): ${CUDA_VISIBLE_DEVICES:-Auto-detect}"
 echo "============================="
@@ -86,6 +104,12 @@ if [ -n "$TEXT_FILE" ] && [ "$TEXT_FILE" != "" ]; then
     echo "Including text file in processing: $TEXT_FILE"
 fi
 
+# Add GPU rank argument if provided
+if [ -n "$GPU_RANK" ] && [ "$GPU_RANK" != "" ]; then
+    CMD_ARGS+=("--rank" "${GPU_RANK}")
+    echo "Using GPU rank: $GPU_RANK"
+fi
+
 # Set up error handling and run the scoring script
 if ! python versa/bin/scorer.py "${CMD_ARGS[@]}"; then
     echo "Error: GPU scoring failed with exit code $?"
@@ -97,8 +121,14 @@ echo "Results saved to: $OUTPUT"
 
 # Optional: Append completion summary to a tracking file
 JOB_TRACK_FILE=$(dirname "$OUTPUT")/../job_status.txt
-if [ -n "$TEXT_FILE" ] && [ "$TEXT_FILE" != "" ]; then
-    echo "$(date) - GPU Job ${SLURM_JOB_ID:-LOCAL} complete - $(basename "$PRED") - IO: $IO_TYPE - Text: $(basename "$TEXT_FILE")" >> "$JOB_TRACK_FILE"
+if [ -n "$GPU_RANK" ] && [ "$GPU_RANK" != "" ]; then
+    gpu_info=" - GPU: $GPU_RANK"
 else
-    echo "$(date) - GPU Job ${SLURM_JOB_ID:-LOCAL} complete - $(basename "$PRED") - IO: $IO_TYPE" >> "$JOB_TRACK_FILE"
+    gpu_info=""
+fi
+
+if [ -n "$TEXT_FILE" ] && [ "$TEXT_FILE" != "" ]; then
+    echo "$(date) - GPU Job ${SLURM_JOB_ID:-LOCAL} complete - $(basename "$PRED") - IO: $IO_TYPE - Text: $(basename "$TEXT_FILE")$gpu_info" >> "$JOB_TRACK_FILE"
+else
+    echo "$(date) - GPU Job ${SLURM_JOB_ID:-LOCAL} complete - $(basename "$PRED") - IO: $IO_TYPE$gpu_info" >> "$JOB_TRACK_FILE"
 fi

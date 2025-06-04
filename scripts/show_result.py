@@ -9,6 +9,7 @@ file = open(args.input, "r", encoding="utf-8")
 
 info = []
 for line in file:
+    line = line.strip()
     info.append(json.loads(r"{}".format(line)))
 
 keys = info[0].keys()
