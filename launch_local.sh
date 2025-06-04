@@ -119,15 +119,55 @@ if ! [[ "${SPLIT_SIZE}" =~ ^[0-9]+$ ]]; then
     exit 1
 fi
 
-# Check for GPU availability if GPU processing is enabled
+# Check for GPU availability and set up GPU rank management
+GPU_COUNT=0
 if $RUN_GPU; then
     if ! command -v nvidia-smi &> /dev/null; then
         echo -e "${YELLOW}Warning: nvidia-smi not found. GPU processing may not work properly.${NC}"
         echo -e "${YELLOW}Continuing anyway... (use --cpu-only to disable GPU processing)${NC}"
+        GPU_COUNT=1  # Assume at least 1 GPU if GPU processing is requested
     else
-        gpu_count=$(nvidia-smi -L | wc -l)
-        echo -e "${GREEN}Found ${gpu_count} GPU(s)${NC}"
+        GPU_COUNT=$(nvidia-smi -L | wc -l)
+        echo -e "${GREEN}Found ${GPU_COUNT} GPU(s)${NC}"
+        
+        # Display GPU information
+        echo -e "${BLUE}Available GPUs:${NC}"
+        nvidia-smi -L | while IFS= read -r line; do
+            echo -e "  ${line}"
+        done
     fi
+fi
+
+# Calculate GPU parallel settings
+GPU_MAX_PARALLEL=0
+CPU_MAX_PARALLEL=0
+
+if $RUN_GPU && $RUN_CPU; then
+    # Both GPU and CPU enabled - distribute parallel slots
+    if [ $GPU_COUNT -gt 0 ]; then
+        # Allocate roughly half to GPU, but ensure at least 1 GPU job and respect GPU count
+        GPU_MAX_PARALLEL=$(( (MAX_PARALLEL + 1) / 2 ))
+        if [ $GPU_MAX_PARALLEL -gt $GPU_COUNT ]; then
+            GPU_MAX_PARALLEL=$GPU_COUNT
+        fi
+        CPU_MAX_PARALLEL=$(( MAX_PARALLEL - GPU_MAX_PARALLEL ))
+        if [ $CPU_MAX_PARALLEL -lt 1 ]; then
+            CPU_MAX_PARALLEL=1
+            GPU_MAX_PARALLEL=$(( MAX_PARALLEL - 1 ))
+        fi
+    else
+        CPU_MAX_PARALLEL=$MAX_PARALLEL
+    fi
+elif $RUN_GPU; then
+    # GPU only
+    if [ $GPU_COUNT -gt 0 ]; then
+        GPU_MAX_PARALLEL=$(( MAX_PARALLEL > GPU_COUNT ? GPU_COUNT : MAX_PARALLEL ))
+    else
+        GPU_MAX_PARALLEL=1
+    fi
+else
+    # CPU only
+    CPU_MAX_PARALLEL=$MAX_PARALLEL
 fi
 
 # Print configuration summary
@@ -144,12 +184,14 @@ else
     echo -e "Text file: Not provided"
 fi
 if $RUN_GPU; then
-    echo -e "GPU processing: Enabled"
+    echo -e "GPU processing: Enabled (${GPU_COUNT} GPUs available)"
+    echo -e "GPU parallel slots: ${GPU_MAX_PARALLEL}"
 else
     echo -e "GPU processing: Disabled"
 fi
 if $RUN_CPU; then
     echo -e "CPU processing: Enabled"
+    echo -e "CPU parallel slots: ${CPU_MAX_PARALLEL}"
 else
     echo -e "CPU processing: Disabled"
 fi
@@ -212,19 +254,36 @@ run_job() {
     local config_file=$6
     local job_prefix=$7
     local chunk_info=$8
+    local gpu_rank=${9:-""}  # GPU rank (optional, only for GPU jobs)
     
     local log_file="${SCORE_DIR}/logs/${job_type}_${job_prefix}_$(date +%s).log"
     
-    echo -e "${BLUE}Starting ${job_type} job for ${chunk_info}: ${job_prefix}${NC}"
+    if [ -n "${gpu_rank}" ]; then
+        echo -e "${BLUE}Starting ${job_type} job for ${chunk_info}: ${job_prefix} (GPU ${gpu_rank})${NC}"
+    else
+        echo -e "${BLUE}Starting ${job_type} job for ${chunk_info}: ${job_prefix}${NC}"
+    fi
     
     if [ "${job_type}" = "gpu" ]; then
-        ./egs/run_gpu.sh \
-            "${sub_pred_wavscp}" \
-            "${sub_gt_wavscp}" \
-            "${output_file}" \
-            "${config_file}" \
-            "${IO_TYPE}" \
-            "${sub_text_file}" > "${log_file}" 2>&1
+        # Pass GPU rank directly to run_gpu.sh
+        if [ -n "${gpu_rank}" ]; then
+            ./egs/run_gpu.sh \
+                "${sub_pred_wavscp}" \
+                "${sub_gt_wavscp}" \
+                "${output_file}" \
+                "${config_file}" \
+                "${IO_TYPE}" \
+                "${sub_text_file}" \
+                "${gpu_rank}" > "${log_file}" 2>&1
+        else
+            ./egs/run_gpu.sh \
+                "${sub_pred_wavscp}" \
+                "${sub_gt_wavscp}" \
+                "${output_file}" \
+                "${config_file}" \
+                "${IO_TYPE}" \
+                "${sub_text_file}" > "${log_file}" 2>&1
+        fi
     else
         ./egs/run_cpu.sh \
             "${sub_pred_wavscp}" \
@@ -237,9 +296,17 @@ run_job() {
     
     local exit_code=$?
     if [ $exit_code -eq 0 ]; then
-        echo -e "${GREEN}Completed ${job_type} job for ${chunk_info}: ${job_prefix}${NC}"
+        if [ -n "${gpu_rank}" ]; then
+            echo -e "${GREEN}Completed ${job_type} job for ${chunk_info}: ${job_prefix} (GPU ${gpu_rank})${NC}"
+        else
+            echo -e "${GREEN}Completed ${job_type} job for ${chunk_info}: ${job_prefix}${NC}"
+        fi
     else
-        echo -e "${RED}Failed ${job_type} job for ${chunk_info}: ${job_prefix} (exit code: ${exit_code})${NC}"
+        if [ -n "${gpu_rank}" ]; then
+            echo -e "${RED}Failed ${job_type} job for ${chunk_info}: ${job_prefix} (GPU ${gpu_rank}) (exit code: ${exit_code})${NC}"
+        else
+            echo -e "${RED}Failed ${job_type} job for ${chunk_info}: ${job_prefix} (exit code: ${exit_code})${NC}"
+        fi
         echo -e "${RED}Check log file: ${log_file}${NC}"
     fi
     
@@ -247,8 +314,12 @@ run_job() {
 }
 
 # Job tracking
-declare -a job_pids=()
-declare -a job_info=()
+declare -a gpu_job_pids=()
+declare -a gpu_job_info=()
+declare -a gpu_ranks_in_use=()
+declare -a cpu_job_pids=()
+declare -a cpu_job_info=()
+
 RUNNING_JOBS_FILE="${SCORE_DIR}/running_jobs.txt"
 COMPLETED_JOBS_FILE="${SCORE_DIR}/completed_jobs.txt"
 FAILED_JOBS_FILE="${SCORE_DIR}/failed_jobs.txt"
@@ -260,29 +331,91 @@ FAILED_JOBS_FILE="${SCORE_DIR}/failed_jobs.txt"
 
 echo -e "${GREEN}Starting parallel processing...${NC}"
 
-# Function to wait for available slot
-wait_for_slot() {
-    while [ ${#job_pids[@]} -ge $MAX_PARALLEL ]; do
-        # Check for completed jobs
-        for i in "${!job_pids[@]}"; do
-            if ! kill -0 "${job_pids[$i]}" 2>/dev/null; then
+# Function to get next available GPU rank
+get_next_gpu_rank() {
+    for ((rank=0; rank<GPU_COUNT; rank++)); do
+        local rank_in_use=false
+        for used_rank in "${gpu_ranks_in_use[@]}"; do
+            if [ "$used_rank" = "$rank" ]; then
+                rank_in_use=true
+                break
+            fi
+        done
+        if ! $rank_in_use; then
+            echo $rank
+            return 0
+        fi
+    done
+    echo -1  # No available GPU rank
+}
+
+# Function to wait for available GPU slot
+wait_for_gpu_slot() {
+    while [ ${#gpu_job_pids[@]} -ge $GPU_MAX_PARALLEL ]; do
+        # Check for completed GPU jobs
+        for i in "${!gpu_job_pids[@]}"; do
+            if ! kill -0 "${gpu_job_pids[$i]}" 2>/dev/null; then
                 # Job has finished
-                wait "${job_pids[$i]}"
+                wait "${gpu_job_pids[$i]}"
                 local exit_code=$?
                 
+                # Extract GPU rank from job info and free it
+                local job_info="${gpu_job_info[$i]}"
+                if [[ $job_info =~ GPU_RANK:([0-9]+) ]]; then
+                    local freed_rank="${BASH_REMATCH[1]}"
+                    # Remove freed rank from in-use array
+                    local new_ranks=()
+                    for rank in "${gpu_ranks_in_use[@]}"; do
+                        if [ "$rank" != "$freed_rank" ]; then
+                            new_ranks+=("$rank")
+                        fi
+                    done
+                    gpu_ranks_in_use=("${new_ranks[@]}")
+                fi
+                
                 if [ $exit_code -eq 0 ]; then
-                    echo "${job_info[$i]}" >> "${COMPLETED_JOBS_FILE}"
+                    echo "${gpu_job_info[$i]}" >> "${COMPLETED_JOBS_FILE}"
                 else
-                    echo "${job_info[$i]}" >> "${FAILED_JOBS_FILE}"
+                    echo "${gpu_job_info[$i]}" >> "${FAILED_JOBS_FILE}"
                 fi
                 
                 # Remove from tracking arrays
-                unset job_pids[$i]
-                unset job_info[$i]
+                unset gpu_job_pids[$i]
+                unset gpu_job_info[$i]
                 
                 # Rebuild arrays to remove gaps
-                job_pids=("${job_pids[@]}")
-                job_info=("${job_info[@]}")
+                gpu_job_pids=("${gpu_job_pids[@]}")
+                gpu_job_info=("${gpu_job_info[@]}")
+                break
+            fi
+        done
+        sleep 1
+    done
+}
+
+# Function to wait for available CPU slot
+wait_for_cpu_slot() {
+    while [ ${#cpu_job_pids[@]} -ge $CPU_MAX_PARALLEL ]; do
+        # Check for completed CPU jobs
+        for i in "${!cpu_job_pids[@]}"; do
+            if ! kill -0 "${cpu_job_pids[$i]}" 2>/dev/null; then
+                # Job has finished
+                wait "${cpu_job_pids[$i]}"
+                local exit_code=$?
+                
+                if [ $exit_code -eq 0 ]; then
+                    echo "${cpu_job_info[$i]}" >> "${COMPLETED_JOBS_FILE}"
+                else
+                    echo "${cpu_job_info[$i]}" >> "${FAILED_JOBS_FILE}"
+                fi
+                
+                # Remove from tracking arrays
+                unset cpu_job_pids[$i]
+                unset cpu_job_info[$i]
+                
+                # Rebuild arrays to remove gaps
+                cpu_job_pids=("${cpu_job_pids[@]}")
+                cpu_job_info=("${cpu_job_info[@]}")
                 break
             fi
         done
@@ -316,7 +449,16 @@ for ((i=0; i<${#pred_list[@]}; i++)); do
 
     # Submit GPU job if enabled
     if $RUN_GPU; then
-        wait_for_slot
+        wait_for_gpu_slot
+        
+        # Get next available GPU rank
+        gpu_rank=$(get_next_gpu_rank)
+        if [ $gpu_rank -eq -1 ]; then
+            echo -e "${RED}Error: No available GPU rank found${NC}"
+            exit 1
+        fi
+        
+        gpu_ranks_in_use+=($gpu_rank)
         
         run_job "gpu" \
             "${sub_pred_wavscp}" \
@@ -325,18 +467,19 @@ for ((i=0; i<${#pred_list[@]}; i++)); do
             "${SCORE_DIR}/result/$(basename "${sub_pred_wavscp}").result.gpu.txt" \
             "egs/quality_check.yaml" \
             "${job_prefix}" \
-            "${chunk_info}" &
+            "${chunk_info}" \
+            "${gpu_rank}" &
         
         gpu_pid=$!
-        job_pids+=($gpu_pid)
-        job_info+=("GPU:$gpu_pid CHUNK:${chunk_info} FILE:${job_prefix}")
-        echo "GPU:$gpu_pid CHUNK:${chunk_info} FILE:${job_prefix}" >> "${RUNNING_JOBS_FILE}"
-        echo -e "  Started GPU job: PID ${gpu_pid}"
+        gpu_job_pids+=($gpu_pid)
+        gpu_job_info+=("GPU:$gpu_pid GPU_RANK:${gpu_rank} CHUNK:${chunk_info} FILE:${job_prefix}")
+        echo "GPU:$gpu_pid GPU_RANK:${gpu_rank} CHUNK:${chunk_info} FILE:${job_prefix}" >> "${RUNNING_JOBS_FILE}"
+        echo -e "  Started GPU job: PID ${gpu_pid} on GPU ${gpu_rank}"
     fi
 
     # Submit CPU job if enabled
     if $RUN_CPU; then
-        wait_for_slot
+        wait_for_cpu_slot
         
         run_job "cpu" \
             "${sub_pred_wavscp}" \
@@ -348,8 +491,8 @@ for ((i=0; i<${#pred_list[@]}; i++)); do
             "${chunk_info}" &
         
         cpu_pid=$!
-        job_pids+=($cpu_pid)
-        job_info+=("CPU:$cpu_pid CHUNK:${chunk_info} FILE:${job_prefix}")
+        cpu_job_pids+=($cpu_pid)
+        cpu_job_info+=("CPU:$cpu_pid CHUNK:${chunk_info} FILE:${job_prefix}")
         echo "CPU:$cpu_pid CHUNK:${chunk_info} FILE:${job_prefix}" >> "${RUNNING_JOBS_FILE}"
         echo -e "  Started CPU job: PID ${cpu_pid}"
     fi
@@ -357,13 +500,35 @@ done
 
 # Wait for all remaining jobs to complete
 echo -e "${YELLOW}Waiting for all jobs to complete...${NC}"
-for pid in "${job_pids[@]}"; do
+
+# Wait for GPU jobs
+for pid in "${gpu_job_pids[@]}"; do
     if kill -0 "$pid" 2>/dev/null; then
         wait "$pid"
         exit_code=$?
         
         # Find job info for this PID
-        for info in "${job_info[@]}"; do
+        for info in "${gpu_job_info[@]}"; do
+            if [[ "$info" == *":$pid "* ]]; then
+                if [ $exit_code -eq 0 ]; then
+                    echo "$info" >> "${COMPLETED_JOBS_FILE}"
+                else
+                    echo "$info" >> "${FAILED_JOBS_FILE}"
+                fi
+                break
+            fi
+        done
+    fi
+done
+
+# Wait for CPU jobs
+for pid in "${cpu_job_pids[@]}"; do
+    if kill -0 "$pid" 2>/dev/null; then
+        wait "$pid"
+        exit_code=$?
+        
+        # Find job info for this PID
+        for info in "${cpu_job_info[@]}"; do
             if [[ "$info" == *":$pid "* ]]; then
                 if [ $exit_code -eq 0 ]; then
                     echo "$info" >> "${COMPLETED_JOBS_FILE}"
@@ -381,6 +546,15 @@ echo -e "${GREEN}=== Processing Summary ===${NC}"
 if [ -f "${COMPLETED_JOBS_FILE}" ]; then
     completed_count=$(wc -l < "${COMPLETED_JOBS_FILE}" 2>/dev/null || echo "0")
     echo -e "${GREEN}Completed jobs: ${completed_count}${NC}"
+    
+    # Show GPU usage summary
+    if $RUN_GPU && [ -s "${COMPLETED_JOBS_FILE}" ]; then
+        echo -e "${GREEN}GPU usage summary:${NC}"
+        for ((rank=0; rank<GPU_COUNT; rank++)); do
+            gpu_job_count=$(grep -c "GPU_RANK:${rank}" "${COMPLETED_JOBS_FILE}" 2>/dev/null || echo "0")
+            echo -e "  GPU ${rank}: ${gpu_job_count} jobs completed"
+        done
+    fi
 fi
 
 if [ -f "${FAILED_JOBS_FILE}" ] && [ -s "${FAILED_JOBS_FILE}" ]; then

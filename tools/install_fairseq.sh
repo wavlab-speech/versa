@@ -5,7 +5,7 @@ REPO_OWNER="ftshijt"
 REPO_NAME="fairseq"
 REPO_PATH="$REPO_OWNER/$REPO_NAME"
 BRANCH="versa"
-EXPECTED_COMMIT_ID="24155d7ee89b0f5d47e869913d862b5ff053dfde"
+EXPECTED_COMMIT_ID="0e35caead74528f04e741986b78ff0b4b543dbe6"
 
 # Function to check if repository exists
 check_repo_exists() {
