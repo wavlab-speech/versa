@@ -29,28 +29,28 @@ We include x mark if the metric is auto-installed in versa.
 | 22 | x | Auti-spoofing Score (SpoofS) with AASIST: Audio Anti-Spoofing using Integrated Spectro-Temporal Graph Attention Networks | asvspoof_score | asvspoof_score | [AASIST](https://github.com/clovaai/aasist/tree/main) | [Paper](https://ieeexplore.ieee.org/document/9747766)|
 | 23 | x | Language Identification | lid  | language | [ESPnet](https://github.com/espnet/espnet.git) | [Paper](https://arxiv.org/pdf/2401.16658) |
 | 24 |   | Audiobox Aesthetics | audiobox_aesthetics  | {audiobox_aesthetics_CE, audiobox_aesthetics_CU, audiobox_aesthetics_PC, audiobox_aesthetics_PQ} | [Audiobox-Aesthetics](https://github.com/facebookresearch/audiobox-aesthetics) | [Paper](https://arxiv.org/abs/2502.05139) |
-| 25 |   | Qwen2 Speaker Characteristics - Count | qwen2_speaker_count_metric | qwen2_speaker_count_metric | [Qwen2 Audio](https://github.com/QwenLM/Qwen2-Audio) | [paper](https://arxiv.org/abs/2407.10759) |
-| 26 |   | Qwen2 Speaker Characteristics - Gender | qwen2_speaker_gender_metric | qwen2_speaker_gender_metric | [Qwen2 Audio](https://github.com/QwenLM/Qwen2-Audio) | [paper](https://arxiv.org/abs/2407.10759) |
-| 27 |   | Qwen2 Speaker Characteristics - Age | qwen2_speaker_age_metric | qwen2_speaker_age_metric | [Qwen2 Audio](https://github.com/QwenLM/Qwen2-Audio) | [paper](https://arxiv.org/abs/2407.10759) |
-| 28 |   | Qwen2 Speaker Characteristics - Speech Impairment | qwen2_speech_impairment_metric | qwen2_speech_impairment_metric | [Qwen2 Audio](https://github.com/QwenLM/Qwen2-Audio) | [paper](https://arxiv.org/abs/2407.10759) |
-| 29 |   | Qwen2 Voice Properties - Pitch | qwen2_voice_pitch_metric | qwen2_voice_pitch_metric | [Qwen2 Audio](https://github.com/QwenLM/Qwen2-Audio) | [paper](https://arxiv.org/abs/2407.10759) |
-| 30 |   | Qwen2 Voice Properties - Pitch Range | qwen2_pitch_range_metric | qwen2_pitch_range_metric | [Qwen2 Audio](https://github.com/QwenLM/Qwen2-Audio) | [paper](https://arxiv.org/abs/2407.10759) |
-| 31 |   | Qwen2 Voice Properties - Voice Type | qwen2_voice_type_metric | qwen2_voice_type_metric | [Qwen2 Audio](https://github.com/QwenLM/Qwen2-Audio) | [paper](https://arxiv.org/abs/2407.10759) |
-| 32 |   | Qwen2 Voice Properties - Volume Level | qwen2_speech_volume_level_metric | qwen2_speech_volume_level_metric | [Qwen2 Audio](https://github.com/QwenLM/Qwen2-Audio) | [paper](https://arxiv.org/abs/2407.10759) |
-| 33 |   | Qwen2 Speech Content - Language | qwen2_language_metric | qwen2_language_metric | [Qwen2 Audio](https://github.com/QwenLM/Qwen2-Audio) | [paper](https://arxiv.org/abs/2407.10759) |
-| 34 |   | Qwen2 Speech Content - Register | qwen2_speech_register_metric | qwen2_speech_register_metric | [Qwen2 Audio](https://github.com/QwenLM/Qwen2-Audio) | [paper](https://arxiv.org/abs/2407.10759) |
-| 35 |   | Qwen2 Speech Content - Vocabulary Complexity | qwen2_vocabulary_complexity_metric | qwen2_vocabulary_complexity_metric | [Qwen2 Audio](https://github.com/QwenLM/Qwen2-Audio) | [paper](https://arxiv.org/abs/2407.10759) |
-| 36 |   | Qwen2 Speech Content - Purpose | qwen2_speech_purpose_metric | qwen2_speech_purpose_metric | [Qwen2 Audio](https://github.com/QwenLM/Qwen2-Audio) | [paper](https://arxiv.org/abs/2407.10759) |
-| 37 |   | Qwen2 Speech Delivery - Emotion | qwen2_speech_emotion_metric | qwen2_speech_emotion_metric | [Qwen2 Audio](https://github.com/QwenLM/Qwen2-Audio) | [paper](https://arxiv.org/abs/2407.10759) |
-| 38 |   | Qwen2 Speech Delivery - Clarity | qwen2_speech_clarity_metric | qwen2_speech_clarity_metric | [Qwen2 Audio](https://github.com/QwenLM/Qwen2-Audio) | [paper](https://arxiv.org/abs/2407.10759) |
-| 39 |   | Qwen2 Speech Delivery - Rate | qwen2_speech_rate_metric | qwen2_speech_rate_metric | [Qwen2 Audio](https://github.com/QwenLM/Qwen2-Audio) | [paper](https://arxiv.org/abs/2407.10759) |
-| 40 |   | Qwen2 Speech Delivery - Style | qwen2_speaking_style_metric | qwen2_speaking_style_metric | [Qwen2 Audio](https://github.com/QwenLM/Qwen2-Audio) | [paper](https://arxiv.org/abs/2407.10759) |
-| 41 |   | Qwen2 Speech Delivery - Emotional Vocalizations | qwen2_laughter_crying_metric | qwen2_laughter_crying_metric | [Qwen2 Audio](https://github.com/QwenLM/Qwen2-Audio) | [paper](https://arxiv.org/abs/2407.10759) |
-| 42 |   | Qwen2 Interaction Patterns - Overlapping Speech | qwen2_overlapping_speech_metric | qwen2_overlapping_speech_metric | [Qwen2 Audio](https://github.com/QwenLM/Qwen2-Audio) | [paper](https://arxiv.org/abs/2407.10759) |
-| 43 |   | Qwen2 Recording Environment - Background | qwen2_speech_background_environment_metric | qwen2_speech_background_environment_metric | [Qwen2 Audio](https://github.com/QwenLM/Qwen2-Audio) | [paper](https://arxiv.org/abs/2407.10759) |
-| 44 |   | Qwen2 Recording Environment - Quality | qwen2_recording_quality_metric | qwen2_recording_quality_metric | [Qwen2 Audio](https://github.com/QwenLM/Qwen2-Audio) | [paper](https://arxiv.org/abs/2407.10759) |
-| 45 |   | Qwen2 Recording Environment - Channel Type | qwen2_channel_type_metric | qwen2_channel_type_metric | [Qwen2 Audio](https://github.com/QwenLM/Qwen2-Audio) | [paper](https://arxiv.org/abs/2407.10759) |
-| 46 |   | Dimensional Emotion | w2v2_dimensional_emotion | w2v2_dimensional_emotion | [w2v2-how-to](https://github.com/audeering/w2v2-how-to) | [paper](https://arxiv.org/pdf/2203.07378) |
+| 25 | x | Qwen2 Speaker Characteristics - Count | qwen2_speaker_count_metric | qwen2_speaker_count_metric | [Qwen2 Audio](https://github.com/QwenLM/Qwen2-Audio) | [paper](https://arxiv.org/abs/2407.10759) |
+| 26 | x | Qwen2 Speaker Characteristics - Gender | qwen2_speaker_gender_metric | qwen2_speaker_gender_metric | [Qwen2 Audio](https://github.com/QwenLM/Qwen2-Audio) | [paper](https://arxiv.org/abs/2407.10759) |
+| 27 | x | Qwen2 Speaker Characteristics - Age | qwen2_speaker_age_metric | qwen2_speaker_age_metric | [Qwen2 Audio](https://github.com/QwenLM/Qwen2-Audio) | [paper](https://arxiv.org/abs/2407.10759) |
+| 28 | x | Qwen2 Speaker Characteristics - Speech Impairment | qwen2_speech_impairment_metric | qwen2_speech_impairment_metric | [Qwen2 Audio](https://github.com/QwenLM/Qwen2-Audio) | [paper](https://arxiv.org/abs/2407.10759) |
+| 29 | x | Qwen2 Voice Properties - Pitch | qwen2_voice_pitch_metric | qwen2_voice_pitch_metric | [Qwen2 Audio](https://github.com/QwenLM/Qwen2-Audio) | [paper](https://arxiv.org/abs/2407.10759) |
+| 30 | x | Qwen2 Voice Properties - Pitch Range | qwen2_pitch_range_metric | qwen2_pitch_range_metric | [Qwen2 Audio](https://github.com/QwenLM/Qwen2-Audio) | [paper](https://arxiv.org/abs/2407.10759) |
+| 31 | x | Qwen2 Voice Properties - Voice Type | qwen2_voice_type_metric | qwen2_voice_type_metric | [Qwen2 Audio](https://github.com/QwenLM/Qwen2-Audio) | [paper](https://arxiv.org/abs/2407.10759) |
+| 32 | x | Qwen2 Voice Properties - Volume Level | qwen2_speech_volume_level_metric | qwen2_speech_volume_level_metric | [Qwen2 Audio](https://github.com/QwenLM/Qwen2-Audio) | [paper](https://arxiv.org/abs/2407.10759) |
+| 33 | x | Qwen2 Speech Content - Language | qwen2_language_metric | qwen2_language_metric | [Qwen2 Audio](https://github.com/QwenLM/Qwen2-Audio) | [paper](https://arxiv.org/abs/2407.10759) |
+| 34 | x | Qwen2 Speech Content - Register | qwen2_speech_register_metric | qwen2_speech_register_metric | [Qwen2 Audio](https://github.com/QwenLM/Qwen2-Audio) | [paper](https://arxiv.org/abs/2407.10759) |
+| 35 | x | Qwen2 Speech Content - Vocabulary Complexity | qwen2_vocabulary_complexity_metric | qwen2_vocabulary_complexity_metric | [Qwen2 Audio](https://github.com/QwenLM/Qwen2-Audio) | [paper](https://arxiv.org/abs/2407.10759) |
+| 36 | x | Qwen2 Speech Content - Purpose | qwen2_speech_purpose_metric | qwen2_speech_purpose_metric | [Qwen2 Audio](https://github.com/QwenLM/Qwen2-Audio) | [paper](https://arxiv.org/abs/2407.10759) |
+| 37 | x | Qwen2 Speech Delivery - Emotion | qwen2_speech_emotion_metric | qwen2_speech_emotion_metric | [Qwen2 Audio](https://github.com/QwenLM/Qwen2-Audio) | [paper](https://arxiv.org/abs/2407.10759) |
+| 38 | x | Qwen2 Speech Delivery - Clarity | qwen2_speech_clarity_metric | qwen2_speech_clarity_metric | [Qwen2 Audio](https://github.com/QwenLM/Qwen2-Audio) | [paper](https://arxiv.org/abs/2407.10759) |
+| 39 | x | Qwen2 Speech Delivery - Rate | qwen2_speech_rate_metric | qwen2_speech_rate_metric | [Qwen2 Audio](https://github.com/QwenLM/Qwen2-Audio) | [paper](https://arxiv.org/abs/2407.10759) |
+| 40 | x | Qwen2 Speech Delivery - Style | qwen2_speaking_style_metric | qwen2_speaking_style_metric | [Qwen2 Audio](https://github.com/QwenLM/Qwen2-Audio) | [paper](https://arxiv.org/abs/2407.10759) |
+| 41 | x | Qwen2 Speech Delivery - Emotional Vocalizations | qwen2_laughter_crying_metric | qwen2_laughter_crying_metric | [Qwen2 Audio](https://github.com/QwenLM/Qwen2-Audio) | [paper](https://arxiv.org/abs/2407.10759) |
+| 42 | x | Qwen2 Interaction Patterns - Overlapping Speech | qwen2_overlapping_speech_metric | qwen2_overlapping_speech_metric | [Qwen2 Audio](https://github.com/QwenLM/Qwen2-Audio) | [paper](https://arxiv.org/abs/2407.10759) |
+| 43 | x | Qwen2 Recording Environment - Background | qwen2_speech_background_environment_metric | qwen2_speech_background_environment_metric | [Qwen2 Audio](https://github.com/QwenLM/Qwen2-Audio) | [paper](https://arxiv.org/abs/2407.10759) |
+| 44 | x | Qwen2 Recording Environment - Quality | qwen2_recording_quality_metric | qwen2_recording_quality_metric | [Qwen2 Audio](https://github.com/QwenLM/Qwen2-Audio) | [paper](https://arxiv.org/abs/2407.10759) |
+| 45 | x | Qwen2 Recording Environment - Channel Type | qwen2_channel_type_metric | qwen2_channel_type_metric | [Qwen2 Audio](https://github.com/QwenLM/Qwen2-Audio) | [paper](https://arxiv.org/abs/2407.10759) |
+| 46 | x | Dimensional Emotion | w2v2_dimensional_emotion | w2v2_dimensional_emotion | [w2v2-how-to](https://github.com/audeering/w2v2-how-to) | [paper](https://arxiv.org/pdf/2203.07378) |
 
 
 ### Dependent Metrics
