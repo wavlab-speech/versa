@@ -9,6 +9,7 @@ from versa.utterance_metrics.discrete_speech import (
     discrete_speech_metric,
 )
 
+
 # Reuse the same helper functions from your STOI test
 def generate_fixed_wav(
     filename, duration=1.0, sample_rate=16000, base_freq=150, envelope_func=None
@@ -82,41 +83,59 @@ def test_discrete_speech_metric_identical(fixed_audio, discrete_speech_predictor
     """
     When comparing an audio signal with itself, the discrete speech scores should be high.
     """
-    scores = discrete_speech_metric(discrete_speech_predictors, fixed_audio, fixed_audio, 16000)
-    
+    scores = discrete_speech_metric(
+        discrete_speech_predictors, fixed_audio, fixed_audio, 16000
+    )
+
     # Check that all expected metrics are present
     assert "speech_bert" in scores
     assert "speech_bleu" in scores
     assert "speech_token_distance" in scores
-    
+
     # For identical signals, scores should be relatively high
     # Note: Perfect scores (1.0) are not always expected for discrete speech metrics
-    assert scores["speech_bert"] > 0.9, f"Expected SpeechBERT score > 0.5 for identical signals, got {scores['speech_bert']}"
-    assert scores["speech_bleu"] > 0.9, f"Expected SpeechBLEU score > 0.3 for identical signals, got {scores['speech_bleu']}"
-    assert scores["speech_token_distance"] > 0.9, f"Expected SpeechTokenDistance score > 0.3 for identical signals, got {scores['speech_token_distance']}"
+    assert (
+        scores["speech_bert"] > 0.9
+    ), f"Expected SpeechBERT score > 0.5 for identical signals, got {scores['speech_bert']}"
+    assert (
+        scores["speech_bleu"] > 0.9
+    ), f"Expected SpeechBLEU score > 0.3 for identical signals, got {scores['speech_bleu']}"
+    assert (
+        scores["speech_token_distance"] > 0.9
+    ), f"Expected SpeechTokenDistance score > 0.3 for identical signals, got {scores['speech_token_distance']}"
 
 
-def test_discrete_speech_metric_different(fixed_audio, fixed_ground_truth, discrete_speech_predictors):
+def test_discrete_speech_metric_different(
+    fixed_audio, fixed_ground_truth, discrete_speech_predictors
+):
     """
     When comparing two different fixed signals, the discrete speech scores should be lower than identical signals.
     """
     # Get scores for identical signals first
-    identical_scores = discrete_speech_metric(discrete_speech_predictors, fixed_audio, fixed_audio, 16000)
-    
+    identical_scores = discrete_speech_metric(
+        discrete_speech_predictors, fixed_audio, fixed_audio, 16000
+    )
+
     # Get scores for different signals
-    different_scores = discrete_speech_metric(discrete_speech_predictors, fixed_audio, fixed_ground_truth, 16000)
-    
+    different_scores = discrete_speech_metric(
+        discrete_speech_predictors, fixed_audio, fixed_ground_truth, 16000
+    )
+
     # Check that all expected metrics are present
     assert "speech_bert" in different_scores
-    assert "speech_bleu" in different_scores  
+    assert "speech_bleu" in different_scores
     assert "speech_token_distance" in different_scores
-    
+
     # Different signals should have lower scores than identical signals
-    assert different_scores["speech_bert"] <= identical_scores["speech_bert"], \
-        f"Expected SpeechBERT score for different signals ({different_scores['speech_bert']}) to be <= identical signals ({identical_scores['speech_bert']})"
-    
-    assert different_scores["speech_bleu"] <= identical_scores["speech_bleu"], \
-        f"Expected SpeechBLEU score for different signals ({different_scores['speech_bleu']}) to be <= identical signals ({identical_scores['speech_bleu']})"
-    
-    assert different_scores["speech_token_distance"] <= identical_scores["speech_token_distance"], \
-        f"Expected SpeechTokenDistance score for different signals ({different_scores['speech_token_distance']}) to be <= identical signals ({identical_scores['speech_token_distance']})"
+    assert (
+        different_scores["speech_bert"] <= identical_scores["speech_bert"]
+    ), f"Expected SpeechBERT score for different signals ({different_scores['speech_bert']}) to be <= identical signals ({identical_scores['speech_bert']})"
+
+    assert (
+        different_scores["speech_bleu"] <= identical_scores["speech_bleu"]
+    ), f"Expected SpeechBLEU score for different signals ({different_scores['speech_bleu']}) to be <= identical signals ({identical_scores['speech_bleu']})"
+
+    assert (
+        different_scores["speech_token_distance"]
+        <= identical_scores["speech_token_distance"]
+    ), f"Expected SpeechTokenDistance score for different signals ({different_scores['speech_token_distance']}) to be <= identical signals ({identical_scores['speech_token_distance']})"
