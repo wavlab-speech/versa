@@ -12,6 +12,12 @@ Usage:
 2. To extract embeddings:
     python openbeats.py --model_path <path_to_model> \
         --audio_path <path_to_audio> --extract_embeddings
+
+3. To compute similarity between two audio files:
+    python openbeats.py --model_path <path_to_model> \
+        --audio_path <path_to_audio> --compute_similarity \
+        --reference_audio_path <path_to_reference_audio> --output_dir <output_directory>
+
 Note: For predicting class, please use a fine-tuned checkpoint 
 with the decoder.
 
@@ -21,8 +27,10 @@ TODO(shikhar): Add list of checkpoints
 """
 
 import torch
-
+import os
 import numpy as np
+import librosa
+from sklearn.metrics.pairwise import cosine_similarity
 
 # TODO(shikhar): after OpenBEATs is merged into ESPnet:
 # 1. Switch the import to espnet.
@@ -30,6 +38,41 @@ import numpy as np
 # PR: https://github.com/espnet/espnet/pull/6052
 from versa.models.openbeats.encoder import BeatsEncoder
 from versa.models.openbeats.decoder import LinearDecoder
+
+
+def validate_input_arguments(args):
+    """Validate input arguments.
+
+    Args:
+        args: Parsed command line arguments.
+
+    Raises:
+        ValueError: If any required arguments are invalid or missing.
+        FileNotFoundError: If required files don't exist.
+    """
+    if not os.path.exists(args.model_path):
+        raise FileNotFoundError(f"Model checkpoint not found: {args.model_path}")
+
+    if not os.path.exists(args.audio_path):
+        raise FileNotFoundError(f"Audio file not found: {args.audio_path}")
+
+    if args.compute_similarity:
+        if args.reference_audio_path is None:
+            raise ValueError(
+                "Reference audio path must be specified when computing similarity."
+            )
+        if not os.path.exists(args.reference_audio_path):
+            raise FileNotFoundError(
+                f"Reference audio file not found: {args.reference_audio_path}"
+            )
+
+    if args.extract_embeddings and args.output_dir is None:
+        raise ValueError(
+            "Output directory must be specified when extracting embeddings."
+        )
+
+    if args.output_dir is not None:
+        os.makedirs(args.output_dir, exist_ok=True)
 
 
 def _maybe_load_decoder(model_path, encoder, model_config):
@@ -121,17 +164,19 @@ def openbeats_class_prediction(model, x, fs):
     return {"class_probabilities": probs}
 
 
-def openbeats_embedding_extraction(model, x, fs):
+def openbeats_embedding_extraction(model, x, fs, embedding_output_file=None):
     """Extract embeddings from audio.
 
     Args:
         model: OpenBEATs model.
         x: Input audio.
         fs: Sampling rate of the input audio.
+        embedding_output_file: Path to save the extracted embeddings.
 
     Returns:
-        Dictionary where value is the extracted embedding.
+        Dictionary where value is the numpy file containing extracted embedding.
     """
+    assert embedding_output_file is not None, "Output file path must be specified."
     audio = _prepare_openbeats_input(x, fs, model)
     with torch.no_grad():
         ilens = torch.full(
@@ -139,7 +184,61 @@ def openbeats_embedding_extraction(model, x, fs):
         )
         embedding, _, _ = model(xs_pad=audio, ilens=ilens, waveform_input=True)
 
-    return {"embedding": embedding.to("cpu").numpy()}
+        if not os.path.exists(embedding_output_file):
+            os.makedirs(os.path.dirname(embedding_output_file), exist_ok=True)
+        with open(embedding_output_file, "wb") as f:
+            np.save(f, embedding.to("cpu").numpy())
+
+    return {"embedding_file": embedding_output_file}
+
+
+def openbeats_embedding_similarity(model, x, ref_x):
+    """Compute embedding similarity between input and reference audio.
+
+    Args:
+        model: OpenBEATs model.
+        x: Input audio and sampling rate.
+        ref_x: Reference audio and sampling rate.
+
+    Returns:
+        Dictionary where value is the similarity score between the embeddings.
+    """
+    audio1, fs1 = x
+    audio2, fs2 = ref_x
+
+    audio1_prepared = _prepare_openbeats_input(audio1, fs1, model)
+    audio2_prepared = _prepare_openbeats_input(audio2, fs2, model)
+
+    with torch.no_grad():
+        ilens1 = torch.full(
+            (audio1_prepared.size(0),),
+            audio1_prepared.size(1),
+            dtype=torch.long,
+            device=audio1_prepared.device,
+        )
+        embedding1, _, _ = model(
+            xs_pad=audio1_prepared, ilens=ilens1, waveform_input=True
+        )
+        ilens2 = torch.full(
+            (audio2_prepared.size(0),),
+            audio2_prepared.size(1),
+            dtype=torch.long,
+            device=audio2_prepared.device,
+        )
+        embedding2, _, _ = model(
+            xs_pad=audio2_prepared, ilens=ilens2, waveform_input=True
+        )
+
+    embedding1_np = embedding1.to("cpu").numpy()
+    embedding2_np = embedding2.to("cpu").numpy()
+
+    # (batch_size, features)
+    embedding1_flat = embedding1_np.reshape(embedding1_np.shape[0], -1)
+    embedding2_flat = embedding2_np.reshape(embedding2_np.shape[0], -1)
+    similarity_score = cosine_similarity(embedding1_flat, embedding2_flat)[0, 0]
+    return {
+        "similarity_score": similarity_score,
+    }
 
 
 if __name__ == "__main__":
@@ -154,18 +253,50 @@ if __name__ == "__main__":
         action="store_true",
         help="Extract embeddings instead of predicting classes",
     )
+    parser.add_argument(
+        "--compute_similarity",
+        action="store_true",
+        help="Compute similarity between input and reference audio embeddings",
+    )
+    parser.add_argument(
+        "--reference_audio_path",
+        type=str,
+        default=None,
+        help="Path to reference audio file for embedding similarity",
+    )
+    parser.add_argument(
+        "--output_dir",
+        type=str,
+        default=None,
+        help="Directory path to save output embeddings as npy files",
+    )
     parser.add_argument("--use_gpu", action="store_true", help="Use GPU if available")
     args = parser.parse_args()
+    validate_input_arguments(args)
+
     # Load model
     model = openbeats_setup(
         model_path=args.model_path,
         use_gpu=args.use_gpu,
     )
+
     # Load audio
     audio, fs = librosa.load(args.audio_path, sr=None, mono=False)
+
     # Infer
-    if args.extract_embeddings:
-        embedding = openbeats_embedding_extraction(model, audio, fs)
+    if args.compute_similarity:
+        ref_audio, ref_fs = librosa.load(args.reference_audio_path, sr=None, mono=False)
+        similarity_result = openbeats_embedding_similarity(
+            model, (audio, fs), (ref_audio, ref_fs)
+        )
+        print("Embedding Similarity Result: ", similarity_result)
+    elif args.extract_embeddings:
+        embedding_output_file = os.path.join(
+            args.output_dir, os.path.basename(args.audio_path) + "_embedding.npy"
+        )
+        embedding = openbeats_embedding_extraction(
+            model, audio, fs, embedding_output_file
+        )
         print("Extracted Embedding: ", embedding)
     else:
         prediction = openbeats_class_prediction(model, audio, fs)

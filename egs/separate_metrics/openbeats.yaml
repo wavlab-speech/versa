@@ -10,3 +10,8 @@
 # 2. Embedding extraction
 - name: openbeats_embedding_extraction
   model_path: /work/nvme/bbjs/sbharadwaj/7Msounds/exp/beats_iter1_large1.tune_lr1.0e-4_warmup40000_bins1600000_totalsteps400000/epoch_latest.pt
+  embedding_output_file: test/test_samples/test2/embeddings/test_embeddings.npy
+
+# 3. Embedding similarity
+- name: openbeats_embedding_similarity
+  model_path: /work/nvme/bbjs/sbharadwaj/7Msounds/exp/beats_iter1_large1.tune_lr1.0e-4_warmup40000_bins1600000_totalsteps400000/epoch_latest.pt

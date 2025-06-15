@@ -851,8 +851,12 @@ def load_score_modules(score_config, use_gt=True, use_gt_text=False, use_gpu=Fal
             assert (
                 "model_path" in config
             ), "model_path is required for openbeats_embedding_extraction"
+            assert (
+                "embedding_output_file" in config
+            ), "embedding_output_file is required for openbeats_embedding_extraction"
             logging.info(
-                f"Loading OpenBEATs embedding extraction using checkpoint {config.get('model_path')}"
+                f"Loading OpenBEATs embedding extraction using checkpoint {config.get('model_path')}. "
+                f"Embedding will be saved to {config.get('embedding_output_file')}"
             )
             model = openbeats_setup(
                 model_path=config.get("model_path", None),
@@ -862,8 +866,33 @@ def load_score_modules(score_config, use_gt=True, use_gt_text=False, use_gpu=Fal
             score_modules["openbeats_embedding_extraction"] = {
                 "module": openbeats_embedding_extraction,
                 "model": model,
+                "embedding_output_file": config.get("embedding_output_file", None),
             }
             logging.info("Initialized OpenBEATs embedding extraction successfully.")
+        elif config["name"] == "openbeats_embedding_similarity":
+            if not use_gt:
+                logging.warning(
+                    "Cannot use openbeats_embedding_similarity because no gt audio is provided"
+                )
+                continue
+            from versa import openbeats_setup, openbeats_embedding_similarity
+
+            assert (
+                "model_path" in config
+            ), "model_path is required for openbeats_embedding_similarity"
+            logging.info(
+                f"Loading OpenBEATs embedding similarity using checkpoint {config.get('model_path')}"
+            )
+            model = openbeats_setup(
+                model_path=config.get("model_path", None),
+                use_gpu=use_gpu,
+            )
+
+            score_modules["openbeats_embedding_similarity"] = {
+                "module": openbeats_embedding_similarity,
+                "model": model,
+            }
+            logging.info("Initialized OpenBEATs embedding similarity successfully.")
     return score_modules
 
 
@@ -1065,6 +1094,14 @@ def use_score_modules(score_modules, gen_wav, gt_wav, gen_sr, text=None):
                 score_modules[key]["model"],
                 gen_wav,
                 gen_sr,
+                embedding_output_file=score_modules[key]["embedding_output_file"],
+            )
+        elif key == "openbeats_embedding_similarity":
+            # NOTE(shikhar): using gt_wav as reference audio
+            score = score_modules[key]["module"](
+                score_modules[key]["model"],
+                (gen_wav, gen_sr),
+                (gt_wav, gen_sr),
             )
         else:
             raise NotImplementedError(f"Not supported {key}")

@@ -107,5 +107,6 @@ from versa.utterance_metrics.openbeats import (
     openbeats_setup,
     openbeats_class_prediction,
     openbeats_embedding_extraction,
+    openbeats_embedding_similarity,
 )
 from versa import models
