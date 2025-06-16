@@ -51,7 +51,8 @@ We include x mark if the metric is auto-installed in versa.
 | 44 |   | Qwen2 Recording Environment - Quality | qwen2_recording_quality_metric | qwen2_recording_quality_metric | [Qwen2 Audio](https://github.com/QwenLM/Qwen2-Audio) | [paper](https://arxiv.org/abs/2407.10759) |
 | 45 |   | Qwen2 Recording Environment - Channel Type | qwen2_channel_type_metric | qwen2_channel_type_metric | [Qwen2 Audio](https://github.com/QwenLM/Qwen2-Audio) | [paper](https://arxiv.org/abs/2407.10759) |
 | 46 |   | OpenBEATs - Embedding extraction | openbeats_embedding_extraction | openbeats_embedding_extraction | Released via VERSA | [Challenge report/OpenBEATs arxiv](todo) |
-| 47 |   | OpenBEATs - Class prediction | openbeats_class_prediction | openbeats_class_prediction | Released via VERSA | [Challenge report/OpenBEATs arxiv](todo) |
+| 48 |   | OpenBEATs - Similarity | openbeats_embedding_similarity | openbeats_embedding_similarity | Released via VERSA | [Challenge report/OpenBEATs arxiv](todo) |
+| 49 |   | OpenBEATs - Class prediction | openbeats_class_prediction | openbeats_class_prediction | Released via VERSA | [Challenge report/OpenBEATs arxiv](todo) |
 
 ### Dependent Metrics
 |Number| Auto-Install | Metric Name  (Auto-Install)  | Key in config | Key in report |  Code Source                                                                                                     | References                                                                                       |

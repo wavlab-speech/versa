@@ -2,10 +2,9 @@
 # Inference pipeline is released via VERSA!
 
 # 1. Class prediction
-
-# TODO(shikhar): Add checkpoints for fine-tuned models.
-# - name: openbeats_class_prediction
-#   model_path: /work/nvme/bbjs/sbharadwaj/7Msounds/exp/beats_iter1_large1.tune_lr1.0e-4_warmup40000_bins1600000_totalsteps400000/epoch_latest.pt
+# TODO(shikhar): Add other checkpoints for fine-tuned models.
+- name: openbeats_class_prediction
+  model_path: /work/nvme/bbjs/sbharadwaj/OpenBEATs/audioset20k/cls_earlarge3/ckpt_w_cfg.ckpt
 
 # 2. Embedding extraction
 - name: openbeats_embedding_extraction

@@ -75,28 +75,45 @@ def validate_input_arguments(args):
         os.makedirs(args.output_dir, exist_ok=True)
 
 
-def _maybe_load_decoder(model_path, encoder, model_config):
-    """Load the decoder if it exists in the model checkpoint.
-
+def _get_ckpt_components(model_path, checkpoint_type=None):
+    """Separate the components of the checkpoint.
     Args:
         model_path: Path to the model checkpoint.
-        encoder: Encoder model.
-        model_config: Model configuration.
-
+        checkpoint_type: Type of checkpoint, either 'pretrained' or 'finetuned'.
+                       Detect automatically if not specified.
     Returns:
-        Decoder model if it exists, otherwise None.
+        Tuple containing:
+            - encoder_state_dict: State dict for the encoder.
+            - decoder_state_dict: State dict for the decoder (if exists).
+            - cfg: ESPnet configuration of the BEATs model.
+            - token_list: List of tokens (if exists).
     """
-    decoder = None
-    weights = torch.load(model_path, map_location="cpu")
-    if "linear_decoder" in weights:
-        weights = weights["linear_decoder"]
-        n_classes = weights.shape[0]
-        decoder = LinearDecoder(
-            vocab_size=n_classes,
-            encoder_output_size=encoder.output_size(),
-        )
-        decoder.load_state_dict(weights)
-    return decoder
+    checkpoint = torch.load(model_path, map_location="cpu")
+    if checkpoint_type:
+        is_pretrained = checkpoint_type == "pretrained"
+    else:
+        is_pretrained = len(checkpoint.get("token_list", [])) == 0
+    if is_pretrained:
+        # Pre-trained checkpoint BEATs style
+        encoder_state_dict = checkpoint["model"]
+        decoder_state_dict = None
+        cfg = checkpoint["cfg"]
+        token_list = None
+    else:
+        # Fine-tuned checkpoint ESPnet style
+        encoder_state_dict = {
+            k[len("encoder.") :]: v
+            for k, v in checkpoint["model"].items()
+            if k.startswith("encoder.")
+        }
+        decoder_state_dict = {
+            k[len("decoder.") :]: v
+            for k, v in checkpoint["model"].items()
+            if k.startswith("decoder.")
+        }
+        cfg = checkpoint["cfg"]
+        token_list = checkpoint["token_list"][:-2]  # Exclude <blank> and <unk> tokens
+    return encoder_state_dict, decoder_state_dict, cfg, token_list
 
 
 def openbeats_setup(
@@ -104,19 +121,27 @@ def openbeats_setup(
     use_gpu=False,
 ):
     device = "cuda" if use_gpu else "cpu"
+    encoder_state_dict, decoder_state_dict, cfg, token_list = _get_ckpt_components(
+        model_path
+    )
     encoder = BeatsEncoder(
         input_size=1,
-        beats_ckpt_path=model_path,
+        beats_config=cfg,
     )
+    encoder.load_state_dict(encoder_state_dict, strict=False)
     encoder.to(device)
     encoder.eval()
+    if decoder_state_dict is None:
+        return encoder
 
-    decoder = _maybe_load_decoder(model_path, encoder, encoder.config)
-    if decoder is not None:
-        decoder.to(device)
-        decoder.eval()
-        return (encoder, decoder)
-    return encoder
+    decoder = LinearDecoder(
+        vocab_size=len(token_list),
+        encoder_output_size=encoder.output_size(),
+    )
+    decoder.load_state_dict(decoder_state_dict)
+    decoder.to(device)
+    decoder.eval()
+    return (encoder, decoder, token_list)
 
 
 def _prepare_openbeats_input(audio, fs, model):
@@ -144,15 +169,17 @@ def openbeats_class_prediction(model, x, fs):
     """Predict sound events/classes from audio.
 
     Args:
-        model: OpenBEATs model.
+        model: OpenBEATs encoder, decoder and token_list.
         x: Input audio.
         fs: Sampling rate of the input audio.
 
     Returns:
         Dictionary with predicted classes and their probabilities.
     """
-    assert isinstance(model, tuple), "Model should be a tuple of encoder and decoder"
-    encoder, decoder = model
+    assert isinstance(
+        model, tuple
+    ), "Model should be a tuple of encoder, decoder and token_list."
+    encoder, decoder, token_list = model
     audio = _prepare_openbeats_input(x, fs, encoder)
     with torch.no_grad():
         ilens = torch.full(
@@ -160,8 +187,9 @@ def openbeats_class_prediction(model, x, fs):
         )
         embedding, hlens, _ = encoder(xs_pad=audio, ilens=ilens, waveform_input=True)
         probs = decoder(hs_pad=embedding, hlens=hlens)
+        class_probs = {k: v for k, v in zip(token_list, probs.to("cpu").numpy()[0])}
 
-    return {"class_probabilities": probs}
+    return {"class_probabilities": class_probs}
 
 
 def openbeats_embedding_extraction(model, x, fs, embedding_output_file=None):

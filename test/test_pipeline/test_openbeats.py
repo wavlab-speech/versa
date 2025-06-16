@@ -57,14 +57,7 @@ def test_openbeats_class_prediction(class_prediction_result):
         "class_probabilities" in class_prediction_result
     ), "Class prediction result does not contain 'class_probabilities'"
     class_probabilities = class_prediction_result["class_probabilities"]
-    assert isinstance(
-        class_probabilities, np.ndarray
-    ), "Class probabilities should be a numpy array"
-    assert class_probabilities.shape == (
-        1,
-        10,
-    ), "Expected shape (1, 10) for class probabilities"
-    print("Class probabilities: {}".format(class_probabilities), flush=True)
+    print("Multi-class log probabilities: {}".format(class_probabilities), flush=True)
 
 
 def info_update():
@@ -92,7 +85,7 @@ def info_update():
 
     test_openbeats_embedding_extraction(score_info[0])
     test_openbeats_embedding_similarity(score_info[0])
-    # test_openbeats_class_prediction(score_info[0])
+    test_openbeats_class_prediction(score_info[0])
 
     print("check successful", flush=True)
 
