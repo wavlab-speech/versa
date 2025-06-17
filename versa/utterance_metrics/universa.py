@@ -28,7 +28,7 @@ def universa_model_setup(
     return model
 
 
-def audio_preprocess(audio_sample, fs):
+def audio_preprocess(audio, fs):
     if fs != 16000:
         audio = librosa.resample(audio, orig_sr=fs, target_sr=16000)
     audio = audio.astype(np.float32)
