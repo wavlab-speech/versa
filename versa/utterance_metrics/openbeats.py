@@ -39,6 +39,37 @@ from sklearn.metrics.pairwise import cosine_similarity
 from versa.models.openbeats.encoder import BeatsEncoder
 from versa.models.openbeats.decoder import LinearDecoder
 
+# All checkpoints represent the best performing OpenBEATs
+# checkpoint from TODO(shikhar): arxiv link1, link2.
+OPENBEATS_CHECKPOINTS = {
+    # Pretrained models
+    "PT_MD_LARGE_iter1": "",  # Pretrained on multi-domain audio (bioacoustics included)
+    "PT_MD_LARGE_iter2": "",  # Pretrained on multi-domain audio (bioacoustics included)
+    "PT_MD_LARGE_iter3": "",  # Pretrained on multi-domain audio (bioacoustics included)
+    "PT_AUDIO_LARGE_40K": "",  # Pretrained on 40k hours of audio
+    "PT_SPEECH_AUDIO_LARGE_75K": "",  # Pretrained on 75k hours of speech + audio
+    # Finetuned models (on top of PT_MD_LARGE)
+    "FT_MD_LARGE_AS20K": "",  # Fine-tuned on AudioSet-20K from PT_MD_LARGE
+    "FT_MD_LARGE_AS2M": "",  # Fine-tuned on AudioSet-2M from PT_MD_LARGE
+    "FT_MD_LARGE_FSD50K": "",  # Fine-tuned on FSD50K from PT_MD_LARGE
+    "FT_MD_LARGE_ESC": "",  # Fine-tuned on ESC-50 from PT_MD_LARGE
+    # Fine-tuned on BEANS bioacoustics datasets
+    "FT_MD_LARGE_WATKINS": "",
+    "FT_MD_LARGE_CBI": "",
+    "FT_MD_LARGE_HUMBUGDB": "",
+    "FT_MD_LARGE_DOGS": "",
+    "FT_MD_LARGE_BATS": "",
+    "FT_MD_LARGE_DCASE21": "",
+    "FT_MD_LARGE_RFCX": "",
+    "FT_MD_LARGE_GIBBONS": "",
+    "FT_MD_LARGE_HICEAS": "",
+    "FT_MD_LARGE_ENABIRDS": "",
+    # Fine-tuned on music-related datasets
+    "FT_MD_LARGE_GTZAN_GENRE": "",
+    "FT_MD_LARGE_NSYNTH_I": "",
+    "FT_MD_LARGE_NSYNTH_P": "",
+}
+
 
 def validate_input_arguments(args):
     """Validate input arguments.
@@ -78,7 +109,7 @@ def validate_input_arguments(args):
 def _get_ckpt_components(model_path, checkpoint_type=None):
     """Separate the components of the checkpoint.
     Args:
-        model_path: Path to the model checkpoint.
+        model_path: Path or URL to the model checkpoint.
         checkpoint_type: Type of checkpoint, either 'pretrained' or 'finetuned'.
                        Detect automatically if not specified.
     Returns:
@@ -88,11 +119,21 @@ def _get_ckpt_components(model_path, checkpoint_type=None):
             - cfg: ESPnet configuration of the BEATs model.
             - token_list: List of tokens (if exists).
     """
-    checkpoint = torch.load(model_path, map_location="cpu")
+    model_url = None
+    if model_path.startswith("http"):
+        model_url = model_path
+    elif model_path in OPENBEATS_CHECKPOINTS:
+        model_url = OPENBEATS_CHECKPOINTS[model_path]
+    if model_url:
+        checkpoint = torch.hub.load_state_dict_from_url(model_url, map_location="cpu")
+    else:
+        checkpoint = torch.load(model_path, map_location="cpu")
     if checkpoint_type:
         is_pretrained = checkpoint_type == "pretrained"
     else:
-        is_pretrained = len(checkpoint.get("token_list", [])) == 0
+        is_pretrained = (
+            len(checkpoint.get("token_list", [])) == 0
+        )  # because pretrained checkpoints do not have token_list
     if is_pretrained:
         # Pre-trained checkpoint BEATs style
         encoder_state_dict = checkpoint["model"]
