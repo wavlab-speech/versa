@@ -84,7 +84,8 @@ def process_jsonl_file(input_file, output_dir="filtered_results"):
         "wer_lt_0.05": lambda x: x["wer"] < 0.05,
         "insertion_error_lt_0.05": lambda x: x["insertion_error"] < 0.05,
         "deletion_error_lt_0.05": lambda x: x["deletion_error"] < 0.05,
-        "deletion_inseration_error_lt_0.05": lambda x: x["insertion_error"] < 0.05 and x["deletion_error"] < 0.05, 
+        "deletion_inseration_error_lt_0.05": lambda x: x["insertion_error"] < 0.05
+        and x["deletion_error"] < 0.05,
     }
 
     # Apply filters and save results
