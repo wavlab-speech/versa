@@ -1048,9 +1048,14 @@ def list_scoring(
     score_info = []
     cache_info = []  # for batch processing
     for key in tqdm(gen_files.keys()):
-        # Step1: load source speech and conduct basic checks
-        gen_sr, gen_wav = load_audio(gen_files[key], io)
-        gen_wav = wav_normalize(gen_wav)
+        try:
+            # Step1: load source speech and conduct basic checks
+            gen_sr, gen_wav = load_audio(gen_files[key], io) 
+            gen_wav = wav_normalize(gen_wav)
+        except Exception as e:
+            print(f"Error loading audio file for key '{key}': {gen_files[key]}")
+            print(f"Error details: {e}")
+            continue  # Skip this file and move to the next one
 
         # length check
         if not check_minimum_length(gen_wav.shape[0] / gen_sr, score_modules.keys()):
