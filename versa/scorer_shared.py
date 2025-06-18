@@ -361,7 +361,35 @@ def load_score_modules(score_config, use_gt=True, use_gt_text=False, use_gpu=Fal
                 "args": args_cache,
             }
             logging.info("Initiate Whisper WER calculation successfully")
+        elif config["name"] == "faster_whisper_wer":
+            if not use_gt_text:
+                logging.warning("Cannot use faster_whisper_wer because no gt text is provided")
+                continue
 
+            logging.info("Loading faster_whisper_wer metric with reference text")
+            from versa import faster_whisper_levenshtein_metric, faster_whisper_wer_setup
+
+            # Load whisper model if it is already loaded
+            if (
+                "speaking_rate" in score_modules.keys()
+                or "asr_matching" in score_modules.keys()
+            ):
+                args_cache = score_modules["speaking_rate"]["args"]
+            else:
+                args_cache = faster_whisper_wer_setup(
+                    model_tag=config.get("model_tag", "default"),
+                    beam_size=config.get("beam_size", 1),
+                    batch_size=config.get("batch_size", 1),
+                    compute_type=config.get("compute_type", "float32"),
+                    text_cleaner=config.get("text_cleaner", "whisper_basic"),
+                    use_gpu=use_gpu,
+                )
+
+            score_modules["faster_whisper_wer"] = {
+                "module": faster_whisper_levenshtein_metric,
+                "args": args_cache,
+            }
+            logging.info("Initiate faster_whisper WER calculation successfully")
         elif config["name"] == "scoreq_ref":
             if not use_gt:
                 logging.warning("Cannot use scoreq_ref because no gt audio is provided")
@@ -1001,7 +1029,7 @@ def use_score_modules(score_modules, gen_wav, gt_wav, gen_sr, text=None):
             score = score_modules[key]["module"](
                 score_modules[key]["model"], gen_wav, gt_wav, gen_sr
             )
-        elif key == "espnet_wer" or key == "owsm_wer" or key == "whisper_wer":
+        elif key == "espnet_wer" or key == "owsm_wer" or key == "whisper_wer" or key == "faster_whisper_wer":
             score = score_modules[key]["module"](
                 score_modules[key]["args"],
                 gen_wav,
