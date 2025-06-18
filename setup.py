@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name="versa-speech-audio-toolkit",
-    version="0.0.1",
+    version="1.0.0",
     packages=find_packages(),
     install_requires=[
         "accelerate",

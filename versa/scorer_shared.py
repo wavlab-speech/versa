@@ -233,6 +233,29 @@ def load_score_modules(score_config, use_gt=True, use_gt_text=False, use_gpu=Fal
             }
             logging.info("Initiate speaker evaluation successfully.")
 
+        elif config["name"] == "singer":
+            if not use_gt:
+                logging.warning(
+                    "Cannot use singer metric because no gt audio is provided"
+                )
+                continue
+
+            logging.info("Loading singer evaluation...")
+            from versa import singer_metric, singer_model_setup
+
+            singer_model = singer_model_setup(
+                model_name=config.get("model_name", "byol"),
+                model_path=config.get("model_path", None),
+                use_gpu=use_gpu,
+                torchscript=config.get("torchscript", False),
+            )
+
+            score_modules["singer"] = {
+                "module": singer_metric,
+                "args": {"model": singer_model},
+            }
+            logging.info("Initiate singer evaluation successfully.")
+
         elif config["name"] == "sheet_ssqa":
 
             logging.info("Loading Sheet SSQA models for evaluation...")
@@ -833,6 +856,15 @@ def load_score_modules(score_config, use_gt=True, use_gt_text=False, use_gpu=Fal
             logging.info(
                 "Initiate qwen2 audio metric: {} successfully".format(config["name"])
             )
+        elif "chroma_alignment" in config["name"]:
+            from versa import chroma_metric
+
+            score_modules["chroma_alignment"] = {
+                "module": chroma_metric,
+                "args": {
+                    "scale_factor": config.get("scale_factor", 100),
+                },
+            }
     return score_modules
 
 
@@ -841,12 +873,15 @@ def process_cache_info(cache_info, score_modules, output_file):
     for utt_info in cache_info:
         key, gen_wav, gt_wav, gen_sr, text = utt_info
         utt_score = {"key": key}
-        try:
-            utt_score.update(
-                use_score_modules(score_modules, gen_wav, gt_wav, gen_sr, text)
-            )
-        except Exception as e:
-            print("error processing file: {} with error {}".format(key, e))
+        # try:
+        #     utt_score.update(
+        #         use_score_modules(score_modules, gen_wav, gt_wav, gen_sr, text)
+        #     )
+        # except Exception as e:
+        #     print("error processing file: {} with error {}".format(key, e))
+        utt_score.update(
+            use_score_modules(score_modules, gen_wav, gt_wav, gen_sr, text)
+        )
         batch_score_info.append(utt_score)
         if output_file is not None:
             printable_result = json.dumps(utt_score, default=default_numpy_serializer)
@@ -862,7 +897,7 @@ def use_score_modules(score_modules, gen_wav, gt_wav, gen_sr, text=None):
         "whisper_hyp_text": None,
     }
     for key in score_modules.keys():
-        if key == "mcd_f0":
+        if key == "mcd_f0" or key == "chroma_alignment":
             score = score_modules[key]["module"](
                 gen_wav, gt_wav, gen_sr, **score_modules[key]["args"]
             )
@@ -915,7 +950,7 @@ def use_score_modules(score_modules, gen_wav, gt_wav, gen_sr, text=None):
                 gt_wav,
                 gen_sr,
             )
-        elif key == "speaker":
+        elif key == "speaker" or key == "singer":
             score = score_modules[key]["module"](
                 score_modules[key]["args"]["model"], gen_wav, gt_wav, gen_sr
             )
