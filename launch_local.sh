@@ -351,16 +351,17 @@ get_next_gpu_rank() {
 
 # Function to wait for available GPU slot
 wait_for_gpu_slot() {
+    local idx
     while [ ${#gpu_job_pids[@]} -ge $GPU_MAX_PARALLEL ]; do
         # Check for completed GPU jobs
-        for i in "${!gpu_job_pids[@]}"; do
-            if ! kill -0 "${gpu_job_pids[$i]}" 2>/dev/null; then
+        for idx in "${!gpu_job_pids[@]}"; do
+            if ! kill -0 "${gpu_job_pids[$idx]}" 2>/dev/null; then
                 # Job has finished
-                wait "${gpu_job_pids[$i]}"
+                wait "${gpu_job_pids[$idx]}"
                 local exit_code=$?
                 
                 # Extract GPU rank from job info and free it
-                local job_info="${gpu_job_info[$i]}"
+                local job_info="${gpu_job_info[$idx]}"
                 if [[ $job_info =~ GPU_RANK:([0-9]+) ]]; then
                     local freed_rank="${BASH_REMATCH[1]}"
                     # Remove freed rank from in-use array
@@ -374,14 +375,14 @@ wait_for_gpu_slot() {
                 fi
                 
                 if [ $exit_code -eq 0 ]; then
-                    echo "${gpu_job_info[$i]}" >> "${COMPLETED_JOBS_FILE}"
+                    echo "${gpu_job_info[$idx]}" >> "${COMPLETED_JOBS_FILE}"
                 else
-                    echo "${gpu_job_info[$i]}" >> "${FAILED_JOBS_FILE}"
+                    echo "${gpu_job_info[$idx]}" >> "${FAILED_JOBS_FILE}"
                 fi
                 
                 # Remove from tracking arrays
-                unset gpu_job_pids[$i]
-                unset gpu_job_info[$i]
+                unset gpu_job_pids[$idx]
+                unset gpu_job_info[$idx]
                 
                 # Rebuild arrays to remove gaps
                 gpu_job_pids=("${gpu_job_pids[@]}")
@@ -395,23 +396,24 @@ wait_for_gpu_slot() {
 
 # Function to wait for available CPU slot
 wait_for_cpu_slot() {
+    local idx
     while [ ${#cpu_job_pids[@]} -ge $CPU_MAX_PARALLEL ]; do
         # Check for completed CPU jobs
-        for i in "${!cpu_job_pids[@]}"; do
-            if ! kill -0 "${cpu_job_pids[$i]}" 2>/dev/null; then
+        for idx in "${!cpu_job_pids[@]}"; do
+            if ! kill -0 "${cpu_job_pids[$idx]}" 2>/dev/null; then
                 # Job has finished
-                wait "${cpu_job_pids[$i]}"
+                wait "${cpu_job_pids[$idx]}"
                 local exit_code=$?
                 
                 if [ $exit_code -eq 0 ]; then
-                    echo "${cpu_job_info[$i]}" >> "${COMPLETED_JOBS_FILE}"
+                    echo "${cpu_job_info[$idx]}" >> "${COMPLETED_JOBS_FILE}"
                 else
-                    echo "${cpu_job_info[$i]}" >> "${FAILED_JOBS_FILE}"
+                    echo "${cpu_job_info[$idx]}" >> "${FAILED_JOBS_FILE}"
                 fi
                 
                 # Remove from tracking arrays
-                unset cpu_job_pids[$i]
-                unset cpu_job_info[$i]
+                unset cpu_job_pids[$idx]
+                unset cpu_job_info[$idx]
                 
                 # Rebuild arrays to remove gaps
                 cpu_job_pids=("${cpu_job_pids[@]}")
@@ -459,7 +461,7 @@ for ((i=0; i<${#pred_list[@]}; i++)); do
         fi
         
         gpu_ranks_in_use+=($gpu_rank)
-        
+    
         run_job "gpu" \
             "${sub_pred_wavscp}" \
             "${sub_gt_wavscp}" \
@@ -469,7 +471,7 @@ for ((i=0; i<${#pred_list[@]}; i++)); do
             "${job_prefix}" \
             "${chunk_info}" \
             "${gpu_rank}" &
-        
+
         gpu_pid=$!
         gpu_job_pids+=($gpu_pid)
         gpu_job_info+=("GPU:$gpu_pid GPU_RANK:${gpu_rank} CHUNK:${chunk_info} FILE:${job_prefix}")
@@ -486,7 +488,7 @@ for ((i=0; i<${#pred_list[@]}; i++)); do
             "${sub_gt_wavscp}" \
             "${sub_text_file}" \
             "${SCORE_DIR}/result/$(basename "${sub_pred_wavscp}").result.cpu.txt" \
-            "egs/universa_prepare/cpu_subset.yaml" \
+            "egs/quality_check.yaml" \
             "${job_prefix}" \
             "${chunk_info}" &
         
