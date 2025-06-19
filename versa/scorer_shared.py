@@ -1036,7 +1036,14 @@ def use_score_modules(score_modules, gen_wav, gt_wav, gen_sr, text=None):
                 gen_wav,
                 gen_sr,
             )
-        elif key == "cdpam" or key == "dpam":
+        elif key == "dpam":
+            score = score_modules[key]["module"](
+                score_modules[key]["args"]["model"],
+                gen_wav,
+                gt_wav,
+                gen_sr,
+            )
+        elif key == "cdpam":
             score = score_modules[key]["module"](
                 score_modules[key]["args"]["model"],
                 gen_wav,
