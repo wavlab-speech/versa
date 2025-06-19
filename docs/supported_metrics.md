@@ -81,6 +81,8 @@ We include x mark if the metric is auto-installed in versa.
 | 23 |  | Composite Objective Speech Quality (composite) | pysepm | pysepm_Csig, pysepm_Cbak, pysepm_Covl | [pysepm](https://github.com/shimhz/pysepm.git) | [Paper](https://ecs.utdallas.edu/loizou/speech/obj_paper_jan08.pdf)|
 | 24 |  | Coherence and speech intelligibility index (CSII) | pysepm | pysepm_csii_high, pysepm_csii_mid, pysepm_csii_low | [pysepm](https://github.com/shimhz/pysepm.git) | [Paper](https://www.researchgate.net/profile/James-Kates-2/publication/7842209_Coherence_and_the_speech_intelligibility_index/links/546f5dab0cf2d67fc0310f88/Coherence-and-the-speech-intelligibility-index.pdf)|
 | 25 |  | Normalized-covariance measure (NCM) | pysepm | pysepm_ncm | [pysepm](https://github.com/shimhz/pysepm.git) | [Paper](https://pmc.ncbi.nlm.nih.gov/articles/PMC3037773/pdf/JASMAN-000128-003715_1.pdf)|
+| 26 | x | Deep Perceptual Audio Metric (DPAM) | dpam | dpam_distance | [PerceptualAudio_Pytorch](https://github.com/adrienchaton/PerceptualAudio_pytorch)  | [paper](https://arxiv.org/abs/2001.04460) |
+| 27 | x | Contrastive learning-based Deep Perceptual Audio Metric (CDPAM) | cdpam | cdpam_distance | [PerceptualAudio](https://github.com/pranaymanocha/PerceptualAudio/cdpam) | [paper](https://arxiv.org/abs/2102.05109) |
 
 
 ### Non-match Metrics

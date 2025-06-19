@@ -627,6 +627,38 @@ def load_score_modules(score_config, use_gt=True, use_gt_text=False, use_gpu=Fal
             }
             logging.info("Initiate audiobox aesthetics metric successfully")
 
+        elif config["name"] == "cdpam":
+            if not use_gt:
+                logging.warning(
+                    "Cannot use cdpam metrics because no gt audio is provided"
+                )
+                continue
+            logging.info("Loading cdpam evaluation...")
+            from versa import cdpam_metric, cdpam_model_setup
+
+            cdpam_model = cdpam_model_setup(use_gpu=use_gpu)
+            score_modules["cdpam"] = {
+                "module": cdpam_metric,
+                "args": {"model": cdpam_model},
+            }
+            logging.info("Initiate cdpam evaluation successfully.")
+
+        elif config["name"] == "dpam":
+            if not use_gt:
+                logging.warning(
+                    "Cannot use dpam metrics because no gt audio is provided"
+                )
+                continue
+            logging.info("Loading dpam evaluation...")
+            from versa import dpam_metric, dpam_model_setup
+
+            dpam_model = dpam_model_setup(use_gpu=use_gpu)
+            score_modules["dpam"] = {
+                "module": dpam_metric,
+                "args": {"model": dpam_model},
+            }
+            logging.info("Initiate dpam evaluation successfully.")
+
         elif "qwen_omni" in config["name"]:
             logging.info("Loading qwen omni model")
             from versa import qwen_omni_model_setup
@@ -1002,6 +1034,13 @@ def use_score_modules(score_modules, gen_wav, gt_wav, gen_sr, text=None):
             score = score_modules[key]["module"](
                 score_modules[key]["args"]["model"],
                 gen_wav,
+                gen_sr,
+            )
+        elif key == "cdpam" or key == "dpam":
+            score = score_modules[key]["module"](
+                score_modules[key]["args"]["model"],
+                gen_wav,
+                gt_wav,
                 gen_sr,
             )
         elif "qwen2_audio" in key:
