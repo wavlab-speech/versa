@@ -38,7 +38,7 @@ Additionally, please also register the resulting metrics in `versa/metrics.py` b
 ### Step3: Docs, Tests, Examples, and Code-wrapping up
 At this step, the major implementation has been done and we mainly focus on the docs, test functions, examples, and code-wrapping up.
 
-For Docs, please add your metrics to the `README.md` (List of Metrics Section). If the metrics need external tools from installers at `tools`, please include that with the `[ ]` mark in the first field (column).
+For Docs, please add your metrics to the `docs/supported_metrics.md`. Mark the second column with an 'x' if the metric depends on external tools from the tools directory.
 
 For Tests, please add the local test functions at the corresponding metrics scripts.
 - For metrics included in the default setup, you can add the test metric value in `test/test_general.py`. Also, please add the test in `test/test_metrics/test_{metric_name}.py` for CI test. We have a [guideline](https://github.com/wavlab-speech/versa/blob/main/docs) for CI test if you would like to have a check,` 
