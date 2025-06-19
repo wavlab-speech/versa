@@ -8,7 +8,7 @@ You may add the metric implementation in the following sub-directories (`versa/c
 - utterance_metrics: works for utterance-level metrics
 - sequence_metrics (will be deprecated in later versions and merged to utterance_metrics): stands for metrics that need comparing two feature sequences.
 
-The typical format of the metric setup includes two functions, one for model setup, and the other for inference. Please refer to `versa/utterance/metrics/speaker.py` for an example of the implementation.
+The typical format of the metric setup includes two functions, one for model setup, and the other for inference. Please refer to `versa/utterance_metrics/speaker.py` for an example of the implementation.
 
 For special cases where the model setup is simple or not needed, we can simplify only one inference function without the setup function as exemplified in `versa/utterance_metrics/stoi.py`
 
