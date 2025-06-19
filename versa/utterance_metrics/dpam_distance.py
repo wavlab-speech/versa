@@ -57,8 +57,9 @@ class lossnet(nn.Module):
             self.act = None
 
     def forward(self, xref, xper):
-        xref = xref.unsqueeze(1)
-        xper = xper.unsqueeze(1)
+        device = next(self.parameters()).device
+        xref = xref.unsqueeze(1).to(device)
+        xper = xper.unsqueeze(1).to(device)
         dist = 0
         for iconv in range(self.nconv):
             xref = self.convs[iconv](xref)
