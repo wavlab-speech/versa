@@ -865,6 +865,31 @@ def load_score_modules(score_config, use_gt=True, use_gt_text=False, use_gpu=Fal
                     "scale_factor": config.get("scale_factor", 100),
                 },
             }
+
+        elif "wvmos" in config["name"]:
+            logging.info("Loading WVMOS metric")
+            from versa import wvmos_setup, wvmos_calculate
+
+            model = wvmos_setup(
+                use_gpu = use_gpu,
+               
+            )
+            score_modules["wvmos"] = {
+                "module": wvmos_calculate,
+                "args": {"model": model},
+            }
+            logging.info("Initiate WVMOS metric successfully")
+        elif "sigmos" in config["name"]:
+            logging.info("Loading SIGMOS metric")
+            from versa import sigmos_setup, sigmos_calculate
+
+            model = sigmos_setup()
+
+            score_modules["sigmos"] = {
+                "module": sigmos_calculate,
+                "args": {"model": model},
+            }
+            logging.info("Initiate SIGMOS metric successfully")
     return score_modules
 
 
@@ -1057,6 +1082,18 @@ def use_score_modules(score_modules, gen_wav, gt_wav, gen_sr, text=None):
                 gen_wav,
                 gen_sr,
                 custom_prompt=score_modules[key]["prompt"],
+            )
+        elif key == "wvmos":
+            score = score_modules[key]["module"](
+                score_modules[key]["args"]["model"], 
+                gen_wav,
+                gen_sr,
+            )
+        elif key == "sigmos":
+            score = score_modules[key]["module"](
+                score_modules[key]["args"]["model"],
+                gen_wav,
+                gen_sr,
             )
         else:
             raise NotImplementedError(f"Not supported {key}")
