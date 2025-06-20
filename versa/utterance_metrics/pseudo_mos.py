@@ -11,6 +11,9 @@ logger = logging.getLogger(__name__)
 import librosa
 import numpy as np
 import torch
+import requests
+from pathlib import Path
+from typing import Optional
 
 try:
     import utmosv2
@@ -92,6 +95,16 @@ def pseudo_mos_setup(
             ).to(device)
             predictor_dict["singmos"] = singmos
             predictor_fs["singmos"] = 16000
+        elif predictor.startswith("dnsmos_pro_"):
+            variant = predictor[len("dnsmos_pro_"):]
+            url = f"https://github.com/fcumlin/DNSMOSPro/raw/refs/heads/main/runs/{variant.upper()}/model_best.pt"
+            response = requests.get(url)
+            model_path = Path(cache_dir) / f"dnsmos_pro_{variant}.pt"
+            model_path.parent.mkdir(parents=True, exist_ok=True)
+            with open(model_path, "wb") as f:
+                f.write(response.content)
+            predictor_dict[predictor] = torch.jit.load(model_path, map_location=device)
+            predictor_fs[predictor] = 16000
         else:
             raise NotImplementedError("Not supported {}".format(predictor))
 
@@ -200,6 +213,42 @@ def pseudo_mos_metric(pred, fs, predictor_dict, predictor_fs, use_gpu=False):
                 0
             ].item()
             scores.update(singmos=score)
+        elif predictor.startswith("dnsmos_pro_"):
+            if fs != predictor_fs[predictor]:
+                pred_dnsmos_pro = librosa.resample(
+                    pred, orig_sr=fs, target_sr=predictor_fs[predictor]
+                )
+            else:
+                pred_dnsmos_pro = pred
+            def stft(
+                samples: np.ndarray,
+                win_length: int = 320,
+                hop_length: int = 160,
+                n_fft: int = 320,
+                use_log: bool = True,
+                use_magnitude: bool = True,
+                n_mels: Optional[int] = None,
+            ) -> np.ndarray:
+                if use_log and not use_magnitude:
+                    raise ValueError('Log is only available if the magnitude is to be computed.')
+                if n_mels is None:
+                    spec = librosa.stft(y=samples, win_length=win_length, hop_length=hop_length, n_fft=n_fft)
+                else:
+                    spec = librosa.feature.melspectrogram(
+                        y=samples, win_length=win_length, hop_length=hop_length, n_fft=n_fft, n_mels=n_mels
+                    )
+                spec = spec.T
+                if use_magnitude:
+                    spec = np.abs(spec)
+                if use_log:
+                    spec = np.clip(spec, 10 ** (-7), 10 ** 7)
+                    spec = np.log10(spec)
+                return spec
+    
+            spec = torch.FloatTensor(stft(pred_dnsmos_pro))
+            with torch.no_grad():
+                prediction = predictor_dict[predictor](spec[None, None, ...])
+            scores[predictor] = prediction[0, 0].item()
         else:
             raise NotImplementedError("Not supported {}".format(predictor))
 
@@ -210,7 +259,7 @@ if __name__ == "__main__":
     a = np.random.random(16000)
     print(a)
     predictor_dict, predictor_fs = pseudo_mos_setup(
-        ["utmos", "dnsmos", "plcmos", "singmos"],
+        ["utmos", "dnsmos", "plcmos", "singmos", "dnsmos_pro_bvcc", "dnsmos_pro_nisqa", "dnsmos_pro_vcc2018"],
         predictor_args={
             "dnsmos": {"fs": 16000},
             "plcmos": {"fs": 16000},

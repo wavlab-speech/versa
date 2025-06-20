@@ -123,6 +123,9 @@ def discover_metrics(info: List[Dict]) -> Dict[str, Any]:
             "noresqa",
             "torch_squim_mos",
             "warpq",
+            "dnsmos_pro_bvcc",
+            "dnsmos_pro_nisqa",
+            "dnsmos_pro_vcc2018",
         ],
         # Speech Enhancement Metrics
         "speech_enhancement": [
@@ -333,7 +336,7 @@ def estimate_metric_quality(metric_name: str, values: List[float]) -> Dict[str, 
         )
     elif any(
         x in metric_lower
-        for x in ["mos", "quality", "nisqa", "utmos", "singmos", "pesq", "stoi"]
+        for x in ["mos", "quality", "nisqa", "utmos", "singmos", "pesq", "stoi", "dnsmos_pro_bvcc", "dnsmos_pro_nisqa", "dnsmos_pro_vcc2018"]
     ):
         analysis["higher_is_better"] = True
         analysis["interpretation"] = "Higher values indicate better audio quality"

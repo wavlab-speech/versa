@@ -49,7 +49,7 @@
 # -- plcmos: PLC-MOS score
 # -- aecmos: AEC-MOS score
 - name: pseudo_mos
-  predictor_types: ["utmos", "dnsmos", "plcmos", "singmos", "utmosv2"]
+  predictor_types: ["utmos", "dnsmos", "plcmos", "singmos", "utmosv2", "dnsmos_pro_bvcc", "dnsmos_pro_nisqa", "dnsmos_pro_vcc2018"]
   predictor_args:
     utmos:
       fs: 16000
