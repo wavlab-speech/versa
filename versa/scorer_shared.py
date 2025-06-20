@@ -1071,20 +1071,14 @@ def use_score_modules(score_modules, gen_wav, gt_wav, gen_sr, text=None):
                 gen_wav,
                 gen_sr,
             )
-        elif key == "dpam":
+        elif key == "dpam" or key == "cpam":
             score = score_modules[key]["module"](
                 score_modules[key]["args"]["model"],
                 gen_wav,
                 gt_wav,
                 gen_sr,
             )
-        elif key == "cdpam":
-            score = score_modules[key]["module"](
-                score_modules[key]["args"]["model"],
-                gen_wav,
-                gt_wav,
-                gen_sr,
-            )
+
         elif "qwen2_audio" in key:
             if key == "qwen2_audio":
                 continue  # skip the base model, only use the specific metrics
