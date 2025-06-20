@@ -101,7 +101,7 @@ def pseudo_mos_setup(
             if not model_path.exists():
                 url = f"https://github.com/fcumlin/DNSMOSPro/raw/refs/heads/main/runs/{variant.upper()}/model_best.pt"
                 model_path.parent.mkdir(parents=True, exist_ok=True)
-                logger.info(f"Downloading: \"{url}\" to {model_path}")
+                logger.info(f'Downloading: "{url}" to {model_path}')
                 response = requests.get(url)
                 with open(model_path, "wb") as f:
                     f.write(response.content)
