@@ -97,12 +97,13 @@ def pseudo_mos_setup(
             predictor_fs["singmos"] = 16000
         elif predictor.startswith("dnsmos_pro_"):
             variant = predictor[len("dnsmos_pro_") :]
-            url = f"https://github.com/fcumlin/DNSMOSPro/raw/refs/heads/main/runs/{variant.upper()}/model_best.pt"
-            response = requests.get(url)
             model_path = Path(cache_dir) / f"dnsmos_pro_{variant}.pt"
-            model_path.parent.mkdir(parents=True, exist_ok=True)
-            with open(model_path, "wb") as f:
-                f.write(response.content)
+            if not model_path.exists():
+                url = f"https://github.com/fcumlin/DNSMOSPro/raw/refs/heads/main/runs/{variant.upper()}/model_best.pt"
+                model_path.parent.mkdir(parents=True, exist_ok=True)
+                response = requests.get(url)
+                with open(model_path, "wb") as f:
+                    f.write(response.content)
             predictor_dict[predictor] = torch.jit.load(model_path, map_location=device)
             predictor_fs[predictor] = 16000
         else:
