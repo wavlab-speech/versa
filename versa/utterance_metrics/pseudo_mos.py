@@ -96,7 +96,7 @@ def pseudo_mos_setup(
             predictor_dict["singmos"] = singmos
             predictor_fs["singmos"] = 16000
         elif predictor.startswith("dnsmos_pro_"):
-            variant = predictor[len("dnsmos_pro_"):]
+            variant = predictor[len("dnsmos_pro_") :]
             url = f"https://github.com/fcumlin/DNSMOSPro/raw/refs/heads/main/runs/{variant.upper()}/model_best.pt"
             response = requests.get(url)
             model_path = Path(cache_dir) / f"dnsmos_pro_{variant}.pt"
@@ -220,6 +220,7 @@ def pseudo_mos_metric(pred, fs, predictor_dict, predictor_fs, use_gpu=False):
                 )
             else:
                 pred_dnsmos_pro = pred
+
             def stft(
                 samples: np.ndarray,
                 win_length: int = 320,
@@ -230,21 +231,32 @@ def pseudo_mos_metric(pred, fs, predictor_dict, predictor_fs, use_gpu=False):
                 n_mels: Optional[int] = None,
             ) -> np.ndarray:
                 if use_log and not use_magnitude:
-                    raise ValueError('Log is only available if the magnitude is to be computed.')
+                    raise ValueError(
+                        "Log is only available if the magnitude is to be computed."
+                    )
                 if n_mels is None:
-                    spec = librosa.stft(y=samples, win_length=win_length, hop_length=hop_length, n_fft=n_fft)
+                    spec = librosa.stft(
+                        y=samples,
+                        win_length=win_length,
+                        hop_length=hop_length,
+                        n_fft=n_fft,
+                    )
                 else:
                     spec = librosa.feature.melspectrogram(
-                        y=samples, win_length=win_length, hop_length=hop_length, n_fft=n_fft, n_mels=n_mels
+                        y=samples,
+                        win_length=win_length,
+                        hop_length=hop_length,
+                        n_fft=n_fft,
+                        n_mels=n_mels,
                     )
                 spec = spec.T
                 if use_magnitude:
                     spec = np.abs(spec)
                 if use_log:
-                    spec = np.clip(spec, 10 ** (-7), 10 ** 7)
+                    spec = np.clip(spec, 10 ** (-7), 10**7)
                     spec = np.log10(spec)
                 return spec
-    
+
             spec = torch.FloatTensor(stft(pred_dnsmos_pro))
             with torch.no_grad():
                 prediction = predictor_dict[predictor](spec[None, None, ...])
@@ -259,7 +271,15 @@ if __name__ == "__main__":
     a = np.random.random(16000)
     print(a)
     predictor_dict, predictor_fs = pseudo_mos_setup(
-        ["utmos", "dnsmos", "plcmos", "singmos", "dnsmos_pro_bvcc", "dnsmos_pro_nisqa", "dnsmos_pro_vcc2018"],
+        [
+            "utmos",
+            "dnsmos",
+            "plcmos",
+            "singmos",
+            "dnsmos_pro_bvcc",
+            "dnsmos_pro_nisqa",
+            "dnsmos_pro_vcc2018",
+        ],
         predictor_args={
             "dnsmos": {"fs": 16000},
             "plcmos": {"fs": 16000},
