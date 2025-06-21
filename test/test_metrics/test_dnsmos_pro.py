@@ -1,3 +1,8 @@
+#!/usr/bin/env python3
+
+# Copyright 2025 Jiatong Shi
+# Copyright 2025 Jionghao Han
+# Apache 2.0  (http://www.apache.org/licenses/LICENSE-2.0)
 import wave
 import numpy as np
 import pytest
