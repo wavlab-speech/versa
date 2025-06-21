@@ -57,6 +57,7 @@ setup(
         "transformers>=4.36.2",
         "espnet_model_zoo",
         "discrete-speech-metrics @ git+https://github.com/ftshijt/DiscreteSpeechMetrics.git@v1.0.2",
+        "cdpam",
     ],
     extras_require={
         "dev": [

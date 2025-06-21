@@ -83,3 +83,9 @@
 # -- se_si_snr: the SI-SNR from a rerference speech enhancement model
 - name: se_snr
   model_tag: default
+
+# DPAM and CDPAM distance metrics
+# -- dpam: deep perceptual audio metric
+# -- cdpam: contrastive deep perceptual audio metric
+- name: dpam
+- name: cdpam
