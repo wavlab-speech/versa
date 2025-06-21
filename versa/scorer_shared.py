@@ -1125,7 +1125,7 @@ def list_scoring(
     for key in tqdm(gen_files.keys()):
         try:
             # Step1: load source speech and conduct basic checks
-            gen_sr, gen_wav = load_audio(gen_files[key], io) 
+            gen_sr, gen_wav = load_audio(gen_files[key], io)
             gen_wav = wav_normalize(gen_wav)
         except Exception as e:
             print(f"Error loading audio file for key '{key}': {gen_files[key]}")
