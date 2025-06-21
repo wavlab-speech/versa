@@ -85,4 +85,3 @@ def test_dnsmos_pro_metric_identical(fixed_audio):
     assert scores["dnsmos_pro_vcc2018"] == pytest.approx(
         2.113027334213257, rel=1e-3, abs=1e-6
     ), f"Expected dnsmos_pro_vcc2018 of 1.0 for identical signals, got {scores['dnsmos_pro_vcc2018']}"
-
