@@ -84,7 +84,7 @@ class SigMOS:
         }
         return result
 
-def sigmos_setup(model_dir='./versa_cache/sigmos_model'):
+def sigmos_setup(model_dir='../versa_cache/sigmos_model'):
 
     # Permalink to the onnx file:
     # https://github.com/microsoft/SIG-Challenge/blob/bf4525153b6ed998f19d9e79ff1fd00f55dec42b/ICASSP2024/sigmos/model-sigmos_1697718653_41d092e8-epo-200.onnx
