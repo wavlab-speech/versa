@@ -126,4 +126,7 @@ NUM_METRIC = [
     "clap_score",
     "apa",
     "pysepm_llr",
+    "dnsmos_pro_bvcc",
+    "dnsmos_pro_nisqa",
+    "dnsmos_pro_vcc2018",
 ]
