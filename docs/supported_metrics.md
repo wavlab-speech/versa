@@ -52,8 +52,8 @@ We include x mark if the metric is auto-installed in versa.
 | 45 | x | Qwen2 Recording Environment - Channel Type | qwen2_channel_type_metric | qwen2_channel_type_metric | [Qwen2 Audio](https://github.com/QwenLM/Qwen2-Audio) | [paper](https://arxiv.org/abs/2407.10759) |
 | 46 | x | Dimensional Emotion | w2v2_dimensional_emotion | w2v2_dimensional_emotion | [w2v2-how-to](https://github.com/audeering/w2v2-how-to) | [paper](https://arxiv.org/pdf/2203.07378) |
 | 47 | x | Uni-VERSA (Versatile Speech Assessment with a Unified Framework) | universa | universa_{sub_metrics} | [Uni-VERSA](https://huggingface.co/collections/espnet/universa-6834e7c0a28225bffb6e2526) | [paper](https://arxiv.org/abs/2505.20741) |
-
-
+| 48 |   | WV-MOS (MOS score prediction by fine-tuned wav2vec2.0 model) | wvmos | wvmos | [wvmos](https://github.com/AndreevP/wvmos) | [paper](https://arxiv.org/abs/2203.13086) |
+| 49 |   |SIG-MOS | sigmos | {SIGMOS_COL, SIGMOS_DISC, SIGMOS_LOUD, SIGMOS_REVERB, SIGMOS_SIG, SIGMOS_OVRL} | [sigmos](https://github.com/microsoft/SIG-Challenge/tree/main/ICASSP2024/sigmos) |[paper](https://arxiv.org/pdf/2309.07385) |
 
 ### Dependent Metrics
 |Number| Auto-Install | Metric Name  (Auto-Install)  | Key in config | Key in report |  Code Source                                                                                                     | References                                                                                       |
@@ -64,7 +64,7 @@ We include x mark if the metric is auto-installed in versa.
 | 4 | x | Signal-to-interference  Ratio (SIR)  | signal_metric | sir | [espnet](https://github.com/espnet/espnet) | - |
 | 5 | x | Signal-to-artifact Ratio (SAR)  | signal_metric | sar | [espnet](https://github.com/espnet/espnet) | - |
 | 6 | x | Signal-to-distortion Ratio (SDR)  | signal_metric | sdr | [espnet](https://github.com/espnet/espnet) | - |
-| 7 | x | Convolutional scale-invariant signal-to-distortion ratio (CI-SDR)  | signal_metric | ci-sdr | [ci_sdr](https://github.com/fgnt/ci_sdr) | [paper](https://arxiv.org/abs/2011.15003) |
+| 7 | x | Convolutional scale-invariant signal-to-distortion ratio (CI-SDR)  | signal_metric | ci-sdr | [ci_sdr](https://github.com/fgnt/ci_sdr) | [paper](https://arxiv.(org/abs/2011.15003) |
 | 8 | x | Scale-invariant signal-to-noise ratio (SI-SNR)  | signal_metric | si-snr | [espnet](https://github.com/espnet/espnet) | [paper](https://arxiv.org/abs/1711.00541) |
 | 9 | x | Perceptual Evaluation of Speech Quality (PESQ)  | pesq | pesq | [pesq](https://pypi.org/project/pesq/) | [paper](https://ieeexplore.ieee.org/document/941023) |
 | 10 | x | Short-Time Objective Intelligibility (STOI)  | stoi | stoi | [pystoi](https://github.com/mpariente/pystoi) | [paper](https://ieeexplore.ieee.org/document/5495701) |
