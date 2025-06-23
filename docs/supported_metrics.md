@@ -89,6 +89,9 @@ We include x mark if the metric is auto-installed in versa.
 | 25 |  | Normalized-covariance measure (NCM) | pysepm | pysepm_ncm | [pysepm](https://github.com/shimhz/pysepm.git) | [Paper](https://pmc.ncbi.nlm.nih.gov/articles/PMC3037773/pdf/JASMAN-000128-003715_1.pdf)|
 | 26 | x | Uni-VERSA (Versatile Speech Assessment with a Unified Framework) with Paired Reference | universa | universa_{sub_metrics} | [Uni-VERSA](https://huggingface.co/collections/espnet/universa-6834e7c0a28225bffb6e2526) | [paper](https://arxiv.org/abs/2505.20741) |
 | 27 | x | Chroma-related Alignment | chroma_alignment | chroma_{stft,cqt,cens}_{cosine, euclidean}_dtw{"", _log, _raw} | - | - |
+| 28 | x | Deep Perceptual Audio Metric (DPAM) | dpam | dpam_distance | [PerceptualAudio_Pytorch](https://github.com/adrienchaton/PerceptualAudio_pytorch)  | [paper](https://arxiv.org/abs/2001.04460) |
+| 29 | x | Contrastive learning-based Deep Perceptual Audio Metric (CDPAM) | cdpam | cdpam_distance | [PerceptualAudio](https://github.com/pranaymanocha/PerceptualAudio/cdpam) | [paper](https://arxiv.org/abs/2102.05109) |
+
 
 ### Non-match Metrics
 

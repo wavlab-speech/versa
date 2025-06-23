@@ -58,6 +58,8 @@ NUM_METRIC = [
     "audiobox_aesthetics_CU",
     "audiobox_aesthetics_PC",
     "audiobox_aesthetics_PQ",
+    "cdpam",
+    "dpam",
     "mcd",
     "f0_corr",
     "f0_rmse",
