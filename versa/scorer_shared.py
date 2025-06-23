@@ -1223,7 +1223,7 @@ def list_scoring(
 
         # Step2: load reference (gt) speech and conduct basic checks
         if gt_files is not None:
-            if key not in gen_files.keys():
+            if key not in gt_files.keys():
                 logging.warning(
                     "key {} not found in ground truth files though provided, skipping".format(
                         key
