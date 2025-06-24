@@ -55,6 +55,7 @@ We include x mark if the metric is auto-installed in versa.
 | 48 | x | DNSMOS Pro: A Reduced-Size DNN for Probabilistic MOS of Speech  | pseudo_mos | dnsmos_pro_bvcc | [DNSMOSPro](https://github.com/fcumlin/DNSMOSPro/tree/main) | [paper](https://www.isca-archive.org/interspeech_2024/cumlin24_interspeech.html) |
 | 49 | x | DNSMOS Pro: A Reduced-Size DNN for Probabilistic MOS of Speech  | pseudo_mos | dnsmos_pro_nisqa | [DNSMOSPro](https://github.com/fcumlin/DNSMOSPro/tree/main) | [paper](https://www.isca-archive.org/interspeech_2024/cumlin24_interspeech.html) |
 | 50 | x | DNSMOS Pro: A Reduced-Size DNN for Probabilistic MOS of Speech  | pseudo_mos | dnsmos_pro_vcc2018 | [DNSMOSPro](https://github.com/fcumlin/DNSMOSPro/tree/main) | [paper](https://www.isca-archive.org/interspeech_2024/cumlin24_interspeech.html) |
+| 51 | x | VQScore (Self-Supervised Speech Quality Estimation and Enhancement Using Only Clean Speech)  | vqscore | vqscore | [VQScore](https://github.com/JasonSWFu/VQscore) | [paper](https://arxiv.org/abs/2402.16321) |
 
 
 
