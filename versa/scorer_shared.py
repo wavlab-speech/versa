@@ -650,6 +650,38 @@ def load_score_modules(score_config, use_gt=True, use_gt_text=False, use_gpu=Fal
             }
             logging.info("Initiate audiobox aesthetics metric successfully")
 
+        elif config["name"] == "cdpam":
+            if not use_gt:
+                logging.warning(
+                    "Cannot use cdpam metrics because no gt audio is provided"
+                )
+                continue
+            logging.info("Loading cdpam evaluation...")
+            from versa import cdpam_metric, cdpam_model_setup
+
+            cdpam_model = cdpam_model_setup(use_gpu=use_gpu)
+            score_modules["cdpam"] = {
+                "module": cdpam_metric,
+                "args": {"model": cdpam_model},
+            }
+            logging.info("Initiate cdpam evaluation successfully.")
+
+        elif config["name"] == "dpam":
+            if not use_gt:
+                logging.warning(
+                    "Cannot use dpam metrics because no gt audio is provided"
+                )
+                continue
+            logging.info("Loading dpam evaluation...")
+            from versa import dpam_metric, dpam_model_setup
+
+            dpam_model = dpam_model_setup(use_gpu=use_gpu)
+            score_modules["dpam"] = {
+                "module": dpam_metric,
+                "args": {"model": dpam_model},
+            }
+            logging.info("Initiate dpam evaluation successfully.")
+
         elif "qwen_omni" in config["name"]:
             logging.info("Loading qwen omni model")
             from versa import qwen_omni_model_setup
@@ -865,6 +897,16 @@ def load_score_modules(score_config, use_gt=True, use_gt_text=False, use_gpu=Fal
                     "scale_factor": config.get("scale_factor", 100),
                 },
             }
+        elif "vqscore" in config["name"]:
+            logging.info("Loading VQScore model")
+            from versa import vqscore_metric, vqscore_setup
+
+            vqscore_model = vqscore_setup(use_gpu=use_gpu)
+            score_modules["vqscore"] = {
+                "module": vqscore_metric,
+                "args": {"model": vqscore_model},
+            }
+            logging.info("Initiate VQScore evaluation successfully.")
     return score_modules
 
 
@@ -1039,6 +1081,14 @@ def use_score_modules(score_modules, gen_wav, gt_wav, gen_sr, text=None):
                 gen_wav,
                 gen_sr,
             )
+        elif key == "dpam" or key == "cdpam":
+            score = score_modules[key]["module"](
+                score_modules[key]["args"]["model"],
+                gen_wav,
+                gt_wav,
+                gen_sr,
+            )
+
         elif "qwen2_audio" in key:
             if key == "qwen2_audio":
                 continue  # skip the base model, only use the specific metrics
@@ -1057,6 +1107,10 @@ def use_score_modules(score_modules, gen_wav, gt_wav, gen_sr, text=None):
                 gen_wav,
                 gen_sr,
                 custom_prompt=score_modules[key]["prompt"],
+            )
+        elif key == "vqscore":
+            score = score_modules[key]["module"](
+                score_modules[key]["args"]["model"], gen_wav, gen_sr
             )
         else:
             raise NotImplementedError(f"Not supported {key}")
@@ -1085,7 +1139,7 @@ def list_scoring(
     for key in tqdm(gen_files.keys()):
         try:
             # Step1: load source speech and conduct basic checks
-            gen_sr, gen_wav = load_audio(gen_files[key], io) 
+            gen_sr, gen_wav = load_audio(gen_files[key], io)
             gen_wav = wav_normalize(gen_wav)
         except Exception as e:
             print(f"Error loading audio file for key '{key}': {gen_files[key]}")

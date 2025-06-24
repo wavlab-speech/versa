@@ -1,0 +1,4 @@
+# vqscore score for speech quality assessment
+#  -- vqscore: cosine similarity between encoded and quantized features
+
+- name: vqscore
