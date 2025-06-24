@@ -111,3 +111,4 @@ from versa.utterance_metrics.srmr import srmr_metric
 from versa.utterance_metrics.chroma_alignment import chroma_metric
 from versa.utterance_metrics.dpam_distance import dpam_metric, dpam_model_setup
 from versa.utterance_metrics.cdpam_distance import cdpam_metric, cdpam_model_setup
+from versa.utterance_metrics.vqscore import vqscore_metric, vqscore_setup
