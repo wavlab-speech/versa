@@ -22,7 +22,6 @@ setup(
         "importlib-metadata",
         "kaggle",
         "kaldiio",
-        "jamo",
         "lazy_loader",
         "Levenshtein",
         "librosa",
@@ -59,7 +58,6 @@ setup(
         "espnet_model_zoo",
         "discrete-speech-metrics @ git+https://github.com/ftshijt/DiscreteSpeechMetrics.git@v1.0.2",
         "cdpam",
-        "nemo_toolkit[asr]"
     ],
     extras_require={
         "dev": [

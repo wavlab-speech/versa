@@ -15,7 +15,7 @@ TEST_INFO = {
     "espnet_wer_equal": 1,
     "owsm_wer_equal": 1,
     "whisper_wer_equal": 1,
-    "faster_whisper_wer_equal": 1,
+    "fwhisper_wer_equal": 1,
     "nemo_wer_equal": 1,
     "hubert_wer_equal": 1,
 }

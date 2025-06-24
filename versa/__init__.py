@@ -55,9 +55,9 @@ from versa.corpus_metrics.whisper_wer import (
     whisper_levenshtein_metric,
     whisper_wer_setup,
 )
-from versa.corpus_metrics.faster_whisper_wer import (
-    faster_whisper_levenshtein_metric,
-    faster_whisper_wer_setup,
+from versa.corpus_metrics.fwhisper_wer import (
+    fwhisper_levenshtein_metric,
+    fwhisper_wer_setup,
 )
 from versa.corpus_metrics.nemo_wer import (
     nemo_levenshtein_metric,

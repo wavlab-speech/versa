@@ -58,26 +58,29 @@
 
 
 # Word error rate with faster-whisper model
+# Please refer to tools/install_fwhisper.sh for installing.
 # More model_tag can be from https://github.com/SYSTRAN/faster-whisper/blob/master/faster_whisper/utils.py .
 # The default model is `large-v3`.
-# --faster_whisper_hyp_text: the hypothesis from faster-whisper ASR decoding
+# --fwhisper_hyp_text: the hypothesis from faster-whisper ASR decoding
 # --ref_text: reference text (after cleaner)
-# --faster_whisper_wer_delete: delete errors
-# --faster_whisper_wer_insert: insertion errors
-# --faster_whisper_wer_replace: replacement errors
-# --faster_whisper_wer_equal: correct matching words/character counts
-# --faster_whisper_cer_delete: delete errors
-# --faster_whisper_cer_insert: insertion errors
-# --faster_whisper_cer_replace: replacement errors
-# --faster_whisper_cer_equal: correct matching words/character counts
-- name: faster_whisper_wer
+# --fwhisper_wer_delete: delete errors
+# --fwhisper_wer_insert: insertion errors
+# --fwhisper_wer_replace: replacement errors
+# --fwhisper_wer_equal: correct matching words/character counts
+# --fwhisper_cer_delete: delete errors
+# --fwhisper_cer_insert: insertion errors
+# --fwhisper_cer_replace: replacement errors
+# --fwhisper_cer_equal: correct matching words/character counts
+- name: fwhisper_wer
   model_tag: default
   beam_size: 5
   batch_size: 1
   compute_type: float32
   text_cleaner: whisper_basic
 
+
 # Word error rate with NeMo asr model
+# Please refer to tools/install_nemo.sh for installing.
 # The default model is `nvidia/stt_en_conformer_transducer_xlarge`.
 # --nemo_hyp_text: the hypothesis from NeMo ASR decoding
 # --ref_text: reference text (after cleaner)

@@ -361,35 +361,26 @@ def load_score_modules(score_config, use_gt=True, use_gt_text=False, use_gpu=Fal
                 "args": args_cache,
             }
             logging.info("Initiate Whisper WER calculation successfully")
-        elif config["name"] == "faster_whisper_wer":
+        elif config["name"] == "fwhisper_wer":
             if not use_gt_text:
-                logging.warning("Cannot use faster_whisper_wer because no gt text is provided")
+                logging.warning("Cannot use fwhisper_wer because no gt text is provided")
                 continue
 
-            logging.info("Loading faster_whisper_wer metric with reference text")
-            from versa import faster_whisper_levenshtein_metric, faster_whisper_wer_setup
+            logging.info("Loading fwhisper_wer metric with reference text")
+            from versa import fwhisper_levenshtein_metric, fwhisper_wer_setup
 
-            # Load whisper model if it is already loaded
-            if (
-                "speaking_rate" in score_modules.keys()
-                or "asr_matching" in score_modules.keys()
-            ):
-                args_cache = score_modules["speaking_rate"]["args"]
-            else:
-                args_cache = faster_whisper_wer_setup(
+            score_modules["fwhisper_wer"] = {
+                "module": fwhisper_levenshtein_metric,
+                "args": fwhisper_wer_setup(
                     model_tag=config.get("model_tag", "default"),
                     beam_size=config.get("beam_size", 1),
                     batch_size=config.get("batch_size", 1),
                     compute_type=config.get("compute_type", "float32"),
                     text_cleaner=config.get("text_cleaner", "whisper_basic"),
                     use_gpu=use_gpu,
-                )
-
-            score_modules["faster_whisper_wer"] = {
-                "module": faster_whisper_levenshtein_metric,
-                "args": args_cache,
+                ),
             }
-            logging.info("Initiate faster_whisper WER calculation successfully")
+            logging.info("Initiate fwhisper WER calculation successfully")
         elif config["name"] == "nemo_wer":
             if not use_gt_text:
                 logging.warning("Cannot use nemo_wer because no gt text is provided")
@@ -398,22 +389,13 @@ def load_score_modules(score_config, use_gt=True, use_gt_text=False, use_gpu=Fal
             logging.info("Loading nemo_wer metric with reference text")
             from versa import nemo_levenshtein_metric, nemo_wer_setup
 
-            # Load nemo asr model if it is already loaded
-            if (
-                "speaking_rate" in score_modules.keys()
-                or "asr_matching" in score_modules.keys()
-            ):
-                args_cache = score_modules["speaking_rate"]["args"]
-            else:
-                args_cache = nemo_wer_setup(
+            score_modules["nemo_wer"] = {
+                "module": nemo_levenshtein_metric,
+                "args": nemo_wer_setup(
                     model_tag=config.get("model_tag", "default"),
                     text_cleaner=config.get("text_cleaner", "whisper_basic"),
                     use_gpu=use_gpu,
-                )
-
-            score_modules["nemo_wer"] = {
-                "module": nemo_levenshtein_metric,
-                "args": args_cache,
+                ),
             }
             logging.info("Initiate NeMo WER calculation successfully")
         elif config["name"] == "hubert_wer":
@@ -424,22 +406,13 @@ def load_score_modules(score_config, use_gt=True, use_gt_text=False, use_gpu=Fal
             logging.info("Loading hubert_wer metric with reference text")
             from versa import hubert_levenshtein_metric, hubert_wer_setup
 
-            # Load hubert asr model if it is already loaded
-            if (
-                "speaking_rate" in score_modules.keys()
-                or "asr_matching" in score_modules.keys()
-            ):
-                args_cache = score_modules["speaking_rate"]["args"]
-            else:
-                args_cache = hubert_wer_setup(
+            score_modules["hubert_wer"] = {
+                "module": hubert_levenshtein_metric,
+                "args": hubert_wer_setup(
                     model_tag=config.get("model_tag", "default"),
                     text_cleaner=config.get("text_cleaner", "whisper_basic"),
                     use_gpu=use_gpu,
-                )
-
-            score_modules["hubert_wer"] = {
-                "module": hubert_levenshtein_metric,
-                "args": args_cache,
+                ),
             }
             logging.info("Initiate hubert WER calculation successfully")
         elif config["name"] == "scoreq_ref":
@@ -1081,7 +1054,7 @@ def use_score_modules(score_modules, gen_wav, gt_wav, gen_sr, text=None):
             score = score_modules[key]["module"](
                 score_modules[key]["model"], gen_wav, gt_wav, gen_sr
             )
-        elif key in ["espnet_wer", "owsm_wer", "whisper_wer", "faster_whisper_wer", "nemo_wer", "hubert_wer"]:
+        elif key in ["espnet_wer", "owsm_wer", "whisper_wer", "fwhisper_wer", "nemo_wer", "hubert_wer"]:
             score = score_modules[key]["module"](
                 score_modules[key]["args"],
                 gen_wav,

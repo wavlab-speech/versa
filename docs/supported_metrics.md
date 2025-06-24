@@ -101,8 +101,8 @@ We include x mark if the metric is auto-installed in versa.
 | 3 | x | ESPnet Speech Recognition-based Error Rate | espnet_wer | espnet_wer |[ESPnet](https://github.com/espnet/espnet) | [paper](https://arxiv.org/pdf/1804.00015) |
 | 4 | x | ESPnet-OWSM Speech Recognition-based Error Rate | owsm_wer | owsm_wer |[ESPnet](https://github.com/espnet/espnet) | [paper](https://arxiv.org/abs/2309.13876) |
 | 5 | x | OpenAI-Whisper Speech Recognition-based Error Rate | whisper_wer | whisper_wer |[Whisper](https://github.com/openai/whisper) | [paper](https://arxiv.org/abs/2212.04356) |
-| 6 |   | Faster-Whisper Speech Recognition-based Error Rate | faster_whisper_wer | faster_whisper_wer |[Faster-Whisper](https://github.com/systran/faster-whisper) | - |
-| 7 | x | NVIDIA Conformer-Transducer X-Large Speech Recognition-based Error Rate | nemo_wer | nemo_wer |[NeMo](https://github.com/NVIDIA/NeMo) | [paper](https://arxiv.org/abs/2005.08100) |
+| 6 |   | Faster-Whisper Speech Recognition-based Error Rate | fwhisper_wer | fwhisper_wer |[Faster-Whisper](https://github.com/systran/faster-whisper) | - |
+| 7 |   | NVIDIA Conformer-Transducer X-Large Speech Recognition-based Error Rate | nemo_wer | nemo_wer |[NeMo](https://github.com/NVIDIA/NeMo) | [paper](https://arxiv.org/abs/2005.08100) |
 | 8 | x | Facebook Hubert-Large-Finetuned Speech Recognition-based Error Rate | hubert_wer | hubert_wer |[HuBERT](https://github.com/facebookresearch/fairseq/tree/main/examples/hubert) | [paper](https://arxiv.org/abs/2106.07447) |
 | 9 |   | Emotion2vec similarity (emo2vec) | emo2vec_similarity | emotion_similarity | [emo2vec](https://github.com/ftshijt/emotion2vec/tree/main) | [paper](https://arxiv.org/abs/2312.15185) | 
 | 10 | x | Speaker Embedding Similarity  | speaker | spk_similarity | [espnet](https://github.com/espnet/espnet) | [paper](https://arxiv.org/abs/2401.17230) |

@@ -23,7 +23,7 @@ from espnet2.text.cleaner import TextCleaner
 TARGET_FS = 16000
 
 
-def faster_whisper_wer_setup(
+def fwhisper_wer_setup(
     model_tag="default", beam_size=5, batch_size=1, compute_type="float32" ,text_cleaner="whisper_basic", use_gpu=True
 ):
     if model_tag == "default":
@@ -43,7 +43,7 @@ def faster_whisper_wer_setup(
     return wer_utils
 
 
-def faster_whisper_levenshtein_metric(
+def fwhisper_levenshtein_metric(
     wer_utils, pred_x, ref_text, fs=16000, cache_pred_text=None
 ):
     """Calculate the Levenshtein distance between ref and inf ASR results.
@@ -86,53 +86,53 @@ def faster_whisper_levenshtein_metric(
     ref_words = ref_text.strip().split()
     pred_words = pred_text.strip().split()
     ret = {
-        "faster_whisper_hyp_text": pred_text,
+        "fwhisper_hyp_text": pred_text,
         "ref_text": ref_text,
-        "faster_whisper_wer_delete": 0,
-        "faster_whisper_wer_insert": 0,
-        "faster_whisper_wer_replace": 0,
-        "faster_whisper_wer_equal": 0,
+        "fwhisper_wer_delete": 0,
+        "fwhisper_wer_insert": 0,
+        "fwhisper_wer_replace": 0,
+        "fwhisper_wer_equal": 0,
     }
     for op, ref_st, ref_et, inf_st, inf_et in opcodes(ref_words, pred_words):
         if op == "insert":
-            ret["faster_whisper_wer_" + op] = ret["faster_whisper_wer_" + op] + inf_et - inf_st
+            ret["fwhisper_wer_" + op] = ret["fwhisper_wer_" + op] + inf_et - inf_st
         else:
-            ret["faster_whisper_wer_" + op] = ret["faster_whisper_wer_" + op] + ref_et - ref_st
+            ret["fwhisper_wer_" + op] = ret["fwhisper_wer_" + op] + ref_et - ref_st
     total = (
-        ret["faster_whisper_wer_delete"]
-        + ret["faster_whisper_wer_replace"]
-        + ret["faster_whisper_wer_equal"]
+        ret["fwhisper_wer_delete"]
+        + ret["fwhisper_wer_replace"]
+        + ret["fwhisper_wer_equal"]
     )
     assert total == len(ref_words), (total, len(ref_words))
     total = (
-        ret["faster_whisper_wer_insert"]
-        + ret["faster_whisper_wer_replace"]
-        + ret["faster_whisper_wer_equal"]
+        ret["fwhisper_wer_insert"]
+        + ret["fwhisper_wer_replace"]
+        + ret["fwhisper_wer_equal"]
     )
     assert total == len(pred_words), (total, len(pred_words))
 
     # process cer
     ref_words = [c for c in ref_text]
     pred_words = [c for c in pred_text]
-    ret["faster_whisper_cer_delete"] = 0
-    ret["faster_whisper_cer_insert"] = 0
-    ret["faster_whisper_cer_replace"] = 0
-    ret["faster_whisper_cer_equal"] = 0
+    ret["fwhisper_cer_delete"] = 0
+    ret["fwhisper_cer_insert"] = 0
+    ret["fwhisper_cer_replace"] = 0
+    ret["fwhisper_cer_equal"] = 0
     for op, ref_st, ref_et, inf_st, inf_et in opcodes(ref_words, pred_words):
         if op == "insert":
-            ret["faster_whisper_cer_" + op] = ret["faster_whisper_cer_" + op] + inf_et - inf_st
+            ret["fwhisper_cer_" + op] = ret["fwhisper_cer_" + op] + inf_et - inf_st
         else:
-            ret["faster_whisper_cer_" + op] = ret["faster_whisper_cer_" + op] + ref_et - ref_st
+            ret["fwhisper_cer_" + op] = ret["fwhisper_cer_" + op] + ref_et - ref_st
     total = (
-        ret["faster_whisper_cer_delete"]
-        + ret["faster_whisper_cer_replace"]
-        + ret["faster_whisper_cer_equal"]
+        ret["fwhisper_cer_delete"]
+        + ret["fwhisper_cer_replace"]
+        + ret["fwhisper_cer_equal"]
     )
     assert total == len(ref_words), (total, len(ref_words))
     total = (
-        ret["faster_whisper_cer_insert"]
-        + ret["faster_whisper_cer_replace"]
-        + ret["faster_whisper_cer_equal"]
+        ret["fwhisper_cer_insert"]
+        + ret["fwhisper_cer_replace"]
+        + ret["fwhisper_cer_equal"]
     )
     assert total == len(pred_words), (total, len(pred_words))
 
@@ -141,9 +141,9 @@ def faster_whisper_levenshtein_metric(
 
 if __name__ == "__main__":
     a = np.random.random(16000)
-    wer_utils = faster_whisper_wer_setup()
+    wer_utils = fwhisper_wer_setup()
     print(
         "metrics: {}".format(
-            faster_whisper_levenshtein_metric(wer_utils, a, "test a sentence.", 16000)
+            fwhisper_levenshtein_metric(wer_utils, a, "test a sentence.", 16000)
         )
     )
