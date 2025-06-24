@@ -4,10 +4,11 @@
 #  Apache 2.0  (http://www.apache.org/licenses/LICENSE-2.0)
 
 import json
-from transformers import AutoModelForCausalLM, AutoTokenizer
+
 import torch
-from transformers import pipeline
 from huggingface_hub import login
+from transformers import AutoModelForCausalLM, AutoTokenizer, pipeline
+
 
 def metric_loader_setup(score_output_file):
     """
@@ -24,6 +25,7 @@ def metric_loader_setup(score_output_file):
             utt_id, json_str = line.split(maxsplit=1)
             data[utt_id] = json.loads(json_str)
     return data
+
 
 def load_interpreter_modules(interpreter_config, use_gpu):
     assert interpreter_config, "no interpreter function is provided"
@@ -71,5 +73,5 @@ def load_interpreter_modules(interpreter_config, use_gpu):
                 },
             }
         else:
-            raise ValueError(f"Unsupported model_name: {config["model_name"]}")
+            raise ValueError(f"Unsupported model_name: {config['model_name']}")
     return interpreter_modules
