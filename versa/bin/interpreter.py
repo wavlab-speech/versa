@@ -6,22 +6,20 @@
 """Interpreter Interface for Speech Evaluation."""
 
 import argparse
-import logging
 import json
+import logging
 
 import torch
 import yaml
-
-from versa.interpreter_shared import (
-    metric_loader_setup,
-    load_interpreter_modules,
-)
 from scripts.description.text_llm_description import describe_all
+from versa.interpreter_shared import load_interpreter_modules, metric_loader_setup
 
 
 def get_parser() -> argparse.Namespace:
     """Get argument parser."""
-    parser = argparse.ArgumentParser(description="Interpretation for Speech Evaluation Interface")
+    parser = argparse.ArgumentParser(
+        description="Interpretation for Speech Evaluation Interface"
+    )
     parser.add_argument(
         "--score_output_file",
         type=str,
@@ -31,12 +29,10 @@ def get_parser() -> argparse.Namespace:
     parser.add_argument(
         "--config",
         required=True,
-        help="YAML with interpreter_config (list of model_name dicts)"
+        help="YAML with interpreter_config (list of model_name dicts)",
     )
     parser.add_argument(
-        "--output_file",
-        required=True,
-        help="Where to dump the JSON descriptions"
+        "--output_file", required=True, help="Where to dump the JSON descriptions"
     )
     parser.add_argument(
         "--use_gpu", type=bool, default=False, help="whether to use GPU if it can"
