@@ -102,14 +102,17 @@ We include x mark if the metric is auto-installed in versa.
 | 3 | x | ESPnet Speech Recognition-based Error Rate | espnet_wer | espnet_wer |[ESPnet](https://github.com/espnet/espnet) | [paper](https://arxiv.org/pdf/1804.00015) |
 | 4 | x | ESPnet-OWSM Speech Recognition-based Error Rate | owsm_wer | owsm_wer |[ESPnet](https://github.com/espnet/espnet) | [paper](https://arxiv.org/abs/2309.13876) |
 | 5 | x | OpenAI-Whisper Speech Recognition-based Error Rate | whisper_wer | whisper_wer |[Whisper](https://github.com/openai/whisper) | [paper](https://arxiv.org/abs/2212.04356) |
-| 6 |   | Emotion2vec similarity (emo2vec) | emo2vec_similarity | emotion_similarity | [emo2vec](https://github.com/ftshijt/emotion2vec/tree/main) | [paper](https://arxiv.org/abs/2312.15185) | 
-| 7 | x | Speaker Embedding Similarity  | speaker | spk_similarity | [espnet](https://github.com/espnet/espnet) | [paper](https://arxiv.org/abs/2401.17230) |
-| 8 |   | NOMAD: Unsupervised Learning of Perceptual Embeddings For Speech Enhancement and Non-Matching Reference Audio Quality Assessment |  nomad | nomad |[Nomad](https://github.com/shimhz/nomad/tree/main) | [paper](https://arxiv.org/abs/2309.16284) |
-| 9 |   | Contrastive Language-Audio Pretraining Score (CLAP Score) | clap_score | clap_score | [fadtk](https://github.com/gudgud96/frechet-audio-distance) | [paper](https://arxiv.org/abs/2301.12661) |
-| 10 |   | Accompaniment Prompt Adherence (APA) | apa | apa | [Sony-audio-metrics](https://github.com/SonyCSLParis/audio-metrics) | [paper](https://arxiv.org/abs/2404.00775) |
-| 11 |  | Log Likelihood Ratio (LLR) | pysepm | pysepm_llr | [pysepm](https://github.com/shimhz/pysepm.git) | [Paper](https://ecs.utdallas.edu/loizou/speech/obj_paper_jan08.pdf)|
-| 12 | x | Uni-VERSA (Versatile Speech Assessment with a Unified Framework) with Paired Text | universa | universa_{sub_metrics} | [Uni-VERSA](https://huggingface.co/collections/espnet/universa-6834e7c0a28225bffb6e2526) | [paper](https://arxiv.org/abs/2505.20741) |
-| 13 |  | Singer Embedding Similarity  | singer | singer_similarity | [SSL-Singer-Identity](https://github.com/SonyCSLParis/ssl-singer-identity) | [paper](https://hal.science/hal-04186048v1) |
+| 6 |   | Faster-Whisper Speech Recognition-based Error Rate | fwhisper_wer | fwhisper_wer |[Faster-Whisper](https://github.com/systran/faster-whisper) | - |
+| 7 |   | NVIDIA Conformer-Transducer X-Large Speech Recognition-based Error Rate | nemo_wer | nemo_wer |[NeMo](https://github.com/NVIDIA/NeMo) | [paper](https://arxiv.org/abs/2005.08100) |
+| 8 | x | Facebook Hubert-Large-Finetuned Speech Recognition-based Error Rate | hubert_wer | hubert_wer |[HuBERT](https://github.com/facebookresearch/fairseq/tree/main/examples/hubert) | [paper](https://arxiv.org/abs/2106.07447) |
+| 9 |   | Emotion2vec similarity (emo2vec) | emo2vec_similarity | emotion_similarity | [emo2vec](https://github.com/ftshijt/emotion2vec/tree/main) | [paper](https://arxiv.org/abs/2312.15185) | 
+| 10 | x | Speaker Embedding Similarity  | speaker | spk_similarity | [espnet](https://github.com/espnet/espnet) | [paper](https://arxiv.org/abs/2401.17230) |
+| 11 |   | NOMAD: Unsupervised Learning of Perceptual Embeddings For Speech Enhancement and Non-Matching Reference Audio Quality Assessment |  nomad | nomad |[Nomad](https://github.com/shimhz/nomad/tree/main) | [paper](https://arxiv.org/abs/2309.16284) |
+| 12 |   | Contrastive Language-Audio Pretraining Score (CLAP Score) | clap_score | clap_score | [fadtk](https://github.com/gudgud96/frechet-audio-distance) | [paper](https://arxiv.org/abs/2301.12661) |
+| 13 |   | Accompaniment Prompt Adherence (APA) | apa | apa | [Sony-audio-metrics](https://github.com/SonyCSLParis/audio-metrics) | [paper](https://arxiv.org/abs/2404.00775) |
+| 14 |  | Log Likelihood Ratio (LLR) | pysepm | pysepm_llr | [pysepm](https://github.com/shimhz/pysepm.git) | [Paper](https://ecs.utdallas.edu/loizou/speech/obj_paper_jan08.pdf)|
+| 15 | x | Uni-VERSA (Versatile Speech Assessment with a Unified Framework) with Paired Text | universa | universa_{sub_metrics} | [Uni-VERSA](https://huggingface.co/collections/espnet/universa-6834e7c0a28225bffb6e2526) | [paper](https://arxiv.org/abs/2505.20741) |
+| 16 |  | Singer Embedding Similarity  | singer | singer_similarity | [SSL-Singer-Identity](https://github.com/SonyCSLParis/ssl-singer-identity) | [paper](https://hal.science/hal-04186048v1) |
 
 ### Distributional Metrics (in verifying)
 

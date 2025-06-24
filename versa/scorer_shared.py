@@ -361,7 +361,60 @@ def load_score_modules(score_config, use_gt=True, use_gt_text=False, use_gpu=Fal
                 "args": args_cache,
             }
             logging.info("Initiate Whisper WER calculation successfully")
+        elif config["name"] == "fwhisper_wer":
+            if not use_gt_text:
+                logging.warning("Cannot use fwhisper_wer because no gt text is provided")
+                continue
 
+            logging.info("Loading fwhisper_wer metric with reference text")
+            from versa import fwhisper_levenshtein_metric, fwhisper_wer_setup
+
+            score_modules["fwhisper_wer"] = {
+                "module": fwhisper_levenshtein_metric,
+                "args": fwhisper_wer_setup(
+                    model_tag=config.get("model_tag", "default"),
+                    beam_size=config.get("beam_size", 1),
+                    batch_size=config.get("batch_size", 1),
+                    compute_type=config.get("compute_type", "float32"),
+                    text_cleaner=config.get("text_cleaner", "whisper_basic"),
+                    use_gpu=use_gpu,
+                ),
+            }
+            logging.info("Initiate fwhisper WER calculation successfully")
+        elif config["name"] == "nemo_wer":
+            if not use_gt_text:
+                logging.warning("Cannot use nemo_wer because no gt text is provided")
+                continue
+
+            logging.info("Loading nemo_wer metric with reference text")
+            from versa import nemo_levenshtein_metric, nemo_wer_setup
+
+            score_modules["nemo_wer"] = {
+                "module": nemo_levenshtein_metric,
+                "args": nemo_wer_setup(
+                    model_tag=config.get("model_tag", "default"),
+                    text_cleaner=config.get("text_cleaner", "whisper_basic"),
+                    use_gpu=use_gpu,
+                ),
+            }
+            logging.info("Initiate NeMo WER calculation successfully")
+        elif config["name"] == "hubert_wer":
+            if not use_gt_text:
+                logging.warning("Cannot use hubert_wer because no gt text is provided")
+                continue
+
+            logging.info("Loading hubert_wer metric with reference text")
+            from versa import hubert_levenshtein_metric, hubert_wer_setup
+
+            score_modules["hubert_wer"] = {
+                "module": hubert_levenshtein_metric,
+                "args": hubert_wer_setup(
+                    model_tag=config.get("model_tag", "default"),
+                    text_cleaner=config.get("text_cleaner", "whisper_basic"),
+                    use_gpu=use_gpu,
+                ),
+            }
+            logging.info("Initiate hubert WER calculation successfully")
         elif config["name"] == "scoreq_ref":
             if not use_gt:
                 logging.warning("Cannot use scoreq_ref because no gt audio is provided")
@@ -1011,7 +1064,7 @@ def use_score_modules(score_modules, gen_wav, gt_wav, gen_sr, text=None):
             score = score_modules[key]["module"](
                 score_modules[key]["model"], gen_wav, gt_wav, gen_sr
             )
-        elif key == "espnet_wer" or key == "owsm_wer" or key == "whisper_wer":
+        elif key in ["espnet_wer", "owsm_wer", "whisper_wer", "fwhisper_wer", "nemo_wer", "hubert_wer"]:
             score = score_modules[key]["module"](
                 score_modules[key]["args"],
                 gen_wav,
@@ -1157,7 +1210,7 @@ def list_scoring(
 
         # Step2: load reference (gt) speech and conduct basic checks
         if gt_files is not None:
-            if key not in gen_files.keys():
+            if key not in gt_files.keys():
                 logging.warning(
                     "key {} not found in ground truth files though provided, skipping".format(
                         key
