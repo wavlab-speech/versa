@@ -6,7 +6,9 @@
 """Module for text LLM description."""
 
 import json
+
 from tqdm.auto import tqdm
+
 
 def create_template(metrics: dict) -> str:
     prompt = f"""
@@ -25,6 +27,7 @@ def create_template(metrics: dict) -> str:
     """
     return prompt
 
+
 def describe_all(metrics_dict: dict, model_name: str, modules: dict) -> list:
     """
     For each utt_id in metrics_dict, run the prompt through the appropriate
@@ -32,27 +35,43 @@ def describe_all(metrics_dict: dict, model_name: str, modules: dict) -> list:
     """
     results = []
     mod = modules[model_name]["args"]
-    for utt_id, metrics in tqdm(metrics_dict.items(), desc=f"Describing with {model_name}"):
+    for utt_id, metrics in tqdm(
+        metrics_dict.items(), desc=f"Describing with {model_name}"
+    ):
         prompt = create_template(metrics)
         if "model" in mod:
             # Qwen or Mistral-style
             messages = [
-                {"role": "system", "content": "You are a professional audio descriptor."},
-                {"role": "user",   "content": prompt}
+                {
+                    "role": "system",
+                    "content": "You are a professional audio descriptor.",
+                },
+                {"role": "user", "content": prompt},
             ]
-            text = mod["tokenizer"].apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
-            inputs = mod["tokenizer"]([text], return_tensors="pt").to(mod["model"].device)
+            text = mod["tokenizer"].apply_chat_template(
+                messages, tokenize=False, add_generation_prompt=True
+            )
+            inputs = mod["tokenizer"]([text], return_tensors="pt").to(
+                mod["model"].device
+            )
             gen_ids = mod["model"].generate(**inputs, max_new_tokens=1024)
             # strip off prompt
-            gen_ids = [out[len(inp):] for inp, out in zip(inputs.input_ids, gen_ids)]
-            response = mod["tokenizer"].batch_decode(gen_ids, skip_special_tokens=True)[0]
+            gen_ids = [out[len(inp) :] for inp, out in zip(inputs.input_ids, gen_ids)]
+            response = mod["tokenizer"].batch_decode(gen_ids, skip_special_tokens=True)[
+                0
+            ]
         else:
             # llama pipeline
             messages = [
-                {"role": "system", "content": "You are a professional audio descriptor."},
-                {"role": "user", "content": prompt}
+                {
+                    "role": "system",
+                    "content": "You are a professional audio descriptor.",
+                },
+                {"role": "user", "content": prompt},
             ]
-            response = mod["pipe"](messages, max_new_tokens=1024)[0]["generated_text"][-1]["content"]
+            response = mod["pipe"](messages, max_new_tokens=1024)[0]["generated_text"][
+                -1
+            ]["content"]
 
         # clean & parse
         clean = response.strip().strip("```json").strip("```").replace("\n", " ")
