@@ -87,6 +87,7 @@ class ScoreProcessor:
                     references=gt_wav,
                     metadata=metadata
                 )
+
                 # Flatten the metric results
                 for metric_name, metric_results in scores.items():
                     if isinstance(metric_results, dict):
