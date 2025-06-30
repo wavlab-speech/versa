@@ -55,12 +55,15 @@ from versa.corpus_metrics.whisper_wer import (
     whisper_levenshtein_metric,
     whisper_wer_setup,
 )
-from versa.utterance_metrics.asr_matching import asr_match_metric, asr_match_setup
+from versa.utterance_metrics.asr_matching import (
+    ASRMatchMetric,
+    register_asr_match_metric,
+)
 from versa.utterance_metrics.audiobox_aesthetics_score import (
     audiobox_aesthetics_score,
     audiobox_aesthetics_setup,
 )
-from versa.utterance_metrics.emotion import emo2vec_setup, emo_sim
+from versa.utterance_metrics.emo_similarity import emo2vec_setup, emo_sim
 from versa.utterance_metrics.nomad import nomad, nomad_setup
 from versa.utterance_metrics.noresqa import noresqa_metric, noresqa_model_setup
 from versa.utterance_metrics.owsm_lid import language_id, owsm_lid_model_setup
@@ -107,7 +110,7 @@ from versa.utterance_metrics.speaking_rate import (
     speaking_rate_model_setup,
 )
 from versa.utterance_metrics.squim import squim_metric, squim_metric_no_ref
-from versa.utterance_metrics.srmr import srmr_metric
+from versa.utterance_metrics.srmr import SRMRMetric, register_srmr_metric
 from versa.utterance_metrics.chroma_alignment import chroma_metric
 from versa.utterance_metrics.dpam_distance import dpam_metric, dpam_model_setup
 from versa.utterance_metrics.cdpam_distance import cdpam_metric, cdpam_model_setup

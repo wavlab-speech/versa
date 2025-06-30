@@ -7,10 +7,17 @@ import yaml
 from versa.scorer_shared import VersaScorer, compute_summary
 from versa.utils_shared import find_files
 from versa.definition import MetricRegistry
-from versa.utterance_metrics.emo_similarity import register_emotion_metric
+from versa.utterance_metrics.chroma_alignment import register_chroma_alignment_metric
 
 TEST_INFO = {
-    "emotion_similarity": 0.9984976053237915,
+    "chroma_stft_cosine_dtw": 0.8895886718828439,
+    "chroma_stft_euclidean_dtw": 45.091055545199,
+    "chroma_cqt_cosine_dtw": 1.1888872845493323,
+    "chroma_cqt_euclidean_dtw": 56.16051355647546,
+    "chroma_cens_cosine_dtw": 0.6962623125421354,
+    "chroma_cens_euclidean_dtw": 38.38994047138499,
+    "chroma_stft_cosine_dtw_raw": 8.895886718828438,
+    "chroma_stft_cosine_dtw_log": 20.508107511971517,
 }
 
 
@@ -21,17 +28,18 @@ def info_update():
         gen_files = find_files("test/test_samples/test2")
 
     # find reference file
+    gt_files = None
     if os.path.isdir("test/test_samples/test1"):
         gt_files = find_files("test/test_samples/test1")
 
     logging.info("The number of utterances = %d" % len(gen_files))
 
-    with open("egs/separate_metrics/emo_similarity.yaml", "r", encoding="utf-8") as f:
+    with open("egs/separate_metrics/chroma_alignment.yaml", "r", encoding="utf-8") as f:
         score_config = yaml.full_load(f)
 
-    # Create registry and register Emotion metric
+    # Create registry and register Chroma Alignment metric
     registry = MetricRegistry()
-    register_emotion_metric(registry)
+    register_chroma_alignment_metric(registry)
 
     # Initialize VersaScorer with the populated registry
     scorer = VersaScorer(registry)
@@ -47,7 +55,7 @@ def info_update():
 
     # Score utterances using the new API
     score_info = scorer.score_utterances(
-        gen_files, metric_suite, gt_files=gt_files, output_file=None, io="soundfile"
+        gen_files, metric_suite, gt_files, output_file=None, io="soundfile"
     )
 
     summary = compute_summary(score_info)

@@ -4,11 +4,11 @@ import os
 
 import yaml
 
-from versa.scorer_shared import (
-    find_files,
-    list_scoring,
-    load_score_modules,
-    load_summary,
+from versa.scorer_shared import VersaScorer, compute_summary
+from versa.utils_shared import find_files
+from versa.definition import MetricRegistry
+from versa.utterance_metrics.audiobox_aesthetics_score import (
+    register_audiobox_aesthetics_metric,
 )
 
 TEST_INFO = {
@@ -32,7 +32,15 @@ def info_update():
     ) as f:
         score_config = yaml.full_load(f)
 
-    score_modules = load_score_modules(
+    # Create registry and register AudioBox Aesthetics metric
+    registry = MetricRegistry()
+    register_audiobox_aesthetics_metric(registry)
+
+    # Initialize VersaScorer with the populated registry
+    scorer = VersaScorer(registry)
+
+    # Load metrics using the new API
+    metric_suite = scorer.load_metrics(
         score_config,
         use_gt=False,
         use_gpu=False,
@@ -40,11 +48,13 @@ def info_update():
 
     assert len(score_config) > 0, "no scoring function is provided"
 
-    score_info = list_scoring(
-        gen_files, score_modules, gt_files=None, output_file=None, io="soundfile"
+    # Score utterances using the new API
+    score_info = scorer.score_utterances(
+        gen_files, metric_suite, gt_files=None, output_file=None, io="soundfile"
     )
-    summary = load_summary(score_info)
-    print("Summary: {}".format(load_summary(score_info)), flush=True)
+
+    summary = compute_summary(score_info)
+    print("Summary: {}".format(summary), flush=True)
 
     for key in summary:
         # the plc mos is undeterministic

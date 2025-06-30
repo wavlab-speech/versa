@@ -13,11 +13,8 @@ import yaml
 
 from versa.scorer_shared import (
     audio_loader_setup,
-    corpus_scoring,
-    list_scoring,
-    load_corpus_modules,
-    load_score_modules,
-    load_summary,
+    VersaScorer,
+    compute_summary,
 )
 
 
@@ -141,47 +138,58 @@ def main():
     with open(args.score_config, "r", encoding="utf-8") as f:
         score_config = yaml.full_load(f)
 
-    score_modules = load_score_modules(
+    # Initialize VersaScorer
+    scorer = VersaScorer()
+
+    # Load utterance-level metrics
+    utterance_metrics = scorer.load_metrics(
         score_config,
         use_gt=(True if gt_files is not None else False),
         use_gt_text=(True if text_info is not None else False),
         use_gpu=args.use_gpu,
     )
 
-    if len(score_modules) > 0:
-        score_info = list_scoring(
+    # Perform utterance-level scoring
+    if len(utterance_metrics.metrics) > 0:
+        score_info = scorer.score_utterances(
             gen_files,
-            score_modules,
+            utterance_metrics,
             gt_files,
             text_info,
             output_file=args.output_file,
             io=args.io,
         )
-        logging.info("Summary: {}".format(load_summary(score_info)))
+        logging.info("Summary: {}".format(compute_summary(score_info)))
     else:
         logging.info("No utterance-level scoring function is provided.")
 
-    corpus_score_modules = load_corpus_modules(
+    # Load corpus-level metrics (distributional metrics)
+    corpus_metrics = scorer.load_metrics(
         score_config,
+        use_gt=(True if gt_files is not None else False),
+        use_gt_text=(True if text_info is not None else False),
         use_gpu=args.use_gpu,
-        cache_folder=args.cache_folder,
-        io=args.io,
     )
-    assert (
-        len(corpus_score_modules) > 0 or len(score_modules) > 0
-    ), "no scoring function is provided"
-    if len(corpus_score_modules) > 0:
-        corpus_score_info = corpus_scoring(
-            args.pred,
-            corpus_score_modules,
-            args.gt,
+
+    # Filter for corpus-level metrics and perform corpus scoring
+    from versa.definition import MetricCategory
+
+    corpus_suite = corpus_metrics.filter_by_category(MetricCategory.DISTRIBUTIONAL)
+    if len(corpus_suite.metrics) > 0:
+        corpus_score_info = scorer.score_corpus(
+            gen_files,
+            corpus_suite,
+            gt_files,
             text_info,
-            output_file=args.output_file + ".corpus",
+            output_file=args.output_file + ".corpus" if args.output_file else None,
         )
         logging.info("Corpus Summary: {}".format(corpus_score_info))
     else:
         logging.info("No corpus-level scoring function is provided.")
-        return
+
+    # Ensure at least one scoring function is provided
+    if len(utterance_metrics.metrics) == 0 and len(corpus_suite.metrics) == 0:
+        raise ValueError("No scoring function is provided")
 
 
 if __name__ == "__main__":

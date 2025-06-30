@@ -7,10 +7,12 @@ import yaml
 from versa.scorer_shared import VersaScorer, compute_summary
 from versa.utils_shared import find_files
 from versa.definition import MetricRegistry
-from versa.utterance_metrics.emo_similarity import register_emotion_metric
+from versa.utterance_metrics.emo_vad import register_emo_vad_metric
 
 TEST_INFO = {
-    "emotion_similarity": 0.9984976053237915,
+    "arousal_emo_vad": 0.663333535194397,
+    "valence_emo_vad": 0.5060539245605469,
+    "dominance_emo_vad": 0.6355133056640625,
 }
 
 
@@ -20,18 +22,14 @@ def info_update():
     if os.path.isdir("test/test_samples/test2"):
         gen_files = find_files("test/test_samples/test2")
 
-    # find reference file
-    if os.path.isdir("test/test_samples/test1"):
-        gt_files = find_files("test/test_samples/test1")
-
     logging.info("The number of utterances = %d" % len(gen_files))
 
-    with open("egs/separate_metrics/emo_similarity.yaml", "r", encoding="utf-8") as f:
+    with open("egs/separate_metrics/emo_vad.yaml", "r", encoding="utf-8") as f:
         score_config = yaml.full_load(f)
 
-    # Create registry and register Emotion metric
+    # Create registry and register EmoVad metric
     registry = MetricRegistry()
-    register_emotion_metric(registry)
+    register_emo_vad_metric(registry)
 
     # Initialize VersaScorer with the populated registry
     scorer = VersaScorer(registry)
@@ -39,7 +37,7 @@ def info_update():
     # Load metrics using the new API
     metric_suite = scorer.load_metrics(
         score_config,
-        use_gt=(True if gt_files is not None else False),
+        use_gt=False,
         use_gpu=False,
     )
 
@@ -47,7 +45,7 @@ def info_update():
 
     # Score utterances using the new API
     score_info = scorer.score_utterances(
-        gen_files, metric_suite, gt_files=gt_files, output_file=None, io="soundfile"
+        gen_files, metric_suite, gt_files=None, output_file=None, io="soundfile"
     )
 
     summary = compute_summary(score_info)

@@ -3,6 +3,11 @@
 # Copyright 2025 Jiatong Shi
 #  Apache 2.0  (http://www.apache.org/licenses/LICENSE-2.0)
 
+
+DICT_METRIC = [
+    "match_details",
+]
+
 STR_METRIC = [
     "vad_info",
     "language",
@@ -126,6 +131,20 @@ NUM_METRIC = [
     "clap_score",
     "apa",
     "pysepm_llr",
+    "chroma_stft_cosine_dtw",
+    "chroma_stft_euclidean_dtw",
+    "chroma_cqt_cosine_dtw",
+    "chroma_cqt_euclidean_dtw",
+    "chroma_cens_cosine_dtw",
+    "chroma_cens_euclidean_dtw",
+    "chroma_stft_cosine_dtw_raw",
+    "chroma_stft_cosine_dtw_log",
+    "speech_bert",
+    "speech_bleu",
+    "speech_token_distance",
+    "arousal_emo_vad",
+    "valence_emo_vad",
+    "dominance_emo_vad",
     "dnsmos_pro_bvcc",
     "dnsmos_pro_nisqa",
     "dnsmos_pro_vcc2018",

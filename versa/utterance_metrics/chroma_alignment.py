@@ -4,10 +4,16 @@
 # Chroma-based distance estimation with dynamic programming alignment
 #  Apache 2.0  (http://www.apache.org/licenses/LICENSE-2.0)
 
+import logging
+from typing import Dict, Any, Optional, Union, Tuple, List
+
 import librosa
 import numpy as np
 from scipy.spatial.distance import cosine, euclidean
-from typing import Tuple, Dict, Optional
+
+from versa.definition import BaseMetric, MetricMetadata, MetricCategory, MetricType
+
+logger = logging.getLogger(__name__)
 
 
 def calculate_chroma_features(audio, sr=22050, feature_type="stft", **kwargs):
@@ -161,9 +167,170 @@ def calculate_chroma_distance(
     return dtw_dist, alignment_path
 
 
+class ChromaAlignmentMetric(BaseMetric):
+    """Chroma-based distance estimation with dynamic programming alignment."""
+
+    def _setup(self):
+        """Initialize Chroma Alignment-specific components."""
+        self.sample_rate = self.config.get("sample_rate", 22050)
+        self.feature_types = self.config.get("feature_types", ["stft", "cqt", "cens"])
+        self.distance_metrics = self.config.get(
+            "distance_metrics", ["cosine", "euclidean"]
+        )
+        self.scale_factor = self.config.get("scale_factor", 100.0)
+        self.normalize = self.config.get("normalize", True)
+        self.normalize_by_path = self.config.get("normalize_by_path", True)
+        self.return_alignment = self.config.get("return_alignment", False)
+        self.chroma_kwargs = self.config.get("chroma_kwargs", {})
+
+    def compute(
+        self, predictions: Any, references: Any = None, metadata: Dict[str, Any] = None
+    ) -> Dict[str, Union[float, str]]:
+        """Calculate chroma-based distance metrics.
+
+        Args:
+            predictions: Predicted audio signal.
+            references: Ground truth audio signal.
+            metadata: Optional metadata containing sample_rate.
+
+        Returns:
+            dict: Dictionary containing chroma distance metrics.
+        """
+        pred_x = predictions
+        gt_x = references
+        sr = (
+            metadata.get("sample_rate", self.sample_rate)
+            if metadata
+            else self.sample_rate
+        )
+
+        # Validate inputs
+        if pred_x is None or gt_x is None:
+            raise ValueError("Both predicted and ground truth signals must be provided")
+
+        pred_x = np.asarray(pred_x)
+        gt_x = np.asarray(gt_x)
+
+        # Ensure 1D arrays
+        if pred_x.ndim > 1:
+            pred_x = pred_x.flatten()
+        if gt_x.ndim > 1:
+            gt_x = gt_x.flatten()
+
+        results = {}
+        alignments = {} if self.return_alignment else None
+
+        # Calculate metrics for different feature types and distance metrics
+        for feat_type in self.feature_types:
+            for dist_metric in self.distance_metrics:
+                try:
+                    dtw_dist, alignment = calculate_chroma_distance(
+                        pred_x,
+                        gt_x,
+                        sr=sr,
+                        feature_type=feat_type,
+                        distance_metric=dist_metric,
+                        scale_factor=self.scale_factor,
+                        normalize=self.normalize,
+                        normalize_by_path=self.normalize_by_path,
+                        **self.chroma_kwargs,
+                    )
+
+                    metric_name = f"chroma_{feat_type}_{dist_metric}_dtw"
+                    results[metric_name] = dtw_dist
+
+                    if self.return_alignment and alignments is not None:
+                        alignments[metric_name] = alignment
+
+                except Exception as e:
+                    logger.warning(
+                        f"Could not calculate {feat_type} with {dist_metric}: {e}"
+                    )
+                    continue
+
+        # Add additional scaled variants
+        try:
+            # Raw DTW distance (no path normalization, higher scale)
+            dtw_dist_raw, _ = calculate_chroma_distance(
+                pred_x,
+                gt_x,
+                sr=sr,
+                feature_type="stft",
+                distance_metric="cosine",
+                scale_factor=1000.0,
+                normalize_by_path=True,
+                normalize=self.normalize,
+                **self.chroma_kwargs,
+            )
+            results["chroma_stft_cosine_dtw_raw"] = dtw_dist_raw
+
+            # Log-scaled distance
+            dtw_dist_base, _ = calculate_chroma_distance(
+                pred_x,
+                gt_x,
+                sr=sr,
+                feature_type="stft",
+                distance_metric="cosine",
+                scale_factor=1.0,
+                normalize_by_path=True,
+                normalize=self.normalize,
+                **self.chroma_kwargs,
+            )
+            results["chroma_stft_cosine_dtw_log"] = (
+                -np.log10(dtw_dist_base + 1e-10) * 10
+            )
+
+        except Exception as e:
+            logger.warning(f"Could not calculate additional scaled metrics: {e}")
+
+        if self.return_alignment and alignments is not None:
+            results["alignments"] = alignments
+
+        return results
+
+    def get_metadata(self) -> MetricMetadata:
+        """Return Chroma Alignment metric metadata."""
+        return MetricMetadata(
+            name="chroma_alignment",
+            category=MetricCategory.DEPENDENT,
+            metric_type=MetricType.FLOAT,
+            requires_reference=True,
+            requires_text=False,
+            gpu_compatible=False,
+            auto_install=False,
+            dependencies=["librosa", "numpy", "scipy"],
+            description="Chroma-based distance estimation with dynamic programming alignment for audio similarity assessment",
+            paper_reference="https://librosa.org/doc/latest/generated/librosa.feature.chroma_stft.html",
+            implementation_source="https://github.com/librosa/librosa",
+        )
+
+
+def register_chroma_alignment_metric(registry):
+    """Register Chroma Alignment metric with the registry."""
+    metric_metadata = MetricMetadata(
+        name="chroma_alignment",
+        category=MetricCategory.DEPENDENT,
+        metric_type=MetricType.FLOAT,
+        requires_reference=True,
+        requires_text=False,
+        gpu_compatible=False,
+        auto_install=False,
+        dependencies=["librosa", "numpy", "scipy"],
+        description="Chroma-based distance estimation with dynamic programming alignment for audio similarity assessment",
+        paper_reference="https://librosa.org/doc/latest/generated/librosa.feature.chroma_stft.html",
+        implementation_source="https://github.com/librosa/librosa",
+    )
+    registry.register(
+        ChromaAlignmentMetric,
+        metric_metadata,
+        aliases=["ChromaAlignment", "chroma_alignment"],
+    )
+
+
+# Legacy functions for backward compatibility
 def chroma_metric(pred_x, gt_x, sr=22050, return_alignment=False, scale_factor=100.0):
     """
-    Calculate multiple chroma-based distance metrics.
+    Calculate multiple chroma-based distance metrics (legacy function).
 
     Args:
         pred_x: Predicted audio signal (1D numpy array)
@@ -175,79 +342,14 @@ def chroma_metric(pred_x, gt_x, sr=22050, return_alignment=False, scale_factor=1
     Returns:
         Dictionary of chroma distance metrics
     """
-    # Ensure 1D arrays
-    if pred_x.ndim > 1:
-        pred_x = pred_x.flatten()
-    if gt_x.ndim > 1:
-        gt_x = gt_x.flatten()
-
-    results = {}
-    alignments = {} if return_alignment else None
-
-    # Different chroma feature types
-    feature_types = [
-        "stft",
-        "cqt",
-        "cens",
-    ]  # 'vqt' might not be available in all librosa versions
-    distance_metrics = ["cosine", "euclidean"]
-
-    for feat_type in feature_types:
-        for dist_metric in distance_metrics:
-            try:
-                dtw_dist, alignment = calculate_chroma_distance(
-                    pred_x,
-                    gt_x,
-                    sr=sr,
-                    feature_type=feat_type,
-                    distance_metric=dist_metric,
-                    scale_factor=scale_factor,
-                )
-
-                metric_name = f"chroma_{feat_type}_{dist_metric}_dtw"
-                results[metric_name] = dtw_dist
-
-                if return_alignment:
-                    alignments[metric_name] = alignment
-
-            except Exception as e:
-                print(
-                    f"Warning: Could not calculate {feat_type} with {dist_metric}: {e}"
-                )
-                continue
-
-    # Add additional scaled variants
-    try:
-        # Raw DTW distance (no path normalization, higher scale)
-        dtw_dist_raw, _ = calculate_chroma_distance(
-            pred_x,
-            gt_x,
-            sr=sr,
-            feature_type="stft",
-            distance_metric="cosine",
-            scale_factor=1000.0,
-            normalize_by_path=True,
-        )
-        results["chroma_stft_cosine_dtw_raw"] = dtw_dist_raw
-
-        # Log-scaled distance
-        dtw_dist_base, _ = calculate_chroma_distance(
-            pred_x,
-            gt_x,
-            sr=sr,
-            feature_type="stft",
-            distance_metric="cosine",
-            scale_factor=1.0,
-            normalize_by_path=True,
-        )
-        results["chroma_stft_cosine_dtw_log"] = -np.log10(dtw_dist_base + 1e-10) * 10
-
-    except Exception as e:
-        print(f"Warning: Could not calculate additional scaled metrics: {e}")
-
-    if return_alignment:
-        return results, alignments
-    return results
+    config = {
+        "sample_rate": sr,
+        "scale_factor": scale_factor,
+        "return_alignment": return_alignment,
+    }
+    metric = ChromaAlignmentMetric(config)
+    metadata = {"sample_rate": sr}
+    return metric.compute(pred_x, gt_x, metadata=metadata)
 
 
 def simple_chroma_distance(
@@ -259,6 +361,8 @@ def simple_chroma_distance(
     scale_factor=100.0,
 ):
     """
+    Simple chroma distance calculation (legacy function).
+
     Args:
         pred_x: Predicted audio signal
         gt_x: Ground truth audio signal
@@ -281,7 +385,6 @@ def simple_chroma_distance(
     return dtw_dist
 
 
-# Debug code
 if __name__ == "__main__":
     # Create test signals with different lengths
     sr = 22050
@@ -295,48 +398,9 @@ if __name__ == "__main__":
     pred_signal = np.sin(2 * np.pi * 440 * t1)  # A4 note
     gt_signal = np.sin(2 * np.pi * 440 * t2)  # Same note, different length
 
-    # Create a more different signal for testing
-    diff_signal = np.sin(2 * np.pi * 554.37 * t1)  # C#5 note (different pitch)
-
-    print(f"Predicted signal length: {len(pred_signal)} samples ({duration1}s)")
-    print(f"Ground truth signal length: {len(gt_signal)} samples ({duration2}s)")
-
-    # Calculate chroma metrics for similar signals
-    print("\n=== SIMILAR SIGNALS (same pitch, different length) ===")
-    metrics_similar = chroma_metric(pred_signal, gt_signal, sr=sr, scale_factor=100.0)
-    for metric_name, value in metrics_similar.items():
-        print(f"{metric_name}: {value:.4f}")
-
-    # Calculate chroma metrics for different signals
-    print("\n=== DIFFERENT SIGNALS (different pitch) ===")
-    metrics_different = chroma_metric(
-        pred_signal, diff_signal, sr=sr, scale_factor=100.0
-    )
-    for metric_name, value in metrics_different.items():
-        print(f"{metric_name}: {value:.4f}")
-
-    # Simple interface examples with different scale factors
-    print("\n=== SIMPLE INTERFACE WITH DIFFERENT SCALES ===")
-    print(
-        f"Scale 1.0:    {simple_chroma_distance(pred_signal, gt_signal, sr=sr, scale_factor=1.0):.4f}"
-    )
-    print(
-        f"Scale 10.0:   {simple_chroma_distance(pred_signal, gt_signal, sr=sr, scale_factor=10.0):.4f}"
-    )
-    print(
-        f"Scale 100.0:  {simple_chroma_distance(pred_signal, gt_signal, sr=sr, scale_factor=100.0):.4f}"
-    )
-    print(
-        f"Scale 1000.0: {simple_chroma_distance(pred_signal, gt_signal, sr=sr, scale_factor=1000.0):.4f}"
-    )
-
-    # Test with random signals (should give larger distances)
-    print("\n=== RANDOM SIGNALS (should give larger distances) ===")
-    random_signal1 = np.random.randn(int(sr * 2.0))
-    random_signal2 = np.random.randn(int(sr * 2.0))
-
-    metrics_random = chroma_metric(
-        random_signal1, random_signal2, sr=sr, scale_factor=100.0
-    )
-    for metric_name, value in list(metrics_random.items())[:3]:  # Show first 3 metrics
-        print(f"{metric_name}: {value:.4f}")
+    # Test the new class-based metric
+    config = {"scale_factor": 100.0}
+    metric = ChromaAlignmentMetric(config)
+    metadata = {"sample_rate": sr}
+    score = metric.compute(pred_signal, gt_signal, metadata=metadata)
+    print(f"metrics: {score}")
