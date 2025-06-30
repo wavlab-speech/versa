@@ -11,10 +11,17 @@ from versa.scorer_shared import (
     load_summary,
 )
 
-TEST_INFO = {"SIGMOS_COL": 1.3242647647857666, "SIGMOS_DISC": 1.0382881164550781, "SIGMOS_LOUD": 1.0047355890274048, "SIGMOS_REVERB": 1.0245660543441772, "SIGMOS_SIG": 1.0186278820037842, "SIGMOS_OVRL": 1.0545676946640015}
-             
-def info_update():
+TEST_INFO = {
+    "SIGMOS_COL": 1.3242647647857666,
+    "SIGMOS_DISC": 1.0382881164550781,
+    "SIGMOS_LOUD": 1.0047355890274048,
+    "SIGMOS_REVERB": 1.0245660543441772,
+    "SIGMOS_SIG": 1.0186278820037842,
+    "SIGMOS_OVRL": 1.0545676946640015,
+}
 
+
+def info_update():
     # find files
     if os.path.isdir("test/test_samples/test2"):
         gen_files = find_files("test/test_samples/test2")
