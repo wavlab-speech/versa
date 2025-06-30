@@ -113,9 +113,9 @@ setup(
         
         # Git Dependencies - Evaluation Metrics
         "discrete-speech-metrics @ git+https://github.com/ftshijt/DiscreteSpeechMetrics.git@v1.0.2",
-        
         # Additional Dependencies  
         "torch-complex",
+        "cdpam",
     ],
     
     extras_require={

@@ -63,6 +63,8 @@ NUM_METRIC = [
     "audiobox_aesthetics_CU",
     "audiobox_aesthetics_PC",
     "audiobox_aesthetics_PQ",
+    "cdpam",
+    "dpam",
     "mcd",
     "f0_corr",
     "f0_rmse",
@@ -143,4 +145,7 @@ NUM_METRIC = [
     "arousal_emo_vad",
     "valence_emo_vad",
     "dominance_emo_vad",
+    "dnsmos_pro_bvcc",
+    "dnsmos_pro_nisqa",
+    "dnsmos_pro_vcc2018",
 ]
