@@ -50,7 +50,7 @@ We include x mark if the metric is auto-installed in versa.
 | 43 | x | Qwen2 Recording Environment - Background | qwen2_speech_background_environment_metric | qwen2_speech_background_environment_metric | [Qwen2 Audio](https://github.com/QwenLM/Qwen2-Audio) | [paper](https://arxiv.org/abs/2407.10759) |
 | 44 | x | Qwen2 Recording Environment - Quality | qwen2_recording_quality_metric | qwen2_recording_quality_metric | [Qwen2 Audio](https://github.com/QwenLM/Qwen2-Audio) | [paper](https://arxiv.org/abs/2407.10759) |
 | 45 | x | Qwen2 Recording Environment - Channel Type | qwen2_channel_type_metric | qwen2_channel_type_metric | [Qwen2 Audio](https://github.com/QwenLM/Qwen2-Audio) | [paper](https://arxiv.org/abs/2407.10759) |
-| 46 | x | Dimensional Emotion | w2v2_dimensional_emotion | w2v2_dimensional_emotion | [w2v2-how-to](https://github.com/audeering/w2v2-how-to) | [paper](https://arxiv.org/pdf/2203.07378) |
+| 46 | x | Dimensional Emotion | emo_vad | arousal_emo_vad, valence_emo_vad, dominance_emo_vad | [w2v2-how-to](https://github.com/audeering/w2v2-how-to) | [paper](https://arxiv.org/pdf/2203.07378) |
 | 47 | x | Uni-VERSA (Versatile Speech Assessment with a Unified Framework) | universa | universa_{sub_metrics} | [Uni-VERSA](https://huggingface.co/collections/espnet/universa-6834e7c0a28225bffb6e2526) | [paper](https://arxiv.org/abs/2505.20741) |
 
 
