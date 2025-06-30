@@ -63,7 +63,7 @@ from versa.utterance_metrics.audiobox_aesthetics_score import (
     audiobox_aesthetics_score,
     audiobox_aesthetics_setup,
 )
-from versa.utterance_metrics.emotion import emo2vec_setup, emo_sim
+from versa.utterance_metrics.emo_similarity import emo2vec_setup, emo_sim
 from versa.utterance_metrics.nomad import nomad, nomad_setup
 from versa.utterance_metrics.noresqa import noresqa_metric, noresqa_model_setup
 from versa.utterance_metrics.owsm_lid import language_id, owsm_lid_model_setup
