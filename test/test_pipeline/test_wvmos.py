@@ -15,7 +15,6 @@ TEST_INFO = {"wvmos": 0.621284008026123}
 
 
 def info_update():
-
     # find files
     if os.path.isdir("test/test_samples/test2"):
         gen_files = find_files("test/test_samples/test2")
