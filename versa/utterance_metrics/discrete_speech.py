@@ -16,6 +16,7 @@ logger = logging.getLogger(__name__)
 # Handle optional discrete_speech_metrics dependency
 try:
     from discrete_speech_metrics import SpeechBERTScore, SpeechBLEU, SpeechTokenDistance
+
     DISCRETE_SPEECH_AVAILABLE = True
 except ImportError:
     logger.warning(
@@ -32,6 +33,7 @@ from versa.definition import BaseMetric, MetricMetadata, MetricCategory, MetricT
 
 class DiscreteSpeechNotAvailableError(RuntimeError):
     """Exception raised when discrete_speech_metrics is required but not available."""
+
     pass
 
 
@@ -55,17 +57,20 @@ class DiscreteSpeechMetric(BaseMetric):
                 "discrete_speech_metrics is not properly installed. "
                 "Please install discrete_speech_metrics and retry"
             )
-        
+
         self.use_gpu = self.config.get("use_gpu", False)
         self.sample_rate = self.config.get("sample_rate", 16000)
-        
+
         # NOTE(jiatong) existing discrete speech metrics only works for 16khz
         # We keep the paper best setting. To use other settings, please conduct the
         # test on your own.
-        
+
         try:
             self.speech_bert = SpeechBERTScore(
-                sr=self.sample_rate, model_type="wavlm-large", layer=14, use_gpu=self.use_gpu
+                sr=self.sample_rate,
+                model_type="wavlm-large",
+                layer=14,
+                use_gpu=self.use_gpu,
             )
             self.speech_bleu = SpeechBLEU(
                 sr=self.sample_rate,
@@ -86,10 +91,13 @@ class DiscreteSpeechMetric(BaseMetric):
                 use_gpu=self.use_gpu,
             )
         except Exception as e:
-            raise RuntimeError(f"Failed to initialize discrete speech metrics: {str(e)}") from e
+            raise RuntimeError(
+                f"Failed to initialize discrete speech metrics: {str(e)}"
+            ) from e
 
-    def compute(self, predictions: Any, references: Any = None, 
-                metadata: Dict[str, Any] = None) -> Dict[str, Union[float, str]]:
+    def compute(
+        self, predictions: Any, references: Any = None, metadata: Dict[str, Any] = None
+    ) -> Dict[str, Union[float, str]]:
         """Calculate discrete speech metrics.
 
         Args:
@@ -102,15 +110,19 @@ class DiscreteSpeechMetric(BaseMetric):
         """
         pred_x = predictions
         gt_x = references
-        fs = metadata.get("sample_rate", self.sample_rate) if metadata else self.sample_rate
-        
+        fs = (
+            metadata.get("sample_rate", self.sample_rate)
+            if metadata
+            else self.sample_rate
+        )
+
         # Validate inputs
         if pred_x is None or gt_x is None:
             raise ValueError("Both predicted and ground truth signals must be provided")
-        
+
         pred_x = np.asarray(pred_x)
         gt_x = np.asarray(gt_x)
-        
+
         scores = {}
 
         if fs != self.sample_rate:
@@ -156,7 +168,7 @@ class DiscreteSpeechMetric(BaseMetric):
             dependencies=["discrete_speech_metrics", "librosa", "numpy"],
             description="Discrete speech metrics including SpeechBERT, SpeechBLEU, and SpeechTokenDistance for audio evaluation",
             paper_reference="https://github.com/ftshijt/discrete_speech_metrics",
-            implementation_source="https://github.com/ftshijt/discrete_speech_metrics"
+            implementation_source="https://github.com/ftshijt/discrete_speech_metrics",
         )
 
 
@@ -173,9 +185,13 @@ def register_discrete_speech_metric(registry):
         dependencies=["discrete_speech_metrics", "librosa", "numpy"],
         description="Discrete speech metrics including SpeechBERT, SpeechBLEU, and SpeechTokenDistance for audio evaluation",
         paper_reference="https://github.com/ftshijt/discrete_speech_metrics",
-        implementation_source="https://github.com/ftshijt/discrete_speech_metrics"
+        implementation_source="https://github.com/ftshijt/discrete_speech_metrics",
     )
-    registry.register(DiscreteSpeechMetric, metric_metadata, aliases=["DiscreteSpeech", "discrete_speech"])
+    registry.register(
+        DiscreteSpeechMetric,
+        metric_metadata,
+        aliases=["DiscreteSpeech", "discrete_speech"],
+    )
 
 
 # Legacy functions for backward compatibility
@@ -221,7 +237,7 @@ def discrete_speech_metric(discrete_speech_predictors, pred_x, gt_x, fs):
 if __name__ == "__main__":
     a = np.random.random(16000)
     b = np.random.random(16000)
-    
+
     # Test the new class-based metric
     config = {"use_gpu": False}
     metric = DiscreteSpeechMetric(config)

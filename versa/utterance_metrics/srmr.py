@@ -19,14 +19,14 @@ from versa.definition import BaseMetric, MetricMetadata, MetricCategory, MetricT
 
 class SRMRMetric(BaseMetric):
     """Speech-to-Reverberation Modulation energy Ratio (SRMR) metric."""
-    
+
     def _setup(self):
         """Initialize SRMR-specific components."""
         if srmr is None:
             raise ImportError(
                 "srmr is not installed. Please use `tools/install_srmr.sh` to install"
             )
-        
+
         # Set default parameters from config
         self.n_cochlear_filters = self.config.get("n_cochlear_filters", 23)
         self.low_freq = self.config.get("low_freq", 125)
@@ -34,13 +34,14 @@ class SRMRMetric(BaseMetric):
         self.max_cf = self.config.get("max_cf", 128)
         self.fast = self.config.get("fast", True)
         self.norm = self.config.get("norm", False)
-    
-    def compute(self, predictions: Any, references: Any = None, 
-                metadata: Dict[str, Any] = None) -> Dict[str, float]:
+
+    def compute(
+        self, predictions: Any, references: Any = None, metadata: Dict[str, Any] = None
+    ) -> Dict[str, float]:
         """Compute the SRMR score."""
         pred_x = predictions
         sample_rate = metadata.get("sample_rate", 16000) if metadata else 16000
-        
+
         srmr_score = srmr(
             pred_x,
             sample_rate,
@@ -55,7 +56,7 @@ class SRMRMetric(BaseMetric):
         return {
             "srmr": srmr_score,
         }
-    
+
     def get_metadata(self) -> MetricMetadata:
         """Return SRMR metric metadata."""
         return MetricMetadata(
@@ -69,7 +70,7 @@ class SRMRMetric(BaseMetric):
             dependencies=["srmrpy"],
             description="Speech-to-Reverberation Modulation energy Ratio (SRMR) for speech quality assessment",
             paper_reference="http://www.individual.utoronto.ca/falkt/falk/pdf/FalkChan_TASLP2010.pdf",
-            implementation_source="https://github.com/shimhz/SRMRpy.git"
+            implementation_source="https://github.com/shimhz/SRMRpy.git",
         )
 
 
@@ -87,14 +88,14 @@ def register_srmr_metric(registry):
         dependencies=["srmrpy"],
         description="Speech-to-Reverberation Modulation energy Ratio (SRMR) for speech quality assessment",
         paper_reference="http://www.individual.utoronto.ca/falkt/falk/pdf/FalkChan_TASLP2010.pdf",
-        implementation_source="https://github.com/shimhz/SRMRpy.git"
+        implementation_source="https://github.com/shimhz/SRMRpy.git",
     )
     registry.register(SRMRMetric, metric_metadata, aliases=["SRMR"])
 
 
 if __name__ == "__main__":
     a = np.random.random(16000)
-    
+
     # Test the new class-based metric
     config = {
         "n_cochlear_filters": 23,
@@ -102,7 +103,7 @@ if __name__ == "__main__":
         "min_cf": 4,
         "max_cf": 128,
         "fast": True,
-        "norm": False
+        "norm": False,
     }
     metric = SRMRMetric(config)
     metadata = {"sample_rate": 16000}

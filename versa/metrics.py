@@ -140,4 +140,7 @@ NUM_METRIC = [
     "speech_bert",
     "speech_bleu",
     "speech_token_distance",
+    "arousal_emo_vad",
+    "valence_emo_vad",
+    "dominance_emo_vad",
 ]

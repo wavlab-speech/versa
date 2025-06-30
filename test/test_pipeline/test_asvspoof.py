@@ -33,10 +33,10 @@ def info_update():
     # Create registry and register ASVspoof metric
     registry = MetricRegistry()
     register_asvspoof_metric(registry)
-    
+
     # Initialize VersaScorer with the populated registry
     scorer = VersaScorer(registry)
-    
+
     # Load metrics using the new API
     metric_suite = scorer.load_metrics(
         score_config,
@@ -48,10 +48,9 @@ def info_update():
 
     # Score utterances using the new API
     score_info = scorer.score_utterances(
-        gen_files, metric_suite, gt_files, 
-        output_file=None, io="soundfile"
+        gen_files, metric_suite, gt_files, output_file=None, io="soundfile"
     )
-    
+
     summary = compute_summary(score_info)
     print("Summary: {}".format(summary), flush=True)
 

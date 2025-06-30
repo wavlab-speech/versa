@@ -28,6 +28,7 @@ logger = logging.getLogger(__name__)
 try:
     sys.path.append("./tools/checkpoints/aasist")
     from models.AASIST import Model as AASIST  # noqa: E402
+
     AASIST_AVAILABLE = True
 except ImportError:
     logger.warning(
@@ -42,6 +43,7 @@ from versa.definition import BaseMetric, MetricMetadata, MetricCategory, MetricT
 
 class AASISTNotAvailableError(RuntimeError):
     """Exception raised when AASIST is required but not available."""
+
     pass
 
 
@@ -64,14 +66,14 @@ class ASVSpoofMetric(BaseMetric):
             raise ImportError(
                 "AASIST is not properly installed. Please install following https://github.com/clovaai/aasist"
             )
-        
+
         self.model_tag = self.config.get("model_tag", "default")
         self.model_path = self.config.get("model_path", None)
         self.model_config = self.config.get("model_config", None)
         self.use_gpu = self.config.get("use_gpu", False)
-        
+
         self.device = "cuda" if self.use_gpu and torch.cuda.is_available() else "cpu"
-        
+
         try:
             self.model = self._setup_model()
         except Exception as e:
@@ -83,7 +85,9 @@ class ASVSpoofMetric(BaseMetric):
             with open(self.model_config, "r") as f_json:
                 config = json.loads(f_json.read())
                 model = AASIST(config["model_config"]).to(self.device)
-                model.load_state_dict(torch.load(self.model_path, map_location=self.device))
+                model.load_state_dict(
+                    torch.load(self.model_path, map_location=self.device)
+                )
         else:
             if self.model_tag == "default":
                 model_root = "./tools/checkpoints/aasist"
@@ -93,15 +97,20 @@ class ASVSpoofMetric(BaseMetric):
                 with open(model_config, "r") as f_json:
                     config = json.loads(f_json.read())
                     model = AASIST(config["model_config"]).to(self.device)
-                    model.load_state_dict(torch.load(model_path, map_location=self.device))
+                    model.load_state_dict(
+                        torch.load(model_path, map_location=self.device)
+                    )
             else:
-                raise NotImplementedError(f"Model tag '{self.model_tag}' not implemented")
-        
+                raise NotImplementedError(
+                    f"Model tag '{self.model_tag}' not implemented"
+                )
+
         model.device = self.device
         return model
 
-    def compute(self, predictions: Any, references: Any = None, 
-                metadata: Dict[str, Any] = None) -> Dict[str, Union[float, str]]:
+    def compute(
+        self, predictions: Any, references: Any = None, metadata: Dict[str, Any] = None
+    ) -> Dict[str, Union[float, str]]:
         """Calculate ASVspoof score for audio.
 
         Args:
@@ -114,13 +123,13 @@ class ASVSpoofMetric(BaseMetric):
         """
         pred_x = predictions
         fs = metadata.get("sample_rate", 16000) if metadata else 16000
-        
+
         # Validate input
         if pred_x is None:
             raise ValueError("Predicted signal must be provided")
-        
+
         pred_x = np.asarray(pred_x)
-        
+
         # NOTE(jiatong): only work for 16000 Hz
         if fs != 16000:
             pred_x = librosa.resample(pred_x, orig_sr=fs, target_sr=16000)
@@ -131,7 +140,7 @@ class ASVSpoofMetric(BaseMetric):
             _, output = self.model(pred_x)
         output = torch.softmax(output, dim=1)
         output = output.squeeze(0).cpu().numpy()
-        
+
         return {"asvspoof_score": output[1]}
 
     def get_metadata(self) -> MetricMetadata:
@@ -147,7 +156,7 @@ class ASVSpoofMetric(BaseMetric):
             dependencies=["torch", "librosa", "numpy"],
             description="ASVspoof deepfake detection score using AASIST model for speech authenticity assessment",
             paper_reference="https://github.com/clovaai/aasist",
-            implementation_source="https://github.com/clovaai/aasist"
+            implementation_source="https://github.com/clovaai/aasist",
         )
 
 
@@ -164,9 +173,11 @@ def register_asvspoof_metric(registry):
         dependencies=["torch", "librosa", "numpy"],
         description="ASVspoof deepfake detection score using AASIST model for speech authenticity assessment",
         paper_reference="https://github.com/clovaai/aasist",
-        implementation_source="https://github.com/clovaai/aasist"
+        implementation_source="https://github.com/clovaai/aasist",
     )
-    registry.register(ASVSpoofMetric, metric_metadata, aliases=["ASVSpoof", "asvspoof_score"])
+    registry.register(
+        ASVSpoofMetric, metric_metadata, aliases=["ASVSpoof", "asvspoof_score"]
+    )
 
 
 # Legacy functions for backward compatibility
@@ -188,7 +199,7 @@ def deepfake_detection_model_setup(
         "model_tag": model_tag,
         "model_path": model_path,
         "model_config": model_config,
-        "use_gpu": use_gpu
+        "use_gpu": use_gpu,
     }
     metric = ASVSpoofMetric(config)
     return metric.model
@@ -205,7 +216,7 @@ def asvspoof_metric(model, pred_x, fs):
     Returns:
         dict: Dictionary containing the ASVspoof score.
     """
-    config = {"use_gpu": hasattr(model, 'device') and model.device == 'cuda'}
+    config = {"use_gpu": hasattr(model, "device") and model.device == "cuda"}
     metric = ASVSpoofMetric(config)
     metric.model = model
     metadata = {"sample_rate": fs}
@@ -214,10 +225,10 @@ def asvspoof_metric(model, pred_x, fs):
 
 if __name__ == "__main__":
     a = np.random.random(16000)
-    
+
     # Test the new class-based metric
     config = {"use_gpu": False}
     metric = ASVSpoofMetric(config)
     metadata = {"sample_rate": 16000}
     score = metric.compute(a, metadata=metadata)
-    print(f"metrics: {score}") 
+    print(f"metrics: {score}")

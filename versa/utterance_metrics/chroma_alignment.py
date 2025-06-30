@@ -174,15 +174,18 @@ class ChromaAlignmentMetric(BaseMetric):
         """Initialize Chroma Alignment-specific components."""
         self.sample_rate = self.config.get("sample_rate", 22050)
         self.feature_types = self.config.get("feature_types", ["stft", "cqt", "cens"])
-        self.distance_metrics = self.config.get("distance_metrics", ["cosine", "euclidean"])
+        self.distance_metrics = self.config.get(
+            "distance_metrics", ["cosine", "euclidean"]
+        )
         self.scale_factor = self.config.get("scale_factor", 100.0)
         self.normalize = self.config.get("normalize", True)
         self.normalize_by_path = self.config.get("normalize_by_path", True)
         self.return_alignment = self.config.get("return_alignment", False)
         self.chroma_kwargs = self.config.get("chroma_kwargs", {})
 
-    def compute(self, predictions: Any, references: Any = None, 
-                metadata: Dict[str, Any] = None) -> Dict[str, Union[float, str]]:
+    def compute(
+        self, predictions: Any, references: Any = None, metadata: Dict[str, Any] = None
+    ) -> Dict[str, Union[float, str]]:
         """Calculate chroma-based distance metrics.
 
         Args:
@@ -195,15 +198,19 @@ class ChromaAlignmentMetric(BaseMetric):
         """
         pred_x = predictions
         gt_x = references
-        sr = metadata.get("sample_rate", self.sample_rate) if metadata else self.sample_rate
-        
+        sr = (
+            metadata.get("sample_rate", self.sample_rate)
+            if metadata
+            else self.sample_rate
+        )
+
         # Validate inputs
         if pred_x is None or gt_x is None:
             raise ValueError("Both predicted and ground truth signals must be provided")
-        
+
         pred_x = np.asarray(pred_x)
         gt_x = np.asarray(gt_x)
-        
+
         # Ensure 1D arrays
         if pred_x.ndim > 1:
             pred_x = pred_x.flatten()
@@ -236,7 +243,9 @@ class ChromaAlignmentMetric(BaseMetric):
                         alignments[metric_name] = alignment
 
                 except Exception as e:
-                    logger.warning(f"Could not calculate {feat_type} with {dist_metric}: {e}")
+                    logger.warning(
+                        f"Could not calculate {feat_type} with {dist_metric}: {e}"
+                    )
                     continue
 
         # Add additional scaled variants
@@ -267,7 +276,9 @@ class ChromaAlignmentMetric(BaseMetric):
                 normalize=self.normalize,
                 **self.chroma_kwargs,
             )
-            results["chroma_stft_cosine_dtw_log"] = -np.log10(dtw_dist_base + 1e-10) * 10
+            results["chroma_stft_cosine_dtw_log"] = (
+                -np.log10(dtw_dist_base + 1e-10) * 10
+            )
 
         except Exception as e:
             logger.warning(f"Could not calculate additional scaled metrics: {e}")
@@ -290,7 +301,7 @@ class ChromaAlignmentMetric(BaseMetric):
             dependencies=["librosa", "numpy", "scipy"],
             description="Chroma-based distance estimation with dynamic programming alignment for audio similarity assessment",
             paper_reference="https://librosa.org/doc/latest/generated/librosa.feature.chroma_stft.html",
-            implementation_source="https://github.com/librosa/librosa"
+            implementation_source="https://github.com/librosa/librosa",
         )
 
 
@@ -307,9 +318,13 @@ def register_chroma_alignment_metric(registry):
         dependencies=["librosa", "numpy", "scipy"],
         description="Chroma-based distance estimation with dynamic programming alignment for audio similarity assessment",
         paper_reference="https://librosa.org/doc/latest/generated/librosa.feature.chroma_stft.html",
-        implementation_source="https://github.com/librosa/librosa"
+        implementation_source="https://github.com/librosa/librosa",
     )
-    registry.register(ChromaAlignmentMetric, metric_metadata, aliases=["ChromaAlignment", "chroma_alignment"])
+    registry.register(
+        ChromaAlignmentMetric,
+        metric_metadata,
+        aliases=["ChromaAlignment", "chroma_alignment"],
+    )
 
 
 # Legacy functions for backward compatibility
@@ -330,7 +345,7 @@ def chroma_metric(pred_x, gt_x, sr=22050, return_alignment=False, scale_factor=1
     config = {
         "sample_rate": sr,
         "scale_factor": scale_factor,
-        "return_alignment": return_alignment
+        "return_alignment": return_alignment,
     }
     metric = ChromaAlignmentMetric(config)
     metadata = {"sample_rate": sr}

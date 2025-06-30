@@ -7,7 +7,9 @@ import yaml
 from versa.scorer_shared import VersaScorer, compute_summary
 from versa.utils_shared import find_files
 from versa.definition import MetricRegistry
-from versa.utterance_metrics.audiobox_aesthetics_score import register_audiobox_aesthetics_metric
+from versa.utterance_metrics.audiobox_aesthetics_score import (
+    register_audiobox_aesthetics_metric,
+)
 
 TEST_INFO = {
     "audiobox_aesthetics_CE": 2.986576557159424,
@@ -33,10 +35,10 @@ def info_update():
     # Create registry and register AudioBox Aesthetics metric
     registry = MetricRegistry()
     register_audiobox_aesthetics_metric(registry)
-    
+
     # Initialize VersaScorer with the populated registry
     scorer = VersaScorer(registry)
-    
+
     # Load metrics using the new API
     metric_suite = scorer.load_metrics(
         score_config,
@@ -48,10 +50,9 @@ def info_update():
 
     # Score utterances using the new API
     score_info = scorer.score_utterances(
-        gen_files, metric_suite, gt_files=None, 
-        output_file=None, io="soundfile"
+        gen_files, metric_suite, gt_files=None, output_file=None, io="soundfile"
     )
-    
+
     summary = compute_summary(score_info)
     print("Summary: {}".format(summary), flush=True)
 

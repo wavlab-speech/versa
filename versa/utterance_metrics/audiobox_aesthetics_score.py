@@ -18,6 +18,7 @@ logger = logging.getLogger(__name__)
 try:
     import audiobox_aesthetics.infer
     import audiobox_aesthetics.utils
+
     AUDIOBOX_AESTHETICS_AVAILABLE = True
 except ImportError:
     logger.warning(
@@ -32,6 +33,7 @@ from versa.definition import BaseMetric, MetricMetadata, MetricCategory, MetricT
 
 class AudioBoxAestheticsNotAvailableError(RuntimeError):
     """Exception raised when AudioBox Aesthetics is required but not available."""
+
     pass
 
 
@@ -55,18 +57,20 @@ class AudioBoxAestheticsMetric(BaseMetric):
                 "audiobox_aesthetics is not properly installed. "
                 "Please install with tools/install_audiobox-aesthetics.sh first."
             )
-        
+
         self.model_path = self.config.get("model_path", None)
         self.batch_size = self.config.get("batch_size", 1)
         self.precision = self.config.get("precision", "bf16")
         self.cache_dir = self.config.get("cache_dir", "versa_cache/audiobox")
         self.use_huggingface = self.config.get("use_huggingface", True)
         self.use_gpu = self.config.get("use_gpu", False)
-        
+
         try:
             self.model = self._setup_model()
         except Exception as e:
-            raise RuntimeError(f"Failed to initialize AudioBox Aesthetics model: {str(e)}") from e
+            raise RuntimeError(
+                f"Failed to initialize AudioBox Aesthetics model: {str(e)}"
+            ) from e
 
     def _setup_model(self):
         """Setup the AudioBox Aesthetics model."""
@@ -95,8 +99,9 @@ class AudioBoxAestheticsMetric(BaseMetric):
         )
         return predictor
 
-    def compute(self, predictions: Any, references: Any = None, 
-                metadata: Dict[str, Any] = None) -> Dict[str, Union[float, str]]:
+    def compute(
+        self, predictions: Any, references: Any = None, metadata: Dict[str, Any] = None
+    ) -> Dict[str, Union[float, str]]:
         """Calculate AudioBox Aesthetics scores for audio.
 
         Args:
@@ -109,13 +114,13 @@ class AudioBoxAestheticsMetric(BaseMetric):
         """
         pred_x = predictions
         fs = metadata.get("sample_rate", 16000) if metadata else 16000
-        
+
         # Validate input
         if pred_x is None:
             raise ValueError("Predicted signal must be provided")
-        
+
         pred_x = np.asarray(pred_x)
-        
+
         output = json.loads(self.model.forward_versa([(pred_x, fs)])[0])
         output = {"audiobox_aesthetics_" + k: v for k, v in output.items()}
         return output
@@ -133,7 +138,7 @@ class AudioBoxAestheticsMetric(BaseMetric):
             dependencies=["audiobox_aesthetics", "numpy"],
             description="AudioBox Aesthetics scores for audio quality assessment using WavLM-based models",
             paper_reference="https://github.com/facebookresearch/audiobox-aesthetics",
-            implementation_source="https://github.com/facebookresearch/audiobox-aesthetics"
+            implementation_source="https://github.com/facebookresearch/audiobox-aesthetics",
         )
 
 
@@ -150,9 +155,13 @@ def register_audiobox_aesthetics_metric(registry):
         dependencies=["audiobox_aesthetics", "numpy"],
         description="AudioBox Aesthetics scores for audio quality assessment using WavLM-based models",
         paper_reference="https://github.com/facebookresearch/audiobox-aesthetics",
-        implementation_source="https://github.com/facebookresearch/audiobox-aesthetics"
+        implementation_source="https://github.com/facebookresearch/audiobox-aesthetics",
     )
-    registry.register(AudioBoxAestheticsMetric, metric_metadata, aliases=["AudioBoxAesthetics", "audiobox_aesthetics"])
+    registry.register(
+        AudioBoxAestheticsMetric,
+        metric_metadata,
+        aliases=["AudioBoxAesthetics", "audiobox_aesthetics"],
+    )
 
 
 # Legacy functions for backward compatibility
@@ -186,7 +195,7 @@ def audiobox_aesthetics_setup(
         "precision": precision,
         "cache_dir": cache_dir,
         "use_huggingface": use_huggingface,
-        "use_gpu": use_gpu
+        "use_gpu": use_gpu,
     }
     metric = AudioBoxAestheticsMetric(config)
     return metric.model
@@ -212,7 +221,7 @@ def audiobox_aesthetics_score(model, pred_x, fs):
 
 if __name__ == "__main__":
     a = np.random.random(16000)
-    
+
     # Test the new class-based metric
     config = {"use_gpu": False}
     metric = AudioBoxAestheticsMetric(config)

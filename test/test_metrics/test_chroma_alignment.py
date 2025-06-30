@@ -148,19 +148,21 @@ def test_utterance_chroma_alignment(
         "normalize": True,
         "normalize_by_path": True,
     }
-    
+
     metric = ChromaAlignmentMetric(config)
     metadata = {"sample_rate": 22050}
     result = metric.compute(fixed_audio, fixed_ground_truth, metadata=metadata)
-    
+
     # Check that the result contains the expected keys
     for feat_type in feature_types:
         for dist_metric in distance_metrics:
             key = f"chroma_{feat_type}_{dist_metric}_dtw"
             assert key in result, f"Result should contain '{key}' key"
-            assert isinstance(result[key], (int, float)), f"Score {key} should be numeric"
+            assert isinstance(
+                result[key], (int, float)
+            ), f"Score {key} should be numeric"
             assert result[key] >= 0, f"Score {key} should be non-negative"
-    
+
     # Check for additional scaled variants
     if "stft" in feature_types and "cosine" in distance_metrics:
         assert "chroma_stft_cosine_dtw_raw" in result
@@ -172,7 +174,7 @@ def test_chroma_alignment_metric_metadata():
     config = {"scale_factor": 100.0}
     metric = ChromaAlignmentMetric(config)
     metadata = metric.get_metadata()
-    
+
     assert metadata.name == "chroma_alignment"
     assert metadata.category.value == "dependent"
     assert metadata.metric_type.value == "float"
@@ -189,46 +191,66 @@ def test_chroma_alignment_metric_different_pitches(fixed_audio, different_pitch_
     config = {"scale_factor": 100.0}
     metric = ChromaAlignmentMetric(config)
     metadata = {"sample_rate": 22050}
-    
+
     # Test with same pitch (should give lower distance)
     result_same = metric.compute(fixed_audio, fixed_audio, metadata=metadata)
-    
+
     # Test with different pitch (should give higher distance)
-    result_different = metric.compute(fixed_audio, different_pitch_audio, metadata=metadata)
-    
+    result_different = metric.compute(
+        fixed_audio, different_pitch_audio, metadata=metadata
+    )
+
     # The distance should be higher for different pitches
     for key in result_same:
         if key in result_different and not key.endswith("_log"):
             # Log-scaled metric works differently, so skip it
-            assert result_different[key] >= result_same[key], f"Distance should be higher for different pitches in {key}"
+            assert (
+                result_different[key] >= result_same[key]
+            ), f"Distance should be higher for different pitches in {key}"
 
 
 def test_chroma_alignment_metric_invalid_input():
     """Test that the Chroma Alignment metric handles invalid inputs correctly."""
     config = {"scale_factor": 100.0}
     metric = ChromaAlignmentMetric(config)
-    
+
     # Test with None input
-    with pytest.raises(ValueError, match="Both predicted and ground truth signals must be provided"):
+    with pytest.raises(
+        ValueError, match="Both predicted and ground truth signals must be provided"
+    ):
         metric.compute(None, np.random.random(22050), metadata={"sample_rate": 22050})
-    
-    with pytest.raises(ValueError, match="Both predicted and ground truth signals must be provided"):
+
+    with pytest.raises(
+        ValueError, match="Both predicted and ground truth signals must be provided"
+    ):
         metric.compute(np.random.random(22050), None, metadata={"sample_rate": 22050})
 
 
 def test_chroma_alignment_metric_config_options():
     """Test that the Chroma Alignment metric handles different configuration options."""
     # Test with different scale factors
-    config_small_scale = {"scale_factor": 50.0, "feature_types": ["stft"], "distance_metrics": ["cosine"]}
+    config_small_scale = {
+        "scale_factor": 50.0,
+        "feature_types": ["stft"],
+        "distance_metrics": ["cosine"],
+    }
     metric_small = ChromaAlignmentMetric(config_small_scale)
-    
-    config_large_scale = {"scale_factor": 200.0, "feature_types": ["stft"], "distance_metrics": ["cosine"]}
+
+    config_large_scale = {
+        "scale_factor": 200.0,
+        "feature_types": ["stft"],
+        "distance_metrics": ["cosine"],
+    }
     metric_large = ChromaAlignmentMetric(config_large_scale)
-    
+
     # Test with normalization options
-    config_no_norm = {"normalize": False, "feature_types": ["stft"], "distance_metrics": ["cosine"]}
+    config_no_norm = {
+        "normalize": False,
+        "feature_types": ["stft"],
+        "distance_metrics": ["cosine"],
+    }
     metric_no_norm = ChromaAlignmentMetric(config_no_norm)
-    
+
     # All should work without errors
     audio = np.sin(2 * np.pi * 440 * np.linspace(0, 1, 22050))
     audio2 = np.sin(2 * np.pi * 880 * np.linspace(0, 1, 22050))
@@ -236,14 +258,16 @@ def test_chroma_alignment_metric_config_options():
     result_small = metric_small.compute(audio, audio2, metadata=metadata)
     result_large = metric_large.compute(audio, audio2, metadata=metadata)
     result_no_norm = metric_no_norm.compute(audio, audio2, metadata=metadata)
-    
+
     # All should return the same structure
     assert "chroma_stft_cosine_dtw" in result_small
     assert "chroma_stft_cosine_dtw" in result_large
     assert "chroma_stft_cosine_dtw" in result_no_norm
-    
+
     # Scale factor should affect the magnitude
-    assert result_large["chroma_stft_cosine_dtw"] > result_small["chroma_stft_cosine_dtw"]
+    assert (
+        result_large["chroma_stft_cosine_dtw"] > result_small["chroma_stft_cosine_dtw"]
+    )
 
 
 def test_chroma_alignment_metric_alignment_paths():
@@ -252,15 +276,15 @@ def test_chroma_alignment_metric_alignment_paths():
         "scale_factor": 100.0,
         "feature_types": ["stft"],
         "distance_metrics": ["cosine"],
-        "return_alignment": True
+        "return_alignment": True,
     }
-    
+
     metric = ChromaAlignmentMetric(config)
     metadata = {"sample_rate": 22050}
     audio = np.random.random(22050)
-    
+
     result = metric.compute(audio, audio, metadata=metadata)
-    
+
     # Should contain alignments when requested
     assert "alignments" in result
     assert "chroma_stft_cosine_dtw" in result["alignments"]
@@ -268,18 +292,22 @@ def test_chroma_alignment_metric_alignment_paths():
 
 def test_chroma_alignment_metric_multidimensional_input():
     """Test that the Chroma Alignment metric handles multidimensional input correctly."""
-    config = {"scale_factor": 100.0, "feature_types": ["stft"], "distance_metrics": ["cosine"]}
+    config = {
+        "scale_factor": 100.0,
+        "feature_types": ["stft"],
+        "distance_metrics": ["cosine"],
+    }
     metric = ChromaAlignmentMetric(config)
     metadata = {"sample_rate": 22050}
-    
+
     # Test with 2D input (should be flattened)
     audio_2d = np.random.random((22050, 1))
     result_2d = metric.compute(audio_2d, audio_2d, metadata=metadata)
-    
+
     # Test with 1D input
     audio_1d = np.random.random(22050)
     result_1d = metric.compute(audio_1d, audio_1d, metadata=metadata)
-    
+
     # Both should work and give similar results (not exactly the same due to randomness)
     assert "chroma_stft_cosine_dtw" in result_2d
     assert "chroma_stft_cosine_dtw" in result_1d
@@ -288,10 +316,12 @@ def test_chroma_alignment_metric_multidimensional_input():
 # -------------------------------
 # Additional Example Test to Verify the File Creation (Optional)
 # -------------------------------
-def test_fixed_wav_files_exist(fixed_audio_wav, fixed_ground_truth_wav, different_pitch_wav):
+def test_fixed_wav_files_exist(
+    fixed_audio_wav, fixed_ground_truth_wav, different_pitch_wav
+):
     """
     Verify that the fixed WAV files were created.
     """
     assert Path(fixed_audio_wav).exists()
     assert Path(fixed_ground_truth_wav).exists()
-    assert Path(different_pitch_wav).exists() 
+    assert Path(different_pitch_wav).exists()

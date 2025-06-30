@@ -55,7 +55,10 @@ from versa.corpus_metrics.whisper_wer import (
     whisper_levenshtein_metric,
     whisper_wer_setup,
 )
-from versa.utterance_metrics.asr_matching import ASRMatchMetric, register_asr_match_metric
+from versa.utterance_metrics.asr_matching import (
+    ASRMatchMetric,
+    register_asr_match_metric,
+)
 from versa.utterance_metrics.audiobox_aesthetics_score import (
     audiobox_aesthetics_score,
     audiobox_aesthetics_setup,

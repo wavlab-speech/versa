@@ -98,20 +98,19 @@ def test_utterance_asvspoof(model_tag, use_gpu, fixed_audio):
     Test the ASVspoof metric using the fixed audio.
     The test uses deterministic data so that the result is always reproducible.
     """
-    config = {
-        "model_tag": model_tag,
-        "use_gpu": use_gpu
-    }
-    
+    config = {"model_tag": model_tag, "use_gpu": use_gpu}
+
     metric = ASVSpoofMetric(config)
     metadata = {"sample_rate": 16000}
     result = metric.compute(fixed_audio, metadata=metadata)
-    
+
     asvspoof_score = result["asvspoof_score"]
-    
+
     # Check that the score is a valid probability (between 0 and 1)
-    assert 0.0 <= asvspoof_score <= 1.0, f"ASVspoof score {asvspoof_score} is not between 0 and 1"
-    
+    assert (
+        0.0 <= asvspoof_score <= 1.0
+    ), f"ASVspoof score {asvspoof_score} is not between 0 and 1"
+
     # Check that the result contains the expected key
     assert "asvspoof_score" in result, "Result should contain 'asvspoof_score' key"
 
@@ -122,7 +121,7 @@ def test_asvspoof_metric_metadata():
     config = {"use_gpu": False}
     metric = ASVSpoofMetric(config)
     metadata = metric.get_metadata()
-    
+
     assert metadata.name == "asvspoof"
     assert metadata.category.value == "independent"
     assert metadata.metric_type.value == "float"
@@ -139,17 +138,17 @@ def test_asvspoof_metric_resampling():
     """Test that the ASVspoof metric handles different sample rates correctly."""
     config = {"use_gpu": False}
     metric = ASVSpoofMetric(config)
-    
+
     # Test with 44.1kHz audio (should be resampled to 16kHz)
     audio_44k = np.random.random(44100)
     metadata_44k = {"sample_rate": 44100}
     result_44k = metric.compute(audio_44k, metadata=metadata_44k)
-    
+
     # Test with 16kHz audio (no resampling needed)
     audio_16k = np.random.random(16000)
     metadata_16k = {"sample_rate": 16000}
     result_16k = metric.compute(audio_16k, metadata=metadata_16k)
-    
+
     # Both should return valid scores
     assert 0.0 <= result_44k["asvspoof_score"] <= 1.0
     assert 0.0 <= result_16k["asvspoof_score"] <= 1.0
@@ -160,7 +159,7 @@ def test_asvspoof_metric_invalid_input():
     """Test that the ASVspoof metric handles invalid inputs correctly."""
     config = {"use_gpu": False}
     metric = ASVSpoofMetric(config)
-    
+
     # Test with None input
     with pytest.raises(ValueError, match="Predicted signal must be provided"):
         metric.compute(None, metadata={"sample_rate": 16000})
@@ -173,4 +172,4 @@ def test_fixed_wav_files_exist(fixed_audio_wav):
     """
     Verify that the fixed WAV files were created.
     """
-    assert Path(fixed_audio_wav).exists() 
+    assert Path(fixed_audio_wav).exists()

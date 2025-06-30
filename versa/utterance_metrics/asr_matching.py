@@ -39,6 +39,7 @@ class WhisperNotAvailableError(RuntimeError):
 
     pass
 
+
 def is_whisper_available():
     """
     Check if the Whisper package is available.
@@ -71,7 +72,9 @@ class ASRMatchMetric(BaseMetric):
         except Exception as e:
             raise RuntimeError(f"Failed to initialize Whisper model: {str(e)}") from e
 
-    def compute(self, predictions: Any, references: Any = None, metadata: Dict[str, Any] = None) -> Dict[str, Union[float, str]]:
+    def compute(
+        self, predictions: Any, references: Any = None, metadata: Dict[str, Any] = None
+    ) -> Dict[str, Union[float, str]]:
         pred_x = predictions
         gt_x = references
         fs = 16000
@@ -97,7 +100,9 @@ class ASRMatchMetric(BaseMetric):
                     )
                     inf_text = transcription["text"]
             except Exception as e:
-                raise RuntimeError(f"Failed to transcribe predicted signal: {str(e)}") from e
+                raise RuntimeError(
+                    f"Failed to transcribe predicted signal: {str(e)}"
+                ) from e
         # Process the ground truth speech
         try:
             if fs != TARGET_FS:
@@ -108,7 +113,9 @@ class ASRMatchMetric(BaseMetric):
                 )
                 gt_text = transcription["text"]
         except Exception as e:
-            raise RuntimeError(f"Failed to transcribe ground truth signal: {str(e)}") from e
+            raise RuntimeError(
+                f"Failed to transcribe ground truth signal: {str(e)}"
+            ) from e
         ref_text = self.cleaner(gt_text)
         pred_text = self.cleaner(inf_text)
         ref_chars = list(ref_text)
@@ -190,7 +197,9 @@ def register_asr_match_metric(registry):
         paper_reference=None,
         implementation_source="https://github.com/ftshijt/versa",
     )
-    registry.register(ASRMatchMetric, metric_metadata, aliases=["ASRMatch", "asr_match_error_rate"])
+    registry.register(
+        ASRMatchMetric, metric_metadata, aliases=["ASRMatch", "asr_match_error_rate"]
+    )
 
 
 if __name__ == "__main__":
@@ -207,7 +216,9 @@ if __name__ == "__main__":
         }
         metric = ASRMatchMetric(config)
         # Calculate metrics
-        metrics = metric.compute(test_audio, test_audio, metadata={"sample_rate": TARGET_FS})
+        metrics = metric.compute(
+            test_audio, test_audio, metadata={"sample_rate": TARGET_FS}
+        )
         # Print results
         print(f"ASR Match Error Rate: {metrics['asr_match_error_rate']:.4f}")
         print(f"Transcription: '{metrics['whisper_hyp_text']}'")

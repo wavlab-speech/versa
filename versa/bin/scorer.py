@@ -171,8 +171,9 @@ def main():
         use_gpu=args.use_gpu,
     )
 
-    # Filter for corpus-level metrics and perform corpus scoring  
+    # Filter for corpus-level metrics and perform corpus scoring
     from versa.definition import MetricCategory
+
     corpus_suite = corpus_metrics.filter_by_category(MetricCategory.DISTRIBUTIONAL)
     if len(corpus_suite.metrics) > 0:
         corpus_score_info = scorer.score_corpus(

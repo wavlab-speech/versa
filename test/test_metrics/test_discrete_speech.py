@@ -4,7 +4,10 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from versa.utterance_metrics.discrete_speech import DiscreteSpeechMetric, is_discrete_speech_available
+from versa.utterance_metrics.discrete_speech import (
+    DiscreteSpeechMetric,
+    is_discrete_speech_available,
+)
 
 
 # -------------------------------
@@ -107,7 +110,9 @@ def fixed_ground_truth(fixed_ground_truth_wav):
 # -------------------------------
 # Test Functions
 # -------------------------------
-@pytest.mark.skipif(not is_discrete_speech_available(), reason="Discrete Speech Metrics not available")
+@pytest.mark.skipif(
+    not is_discrete_speech_available(), reason="Discrete Speech Metrics not available"
+)
 @pytest.mark.parametrize(
     "use_gpu",
     [
@@ -120,24 +125,34 @@ def test_utterance_discrete_speech_identical(use_gpu, fixed_audio):
     When comparing an audio signal with itself, the discrete speech scores should be high.
     """
     config = {"use_gpu": use_gpu}
-    
+
     metric = DiscreteSpeechMetric(config)
     metadata = {"sample_rate": 16000}
     result = metric.compute(fixed_audio, fixed_audio, metadata=metadata)
-    
+
     # Check that all expected metrics are present
     assert "speech_bert" in result, "Result should contain 'speech_bert' key"
     assert "speech_bleu" in result, "Result should contain 'speech_bleu' key"
-    assert "speech_token_distance" in result, "Result should contain 'speech_token_distance' key"
-    
+    assert (
+        "speech_token_distance" in result
+    ), "Result should contain 'speech_token_distance' key"
+
     # For identical signals, scores should be relatively high
     # Note: Perfect scores (1.0) are not always expected for discrete speech metrics
-    assert result["speech_bert"] > 0.9, f"Expected SpeechBERT score > 0.9 for identical signals, got {result['speech_bert']}"
-    assert result["speech_bleu"] > 0.9, f"Expected SpeechBLEU score > 0.9 for identical signals, got {result['speech_bleu']}"
-    assert result["speech_token_distance"] > 0.9, f"Expected SpeechTokenDistance score > 0.9 for identical signals, got {result['speech_token_distance']}"
+    assert (
+        result["speech_bert"] > 0.9
+    ), f"Expected SpeechBERT score > 0.9 for identical signals, got {result['speech_bert']}"
+    assert (
+        result["speech_bleu"] > 0.9
+    ), f"Expected SpeechBLEU score > 0.9 for identical signals, got {result['speech_bleu']}"
+    assert (
+        result["speech_token_distance"] > 0.9
+    ), f"Expected SpeechTokenDistance score > 0.9 for identical signals, got {result['speech_token_distance']}"
 
 
-@pytest.mark.skipif(not is_discrete_speech_available(), reason="Discrete Speech Metrics not available")
+@pytest.mark.skipif(
+    not is_discrete_speech_available(), reason="Discrete Speech Metrics not available"
+)
 @pytest.mark.parametrize(
     "use_gpu",
     [
@@ -150,34 +165,47 @@ def test_utterance_discrete_speech_different(use_gpu, fixed_audio, fixed_ground_
     When comparing two different fixed signals, the discrete speech scores should be lower than identical signals.
     """
     config = {"use_gpu": use_gpu}
-    
+
     metric = DiscreteSpeechMetric(config)
     metadata = {"sample_rate": 16000}
-    
+
     # Get scores for identical signals first
     identical_result = metric.compute(fixed_audio, fixed_audio, metadata=metadata)
-    
+
     # Get scores for different signals
-    different_result = metric.compute(fixed_audio, fixed_ground_truth, metadata=metadata)
-    
+    different_result = metric.compute(
+        fixed_audio, fixed_ground_truth, metadata=metadata
+    )
+
     # Check that all expected metrics are present
     assert "speech_bert" in different_result, "Result should contain 'speech_bert' key"
     assert "speech_bleu" in different_result, "Result should contain 'speech_bleu' key"
-    assert "speech_token_distance" in different_result, "Result should contain 'speech_token_distance' key"
-    
+    assert (
+        "speech_token_distance" in different_result
+    ), "Result should contain 'speech_token_distance' key"
+
     # Different signals should have lower scores than identical signals
-    assert different_result["speech_bert"] <= identical_result["speech_bert"], f"Expected SpeechBERT score for different signals ({different_result['speech_bert']}) to be <= identical signals ({identical_result['speech_bert']})"
-    assert different_result["speech_bleu"] <= identical_result["speech_bleu"], f"Expected SpeechBLEU score for different signals ({different_result['speech_bleu']}) to be <= identical signals ({identical_result['speech_bleu']})"
-    assert different_result["speech_token_distance"] <= identical_result["speech_token_distance"], f"Expected SpeechTokenDistance score for different signals ({different_result['speech_token_distance']}) to be <= identical signals ({identical_result['speech_token_distance']})"
+    assert (
+        different_result["speech_bert"] <= identical_result["speech_bert"]
+    ), f"Expected SpeechBERT score for different signals ({different_result['speech_bert']}) to be <= identical signals ({identical_result['speech_bert']})"
+    assert (
+        different_result["speech_bleu"] <= identical_result["speech_bleu"]
+    ), f"Expected SpeechBLEU score for different signals ({different_result['speech_bleu']}) to be <= identical signals ({identical_result['speech_bleu']})"
+    assert (
+        different_result["speech_token_distance"]
+        <= identical_result["speech_token_distance"]
+    ), f"Expected SpeechTokenDistance score for different signals ({different_result['speech_token_distance']}) to be <= identical signals ({identical_result['speech_token_distance']})"
 
 
-@pytest.mark.skipif(not is_discrete_speech_available(), reason="Discrete Speech Metrics not available")
+@pytest.mark.skipif(
+    not is_discrete_speech_available(), reason="Discrete Speech Metrics not available"
+)
 def test_discrete_speech_metric_metadata():
     """Test that the Discrete Speech metric has correct metadata."""
     config = {"use_gpu": False}
     metric = DiscreteSpeechMetric(config)
     metadata = metric.get_metadata()
-    
+
     assert metadata.name == "discrete_speech"
     assert metadata.category.value == "dependent"
     assert metadata.metric_type.value == "float"
@@ -189,67 +217,81 @@ def test_discrete_speech_metric_metadata():
     assert "numpy" in metadata.dependencies
 
 
-@pytest.mark.skipif(not is_discrete_speech_available(), reason="Discrete Speech Metrics not available")
+@pytest.mark.skipif(
+    not is_discrete_speech_available(), reason="Discrete Speech Metrics not available"
+)
 def test_discrete_speech_metric_different_sample_rates():
     """Test that the Discrete Speech metric handles different sample rates correctly."""
     config = {"use_gpu": False}
     metric = DiscreteSpeechMetric(config)
-    
+
     # Test with 44.1kHz audio (should be resampled to 16kHz)
     audio_44k = np.random.random(44100)
     metadata_44k = {"sample_rate": 44100}
     result_44k = metric.compute(audio_44k, audio_44k, metadata=metadata_44k)
-    
+
     # Test with 16kHz audio (no resampling needed)
     audio_16k = np.random.random(16000)
     metadata_16k = {"sample_rate": 16000}
     result_16k = metric.compute(audio_16k, audio_16k, metadata=metadata_16k)
-    
+
     # Both should return valid scores with expected keys
     expected_keys = ["speech_bert", "speech_bleu", "speech_token_distance"]
-    
+
     for key in expected_keys:
         assert key in result_44k, f"44kHz result should contain '{key}' key"
         assert key in result_16k, f"16kHz result should contain '{key}' key"
-        assert isinstance(result_44k[key], (int, float)), f"Score {key} should be numeric"
-        assert isinstance(result_16k[key], (int, float)), f"Score {key} should be numeric"
+        assert isinstance(
+            result_44k[key], (int, float)
+        ), f"Score {key} should be numeric"
+        assert isinstance(
+            result_16k[key], (int, float)
+        ), f"Score {key} should be numeric"
 
 
-@pytest.mark.skipif(not is_discrete_speech_available(), reason="Discrete Speech Metrics not available")
+@pytest.mark.skipif(
+    not is_discrete_speech_available(), reason="Discrete Speech Metrics not available"
+)
 def test_discrete_speech_metric_invalid_input():
     """Test that the Discrete Speech metric handles invalid inputs correctly."""
     config = {"use_gpu": False}
     metric = DiscreteSpeechMetric(config)
-    
+
     # Test with None input
-    with pytest.raises(ValueError, match="Both predicted and ground truth signals must be provided"):
+    with pytest.raises(
+        ValueError, match="Both predicted and ground truth signals must be provided"
+    ):
         metric.compute(None, np.random.random(16000), metadata={"sample_rate": 16000})
-    
-    with pytest.raises(ValueError, match="Both predicted and ground truth signals must be provided"):
+
+    with pytest.raises(
+        ValueError, match="Both predicted and ground truth signals must be provided"
+    ):
         metric.compute(np.random.random(16000), None, metadata={"sample_rate": 16000})
 
 
-@pytest.mark.skipif(not is_discrete_speech_available(), reason="Discrete Speech Metrics not available")
+@pytest.mark.skipif(
+    not is_discrete_speech_available(), reason="Discrete Speech Metrics not available"
+)
 def test_discrete_speech_metric_config_options():
     """Test that the Discrete Speech metric handles different configuration options."""
     # Test with GPU disabled
     config_cpu = {"use_gpu": False}
     metric_cpu = DiscreteSpeechMetric(config_cpu)
-    
+
     # Test with different sample rate
     config_custom_sr = {"use_gpu": False, "sample_rate": 22050}
     metric_custom_sr = DiscreteSpeechMetric(config_custom_sr)
-    
+
     # All should work without errors
     audio = np.random.random(16000)
     metadata = {"sample_rate": 16000}
-    
+
     result_cpu = metric_cpu.compute(audio, audio, metadata=metadata)
     result_custom_sr = metric_custom_sr.compute(audio, audio, metadata=metadata)
-    
+
     # All should return the same structure
     expected_keys = ["speech_bert", "speech_bleu", "speech_token_distance"]
-    
+
     for key in expected_keys:
         assert key in result_cpu
         assert key in result_custom_sr

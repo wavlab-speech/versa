@@ -40,10 +40,10 @@ def info_update():
     # Create registry and register Chroma Alignment metric
     registry = MetricRegistry()
     register_chroma_alignment_metric(registry)
-    
+
     # Initialize VersaScorer with the populated registry
     scorer = VersaScorer(registry)
-    
+
     # Load metrics using the new API
     metric_suite = scorer.load_metrics(
         score_config,
@@ -55,10 +55,9 @@ def info_update():
 
     # Score utterances using the new API
     score_info = scorer.score_utterances(
-        gen_files, metric_suite, gt_files, 
-        output_file=None, io="soundfile"
+        gen_files, metric_suite, gt_files, output_file=None, io="soundfile"
     )
-    
+
     summary = compute_summary(score_info)
     print("Summary: {}".format(summary), flush=True)
 
@@ -77,4 +76,4 @@ def info_update():
 
 
 if __name__ == "__main__":
-    info_update() 
+    info_update()

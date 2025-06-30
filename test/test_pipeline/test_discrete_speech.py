@@ -9,7 +9,11 @@ from versa.utils_shared import find_files
 from versa.definition import MetricRegistry
 from versa.utterance_metrics.discrete_speech import register_discrete_speech_metric
 
-TEST_INFO = {'speech_bert': 0.9727544784545898, 'speech_bleu': 0.6699938983346256, 'speech_token_distance': 0.850506056080969}
+TEST_INFO = {
+    "speech_bert": 0.9727544784545898,
+    "speech_bleu": 0.6699938983346256,
+    "speech_token_distance": 0.850506056080969,
+}
 
 
 def info_update():
@@ -31,10 +35,10 @@ def info_update():
     # Create registry and register Discrete Speech metric
     registry = MetricRegistry()
     register_discrete_speech_metric(registry)
-    
+
     # Initialize VersaScorer with the populated registry
     scorer = VersaScorer(registry)
-    
+
     # Load metrics using the new API
     metric_suite = scorer.load_metrics(
         score_config,
@@ -46,10 +50,9 @@ def info_update():
 
     # Score utterances using the new API
     score_info = scorer.score_utterances(
-        gen_files, metric_suite, gt_files, 
-        output_file=None, io="soundfile"
+        gen_files, metric_suite, gt_files, output_file=None, io="soundfile"
     )
-    
+
     summary = compute_summary(score_info)
     print("Summary: {}".format(summary), flush=True)
 
@@ -68,4 +71,4 @@ def info_update():
 
 
 if __name__ == "__main__":
-    info_update() 
+    info_update()
