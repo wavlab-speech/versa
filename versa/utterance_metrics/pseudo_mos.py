@@ -88,7 +88,7 @@ def pseudo_mos_setup(
         elif predictor == "singmos":
             torch.hub.set_dir(cache_dir)
             singmos = torch.hub.load(
-                "South-Twilight/SingMOS:v0.2.0", "singing_ssl_mos", trust_repo=True
+                "South-Twilight/SingMOS:v0.2.1", "singing_ssl_mos", trust_repo=True
             ).to(device)
             predictor_dict["singmos"] = singmos
             predictor_fs["singmos"] = 16000
