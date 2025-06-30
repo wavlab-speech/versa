@@ -113,3 +113,4 @@ from versa.utterance_metrics.wvmos import wvmos_setup, wvmos_calculate
 from versa.utterance_metrics.sigmos import sigmos_setup, sigmos_calculate
 from versa.utterance_metrics.dpam_distance import dpam_metric, dpam_model_setup
 from versa.utterance_metrics.cdpam_distance import cdpam_metric, cdpam_model_setup
+from versa.utterance_metrics.vqscore import vqscore_metric, vqscore_setup

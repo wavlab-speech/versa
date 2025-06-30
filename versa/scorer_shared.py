@@ -897,7 +897,6 @@ def load_score_modules(score_config, use_gt=True, use_gt_text=False, use_gpu=Fal
                     "scale_factor": config.get("scale_factor", 100),
                 },
             }
-
         elif "wvmos" in config["name"]:
             logging.info("Loading WVMOS metric")
             from versa import wvmos_setup, wvmos_calculate
@@ -922,6 +921,16 @@ def load_score_modules(score_config, use_gt=True, use_gt_text=False, use_gpu=Fal
                 "args": {"model": model},
             }
             logging.info("Initiate SIGMOS metric successfully")
+        elif "vqscore" in config["name"]:
+            logging.info("Loading VQScore model")
+            from versa import vqscore_metric, vqscore_setup
+
+            vqscore_model = vqscore_setup(use_gpu=use_gpu)
+            score_modules["vqscore"] = {
+                "module": vqscore_metric,
+                "args": {"model": vqscore_model},
+            }
+            logging.info("Initiate VQScore evaluation successfully.")
     return score_modules
 
 
@@ -1134,6 +1143,10 @@ def use_score_modules(score_modules, gen_wav, gt_wav, gen_sr, text=None):
                 score_modules[key]["args"]["model"],
                 gen_wav,
                 gen_sr,
+            )
+        elif key == "vqscore":
+            score = score_modules[key]["module"](
+                score_modules[key]["args"]["model"], gen_wav, gen_sr
             )
         else:
             raise NotImplementedError(f"Not supported {key}")

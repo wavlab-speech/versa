@@ -57,6 +57,7 @@ We include x mark if the metric is auto-installed in versa.
 | 50 | x | DNSMOS Pro: A Reduced-Size DNN for Probabilistic MOS of Speech  | pseudo_mos | dnsmos_pro_vcc2018 | [DNSMOSPro](https://github.com/fcumlin/DNSMOSPro/tree/main) | [paper](https://www.isca-archive.org/interspeech_2024/cumlin24_interspeech.html) |
 | 51 |   | WV-MOS (MOS score prediction by fine-tuned wav2vec2.0 model) | wvmos | wvmos | [wvmos](https://github.com/AndreevP/wvmos) | [paper](https://arxiv.org/abs/2203.13086) |
 | 52 |   |SIG-MOS | sigmos | {SIGMOS_COL, SIGMOS_DISC, SIGMOS_LOUD, SIGMOS_REVERB, SIGMOS_SIG, SIGMOS_OVRL} | [sigmos](https://github.com/microsoft/SIG-Challenge/tree/main/ICASSP2024/sigmos) |[paper](https://arxiv.org/pdf/2309.07385) |
+| 53 | x | VQScore (Self-Supervised Speech Quality Estimation and Enhancement Using Only Clean Speech)  | vqscore | vqscore | [VQScore](https://github.com/JasonSWFu/VQscore) | [paper](https://arxiv.org/abs/2402.16321) |
 
 
 ### Dependent Metrics
