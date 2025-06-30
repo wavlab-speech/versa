@@ -304,7 +304,7 @@ def compute_summary(score_info: List[Dict[str, Any]]) -> Dict[str, Any]:
     
     summary = {}
     for key in score_info[0].keys():
-        if key in STR_METRIC or key == "key":
+        if key not in NUM_METRIC:
             continue
         
         values = [score[key] for score in score_info if key in score and score[key] is not None]
