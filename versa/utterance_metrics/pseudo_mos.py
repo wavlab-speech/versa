@@ -88,10 +88,17 @@ def pseudo_mos_setup(
         elif predictor == "singmos":
             torch.hub.set_dir(cache_dir)
             singmos = torch.hub.load(
-                "South-Twilight/SingMOS:v0.2.1", "singing_ssl_mos", trust_repo=True
+                "South-Twilight/SingMOS:v0.3.0", "singing_ssl_mos", trust_repo=True
             ).to(device)
             predictor_dict["singmos"] = singmos
             predictor_fs["singmos"] = 16000
+        elif predictor == "singmos_v2":
+            torch.hub.set_dir(cache_dir)
+            singmos = torch.hub.load(
+                "South-Twilight/SingMOS:v0.3.0", "singing_ssl_mos_v2", trust_repo=True
+            ).to(device)
+            predictor_dict["singmos_v2"] = singmos
+            predictor_fs["singmos_v2"] = 16000
         else:
             raise NotImplementedError("Not supported {}".format(predictor))
 
@@ -200,6 +207,22 @@ def pseudo_mos_metric(pred, fs, predictor_dict, predictor_fs, use_gpu=False):
                 0
             ].item()
             scores.update(singmos=score)
+        elif predictor == "singmos_v2":
+            if fs != predictor_fs["singmos_v2"]:
+                pred_singmos = librosa.resample(
+                    pred, orig_sr=fs, target_sr=predictor_fs["singmos_v2"]
+                )
+            else:
+                pred_singmos = pred
+            pred_tensor = torch.from_numpy(pred_singmos).unsqueeze(0)
+            length_tensor = torch.tensor([pred_tensor.size(1)]).int()
+            if use_gpu:
+                pred_tensor = pred_tensor.to("cuda")
+                length_tensor = length_tensor.to("cuda")
+            score = predictor_dict["singmos_v2"](pred_tensor.float(), length_tensor)[
+                0
+            ].item()
+            scores.update(singmos_v2=score)
         else:
             raise NotImplementedError("Not supported {}".format(predictor))
 
@@ -210,7 +233,7 @@ if __name__ == "__main__":
     a = np.random.random(16000)
     print(a)
     predictor_dict, predictor_fs = pseudo_mos_setup(
-        ["utmos", "dnsmos", "plcmos", "singmos"],
+        ["utmos", "dnsmos", "plcmos", "singmos", "singmos_v2"],
         predictor_args={
             "dnsmos": {"fs": 16000},
             "plcmos": {"fs": 16000},
