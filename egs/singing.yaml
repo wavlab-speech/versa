@@ -7,7 +7,7 @@
   cache_dir: versa_cache/audiobox
 
 - name: pseudo_mos
-  predictor_types: ["singmos"]
+  predictor_types: ["singmos", "singmos_v2"]
 
 # An overall model on MOS-bench from Sheet toolkit
 # More info in https://github.com/unilight/sheet/tree/main
