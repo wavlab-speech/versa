@@ -97,7 +97,6 @@ def load_score_modules(score_config, use_gt=True, use_gt_text=False, use_gpu=Fal
             logging.info("Initiate WARP-Q metric...")
 
         elif config["name"] == "nisqa":
-
             logging.info("Loading NISQA evaluation...")
             from versa.utterance_metrics.nisqa import nisqa_metric, nisqa_model_setup
 
@@ -257,7 +256,6 @@ def load_score_modules(score_config, use_gt=True, use_gt_text=False, use_gpu=Fal
             logging.info("Initiate singer evaluation successfully.")
 
         elif config["name"] == "sheet_ssqa":
-
             logging.info("Loading Sheet SSQA models for evaluation...")
             from versa import sheet_ssqa, sheet_ssqa_setup
 
@@ -287,7 +285,6 @@ def load_score_modules(score_config, use_gt=True, use_gt_text=False, use_gpu=Fal
             logging.info("Initiate torch squim (with reference) successfully")
 
         elif config["name"] == "squim_no_ref":
-
             logging.info("Loading squim metrics with reference")
             from versa import squim_metric_no_ref
 
@@ -466,7 +463,6 @@ def load_score_modules(score_config, use_gt=True, use_gt_text=False, use_gpu=Fal
             logging.info("Initiate se_snr successfully")
 
         elif config["name"] == "pam":
-
             logging.info("Loading pam metric without reference...")
             from versa.utterance_metrics.pam import pam_metric, pam_model_setup
 
@@ -494,7 +490,6 @@ def load_score_modules(score_config, use_gt=True, use_gt_text=False, use_gpu=Fal
             logging.info("Initiate vad metric successfully.")
 
         elif config["name"] == "asvspoof_score":
-
             logging.info("Loading asvspoof score metric without reference...")
             from versa.utterance_metrics.asvspoof_score import (
                 asvspoof_metric,
@@ -897,6 +892,29 @@ def load_score_modules(score_config, use_gt=True, use_gt_text=False, use_gpu=Fal
                     "scale_factor": config.get("scale_factor", 100),
                 },
             }
+        elif "wvmos" in config["name"]:
+            logging.info("Loading WVMOS metric")
+            from versa import wvmos_setup, wvmos_calculate
+
+            model = wvmos_setup(
+                use_gpu=use_gpu,
+            )
+            score_modules["wvmos"] = {
+                "module": wvmos_calculate,
+                "args": {"model": model},
+            }
+            logging.info("Initiate WVMOS metric successfully")
+        elif "sigmos" in config["name"]:
+            logging.info("Loading SIGMOS metric")
+            from versa import sigmos_setup, sigmos_calculate
+
+            model = sigmos_setup()
+
+            score_modules["sigmos"] = {
+                "module": sigmos_calculate,
+                "args": {"model": model},
+            }
+            logging.info("Initiate SIGMOS metric successfully")
         elif "vqscore" in config["name"]:
             logging.info("Loading VQScore model")
             from versa import vqscore_metric, vqscore_setup
@@ -1107,6 +1125,18 @@ def use_score_modules(score_modules, gen_wav, gt_wav, gen_sr, text=None):
                 gen_wav,
                 gen_sr,
                 custom_prompt=score_modules[key]["prompt"],
+            )
+        elif key == "wvmos":
+            score = score_modules[key]["module"](
+                score_modules[key]["args"]["model"],
+                gen_wav,
+                gen_sr,
+            )
+        elif key == "sigmos":
+            score = score_modules[key]["module"](
+                score_modules[key]["args"]["model"],
+                gen_wav,
+                gen_sr,
             )
         elif key == "vqscore":
             score = score_modules[key]["module"](
