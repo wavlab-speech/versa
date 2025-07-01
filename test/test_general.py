@@ -41,6 +41,11 @@ TEST_INFO = {
     "torch_squim_stoi": 0.6027805209159851,
     "torch_squim_pesq": 1.1683127880096436,
     "torch_squim_si_sdr": -11.109052658081055,
+    "dpam_distance": 0.15004253387451172,
+    "cdpam_distance": 0.05146043747663498,
+    "dnsmos_pro_bvcc": 1.1717286109924316,
+    "dnsmos_pro_nisqa": 1.4733699560165405,
+    "dnsmos_pro_vcc2018": 1.930935263633728,
 }
 
 

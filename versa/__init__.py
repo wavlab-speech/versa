@@ -37,6 +37,11 @@ except ImportError:
     logging.info("Please install espnet with `pip install espnet` and retry")
 
 try:
+    from versa.utterance_metrics.singer import singer_metric, singer_model_setup
+except ImportError:
+    logging.info("Please install ...")
+
+try:
     from versa.utterance_metrics.visqol_score import visqol_metric, visqol_setup
 except ImportError:
     logging.info(
@@ -103,3 +108,7 @@ from versa.utterance_metrics.speaking_rate import (
 )
 from versa.utterance_metrics.squim import squim_metric, squim_metric_no_ref
 from versa.utterance_metrics.srmr import srmr_metric
+from versa.utterance_metrics.chroma_alignment import chroma_metric
+from versa.utterance_metrics.dpam_distance import dpam_metric, dpam_model_setup
+from versa.utterance_metrics.cdpam_distance import cdpam_metric, cdpam_model_setup
+from versa.utterance_metrics.vqscore import vqscore_metric, vqscore_setup
