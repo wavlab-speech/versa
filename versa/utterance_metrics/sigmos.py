@@ -107,9 +107,14 @@ class SigMOS:
         return result
 
 
-def sigmos_setup(model_dir="../versa_cache/sigmos_model"):
+def sigmos_setup(model_dir=None):
+
+    if model_dir is None:
+        # Get the absolute path to the current file (this script)
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        model_dir = os.path.join(script_dir, "..", "..", "versa_cache", "sigmos_model")
     # Permalink to the onnx file:
-    # https://github.com/microsoft/SIG-Challenge/blob/bf4525153b6ed998f19d9e79ff1fd00f55dec42b/ICASSP2024/sigmos/model-sigmos_1697718653_41d092e8-epo-200.onnx
+    # https://github.com/microsoft/SIG-Challenge/raw/refs/heads/main/ICASSP2024/sigmos/model-sigmos_1697718653_41d092e8-epo-200.onnx
 
     # Check if the model directory exists
     if not os.path.exists(model_dir):
@@ -127,7 +132,7 @@ def sigmos_setup(model_dir="../versa_cache/sigmos_model"):
         # Download the model file from the web url
         import requests
 
-        model_url = "https://github.com/microsoft/SIG-Challenge/blob/bf4525153b6ed998f19d9e79ff1fd00f55dec42b/ICASSP2024/sigmos/model-sigmos_1697718653_41d092e8-epo-200.onnx"
+        model_url = "https://github.com/microsoft/SIG-Challenge/raw/refs/heads/main/ICASSP2024/sigmos/model-sigmos_1697718653_41d092e8-epo-200.onnx"
         model_file = os.path.join(
             model_dir, "model-sigmos_1697718653_41d092e8-epo-200.onnx"
         )
