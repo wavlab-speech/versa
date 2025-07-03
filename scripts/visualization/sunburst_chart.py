@@ -6,6 +6,7 @@ import argparse
 
 pio.renderers.default = "browser"
 
+
 def plot_interactive_sunburst_chart(df, save_html=True):
     """
     Args:
@@ -32,20 +33,31 @@ def plot_interactive_sunburst_chart(df, save_html=True):
             "%{label}<br>"
             "Mean: %{customdata[0]}<br>"
             "Std: %{customdata[1]}<extra></extra>"
-        )
+        ),
     )
     if save_html:
         fig.write_html("sunburst_chart.html")
-        print(f'results saved to sunburst_chart.html, please download and open in local browser.')
+        print(
+            f"results saved to sunburst_chart.html, please download and open in local browser."
+        )
     else:
         fig.show()
 
+
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--result_filepath", help="the path of result file",
-                        default="scripts/visualization/base_category.csv", type=str)
-    parser.add_argument("--save_html", help="whether save the generated html file, please do so on slurm",
-                        default=True, type=bool)
+    parser.add_argument(
+        "--result_filepath",
+        help="the path of result file",
+        default="scripts/visualization/base_category.csv",
+        type=str,
+    )
+    parser.add_argument(
+        "--save_html",
+        help="whether save the generated html file, please do so on slurm",
+        default=True,
+        type=bool,
+    )
     args = parser.parse_args()
 
     df = pd.read_csv(args.result_filepath)
@@ -54,6 +66,5 @@ def main():
     plot_interactive_sunburst_chart(df, save_html)
 
 
-if __name__=="__main__":
+if __name__ == "__main__":
     main()
-
