@@ -299,7 +299,6 @@ class VersaScorer:
         if gt_sr is None:
             return gen_wav, gt_wav, gen_sr
 
-
         if gen_sr > gt_sr:
             self.logger.warning("Resampling generated audio to match ground truth")
             gen_wav = librosa.resample(gen_wav, orig_sr=gen_sr, target_sr=gt_sr)
