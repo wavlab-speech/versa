@@ -28,9 +28,35 @@ import collections
 import numpy as np
 import torch.nn.functional as F
 
+from versa.definition import BaseMetric, MetricMetadata, MetricCategory, MetricType
+
+# Handle optional dependencies
+try:
+    from versa.utterance_metrics.pam_utils.clap import CLAP
+
+    PAM_AVAILABLE = True
+except ImportError:
+    logger.warning(
+        "PAM dependencies are not installed. Please install required dependencies"
+    )
+    CLAP = None
+    PAM_AVAILABLE = False
+
 # Constants
 HF_REPO = "microsoft/msclap"
 CLAP_VERSION = "CLAP_weights_2023.pth"
+
+
+def is_pam_available():
+    """
+    Check if the PAM dependencies are available.
+
+    Returns:
+        bool: True if PAM dependencies are available, False otherwise.
+    """
+    return PAM_AVAILABLE
+
+
 PAM_PROMPTS = [
     "the sound is clear and clean.",
     "the sound is noisy and with artifacts.",
@@ -240,140 +266,197 @@ class PAM:
         return pam_score
 
 
-def load_audio(
-    audio_file: Union[str, torch.Tensor], sample_rate: int, repro: bool = True
-) -> torch.Tensor:
-    """
-    Load and preprocess audio file.
+class PamMetric(BaseMetric):
+    """PAM (Perceptual Audio Metric) for audio quality assessment."""
 
-    Args:
-        audio_file: Path to audio file or audio tensor
-        sample_rate: Sample rate of the input audio
-        repro: If True, use reproducible processing (taking first 7 seconds)
+    TARGET_FS = 44100  # PAM model's expected sampling rate
 
-    Returns:
-        Processed audio tensor
-    """
-    # Load audio file if path is provided
-    if isinstance(audio_file, str):
-        audio, sample_rate = torchaudio.load(audio_file)
-    else:
-        audio = audio_file.clone()  # Create a copy to avoid modifying the original
+    def _setup(self):
+        """Initialize PAM-specific components."""
+        if not PAM_AVAILABLE:
+            raise ImportError(
+                "PAM dependencies are not installed. Please install required dependencies"
+            )
 
-    # Ensure audio is a FloatTensor
-    audio = torch.FloatTensor(audio)
+        self.repro = self.config.get("repro", True)
+        self.cache_dir = self.config.get("cache_dir", "versa_cache/pam")
+        self.use_gpu = self.config.get("use_gpu", False)
 
-    # Resample audio if needed
-    if sample_rate != RESAMPLE_RATE:
-        resampler = T.Resample(sample_rate, RESAMPLE_RATE)
-        audio = resampler(audio)
+        # Extract model configuration from config
+        model_config = {
+            "text_model": self.config.get("text_model", "gpt2"),
+            "text_len": self.config.get("text_len", 77),
+            "transformer_embed_dim": self.config.get("transformer_embed_dim", 768),
+            "audioenc_name": self.config.get("audioenc_name", "HTSAT"),
+            "out_emb": self.config.get("out_emb", 768),
+            "sampling_rate": self.config.get("sampling_rate", 44100),
+            "duration": self.config.get("duration", 7),
+            "fmin": self.config.get("fmin", 50),
+            "fmax": self.config.get("fmax", 8000),
+            "n_fft": self.config.get("n_fft", 1024),
+            "hop_size": self.config.get("hop_size", 320),
+            "mel_bins": self.config.get("mel_bins", 64),
+            "window_size": self.config.get("window_size", 1024),
+            "d_proj": self.config.get("d_proj", 1024),
+            "temperature": self.config.get("temperature", 0.003),
+            "num_classes": self.config.get("num_classes", 527),
+            "batch_size": self.config.get("batch_size", 1024),
+            "demo": self.config.get("demo", False),
+        }
 
-    # Convert to mono if stereo
-    if audio.shape[0] > 1:
-        audio = torch.mean(audio, dim=0, keepdim=True)
+        try:
+            self.model = PAM(model_config=model_config, use_cuda=self.use_gpu)
+        except Exception as e:
+            raise RuntimeError(f"Failed to initialize PAM model: {str(e)}") from e
 
-    # Reshape to 1D
-    audio = audio.reshape(-1)
+    def compute(
+        self, predictions: Any, references: Any = None, metadata: Dict[str, Any] = None
+    ) -> Dict[str, Union[float, str]]:
+        """Calculate PAM score for audio quality assessment.
 
-    # Process audio to be exactly AUDIO_DURATION seconds
-    if SAMPLES >= audio.shape[0]:
-        # Audio is shorter than required duration, repeat to match
-        repeat_factor = int(np.ceil(SAMPLES / audio.shape[0]))
-        audio = audio.repeat(repeat_factor)
-        # Trim to exact length
-        audio = audio[:SAMPLES]
-    else:
-        # Audio is longer than required duration
-        if repro:
-            # Take first AUDIO_DURATION seconds
-            audio = audio[:SAMPLES]
+        Args:
+            predictions: Audio signal to be evaluated.
+            references: Not used for PAM (single-ended metric).
+            metadata: Optional metadata containing sample_rate.
+
+        Returns:
+            dict: Dictionary containing PAM score.
+        """
+        pred_x = predictions
+        fs = metadata.get("sample_rate", 16000) if metadata else 16000
+
+        # Validate inputs
+        if pred_x is None:
+            raise ValueError("Predicted signal must be provided")
+
+        # Convert numpy array to tensor if needed
+        if isinstance(pred_x, np.ndarray):
+            pred_x = torch.FloatTensor(pred_x)
+
+        # Load and preprocess audio
+        audio = self._load_audio(pred_x, fs)
+
+        # Ensure audio has batch dimension
+        if len(audio.shape) < 2:
+            audio = audio.unsqueeze(0)
+
+        # Compute PAM score
+        pam_score = self.model.evaluate(audio)
+
+        return {"pam_score": pam_score}
+
+    def _load_audio(
+        self, audio_file: Union[str, torch.Tensor], sample_rate: int
+    ) -> torch.Tensor:
+        """
+        Load and preprocess audio file.
+
+        Args:
+            audio_file: Path to audio file or audio tensor
+            sample_rate: Sample rate of the input audio
+
+        Returns:
+            Processed audio tensor
+        """
+        # Load audio file if path is provided
+        if isinstance(audio_file, str):
+            audio, sample_rate = torchaudio.load(audio_file)
         else:
-            # Take chunks of AUDIO_DURATION seconds plus remaining portion
-            cutoff = int(np.floor(audio.shape[0] / SAMPLES))
-            initial_audio = audio[: cutoff * SAMPLES]
+            audio = audio_file.clone()  # Create a copy to avoid modifying the original
 
-            remaining = audio[cutoff * SAMPLES :]
-            if remaining.shape[0] > 0:
-                # If remaining is non-empty, take the last AUDIO_DURATION seconds
-                remaining = (
-                    audio[-SAMPLES:]
-                    if remaining.shape[0] <= SAMPLES
-                    else remaining[:SAMPLES]
-                )
-                audio = torch.cat([initial_audio, remaining])
+        # Ensure audio is a FloatTensor
+        audio = torch.FloatTensor(audio)
+
+        # Resample audio if needed
+        if sample_rate != self.TARGET_FS:
+            resampler = T.Resample(sample_rate, self.TARGET_FS)
+            audio = resampler(audio)
+
+        # Convert to mono if stereo
+        if audio.shape[0] > 1:
+            audio = torch.mean(audio, dim=0, keepdim=True)
+
+        # Reshape to 1D
+        audio = audio.reshape(-1)
+
+        # Process audio to be exactly AUDIO_DURATION seconds
+        samples = self.TARGET_FS * AUDIO_DURATION
+        if samples >= audio.shape[0]:
+            # Audio is shorter than required duration, repeat to match
+            repeat_factor = int(np.ceil(samples / audio.shape[0]))
+            audio = audio.repeat(repeat_factor)
+            # Trim to exact length
+            audio = audio[:samples]
+        else:
+            # Audio is longer than required duration
+            if self.repro:
+                # Take first AUDIO_DURATION seconds
+                audio = audio[:samples]
             else:
-                audio = initial_audio
+                # Take chunks of AUDIO_DURATION seconds plus remaining portion
+                cutoff = int(np.floor(audio.shape[0] / samples))
+                initial_audio = audio[: cutoff * samples]
 
-    return audio
+                remaining = audio[cutoff * samples :]
+                if remaining.shape[0] > 0:
+                    # If remaining is non-empty, take the last AUDIO_DURATION seconds
+                    remaining = (
+                        audio[-samples:]
+                        if remaining.shape[0] <= samples
+                        else remaining[:samples]
+                    )
+                    audio = torch.cat([initial_audio, remaining])
+                else:
+                    audio = initial_audio
 
+        return audio
 
-def pam_model_setup(model_config: Dict[str, Any], use_gpu: bool = False) -> PAM:
-    """
-    Initialize PAM model with given configuration.
-
-    Args:
-        model_config: Model configuration dictionary
-        use_gpu: Whether to use GPU for computation
-
-    Returns:
-        Initialized PAM model
-    """
-    model = PAM(model_config=model_config, use_cuda=use_gpu)
-    return model
-
-
-def pam_metric(
-    model: PAM,
-    pred_x: Union[str, torch.Tensor, np.ndarray],
-    gt_x: Optional[Union[str, torch.Tensor, np.ndarray]] = None,
-    fs: int = 16000,
-) -> Dict[str, float]:
-    """
-    Compute PAM metric for given audio.
-
-    Args:
-        model: PAM model
-        pred_x: Predicted audio (file path or tensor)
-        gt_x: Ground truth audio (unused, kept for API compatibility)
-        fs: Sample rate of the input audio
-
-    Returns:
-        Dictionary containing PAM score
-    """
-    # Convert numpy array to tensor if needed
-    if isinstance(pred_x, np.ndarray):
-        pred_x = torch.FloatTensor(pred_x)
-
-    # Load and preprocess audio
-    audio = load_audio(pred_x, fs, repro=True)
-
-    # Ensure audio has batch dimension
-    if len(audio.shape) < 2:
-        audio = audio.unsqueeze(0)
-
-    # Compute PAM score
-    pam_score = model.evaluate(audio)
-
-    return {"pam_score": pam_score}
+    def get_metadata(self) -> MetricMetadata:
+        """Return PAM metric metadata."""
+        return MetricMetadata(
+            name="pam",
+            category=MetricCategory.INDEPENDENT,
+            metric_type=MetricType.FLOAT,
+            requires_reference=False,
+            requires_text=False,
+            gpu_compatible=True,
+            auto_install=False,
+            dependencies=[
+                "torch",
+                "torchaudio",
+                "transformers",
+                "huggingface_hub",
+                "numpy",
+            ],
+            description="PAM: Prompting Audio-Language Models for Audio Quality Assessment",
+            paper_reference="https://arxiv.org/abs/2309.07317",
+            implementation_source="https://github.com/soham97/PAM",
+        )
 
 
-if __name__ == "__main__":
-    # Example usage
-    a = np.random.random(16000)
-
-    # Load configuration from YAML file
-    try:
-        with open("egs/separate_metrics/pam.yaml", "r", encoding="utf-8") as f:
-            config = yaml.safe_load(f)[0]
-    except (FileNotFoundError, yaml.YAMLError) as e:
-        print(f"Error loading configuration: {e}")
-        sys.exit(1)
-
-    # Initialize model and compute metric
-    try:
-        model = pam_model_setup(config, use_gpu=torch.cuda.is_available())
-        result = pam_metric(model, a, fs=16000)
-        print(f"PAM score: {result['pam_score']:.4f}")
-    except Exception as e:
-        print(f"Error computing PAM metric: {e}")
-        sys.exit(1)
+def register_pam_metric(registry):
+    """Register PAM metric with the registry."""
+    metric_metadata = MetricMetadata(
+        name="pam",
+        category=MetricCategory.INDEPENDENT,
+        metric_type=MetricType.FLOAT,
+        requires_reference=False,
+        requires_text=False,
+        gpu_compatible=True,
+        auto_install=False,
+        dependencies=[
+            "torch",
+            "torchaudio",
+            "transformers",
+            "huggingface_hub",
+            "numpy",
+        ],
+        description="PAM: Prompting Audio-Language Models for Audio Quality Assessment",
+        paper_reference="https://arxiv.org/abs/2309.07317",
+        implementation_source="https://github.com/soham97/PAM",
+    )
+    registry.register(
+        PamMetric,
+        metric_metadata,
+        aliases=["Pam", "pam", "perceptual_audio_metric"],
+    )

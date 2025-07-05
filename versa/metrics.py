@@ -156,4 +156,5 @@ NUM_METRIC = [
     "nisqa_loud_pred",
     "noresqa_mos",
     "noresqa_score",
+    "pam_score",
 ]

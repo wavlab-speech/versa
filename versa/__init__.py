@@ -128,3 +128,4 @@ from versa.utterance_metrics.cdpam_distance import (
 
 # from versa.utterance_metrics.vqscore import VqscoreMetric, register_vqscore_metric
 from versa.utterance_metrics.nisqa import NisqaMetric, register_nisqa_metric
+from versa.utterance_metrics.pam import PamMetric, register_pam_metric
