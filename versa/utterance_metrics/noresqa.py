@@ -37,9 +37,18 @@ base_path = os.path.abspath(
 )
 sys.path.insert(0, base_path)
 
+from noresqa_model import NORESQA
+from noresqa_utils import (
+    feats_loading,
+    model_prediction_noresqa,
+    model_prediction_noresqa_mos,
+)
+
+NORESQA_AVAILABLE = True
+
 try:
-    from model import NORESQA
-    from utils import (
+    from noresqa_model import NORESQA
+    from noresqa_utils import (
         feats_loading,
         model_prediction_noresqa,
         model_prediction_noresqa_mos,
@@ -148,6 +157,8 @@ class NoresqaMetric(BaseMetric):
                     state = torch.load(model_checkpoint_path, map_location="cpu")[
                         "state_dict"
                     ]
+            else:
+                raise ValueError(f"Invalid metric_type: {self.metric_type}")
 
             pretrained_dict = {}
             for k, v in state.items():
@@ -218,7 +229,7 @@ class NoresqaMetric(BaseMetric):
                 mos_score = model_prediction_noresqa_mos(
                     test_feat, nmr_feat, self.model
                 )
-                return {"noresqa_score": mos_score}
+                return {"noresqa_mos": mos_score}
             else:
                 raise ValueError(f"Invalid metric_type: {self.metric_type}")
 

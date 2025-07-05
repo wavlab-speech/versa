@@ -6,6 +6,7 @@
 
 DICT_METRIC = [
     "match_details",
+    "language",
 ]
 
 STR_METRIC = [
@@ -153,4 +154,6 @@ NUM_METRIC = [
     "nisqa_dis_pred",
     "nisqa_col_pred",
     "nisqa_loud_pred",
+    "noresqa_mos",
+    "noresqa_score",
 ]

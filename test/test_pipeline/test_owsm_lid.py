@@ -1,10 +1,3 @@
-#!/usr/bin/env python3
-
-# Copyright 2024 Jiatong Shi
-#  Apache 2.0  (http://www.apache.org/licenses/LICENSE-2.0)
-
-"""Test pipeline for NORESQA metric using the VersaScorer API."""
-
 import logging
 import math
 import os
@@ -14,9 +7,9 @@ import yaml
 from versa.scorer_shared import VersaScorer, compute_summary
 from versa.utils_shared import find_files
 from versa.definition import MetricRegistry
-from versa.utterance_metrics.noresqa import register_noresqa_metric
+from versa.utterance_metrics.owsm_lid import register_owsm_lid_metric
 
-TEST_INFO = {"noresqa_mos": 1.051746129989624}
+TEST_INFO = {"language": 0.8865218162536621}
 
 
 def info_update():
@@ -31,12 +24,12 @@ def info_update():
 
     logging.info("The number of utterances = %d" % len(gen_files))
 
-    with open("egs/separate_metrics/noresqa.yaml", "r", encoding="utf-8") as f:
+    with open("egs/separate_metrics/lid.yaml", "r", encoding="utf-8") as f:
         score_config = yaml.full_load(f)
 
-    # Create registry and register NORESQA metric
+    # Create registry and register OWSM LID metric
     registry = MetricRegistry()
-    register_noresqa_metric(registry)
+    register_owsm_lid_metric(registry)
 
     # Initialize VersaScorer with the populated registry
     scorer = VersaScorer(registry)
@@ -55,18 +48,15 @@ def info_update():
         gen_files, metric_suite, gt_files, output_file=None, io="soundfile"
     )
 
-    summary = compute_summary(score_info)
-    print("Summary: {}".format(summary), flush=True)
+    print("Scorer score_info: {}".format(score_info))
 
-    for key in summary:
-        if math.isinf(TEST_INFO[key]) and math.isinf(summary[key]):
-            continue
-        if abs(TEST_INFO[key] - summary[key]) > 1e-4 and key != "plcmos":
-            raise ValueError(
-                "Value issue in the test case, might be some issue in scorer {}".format(
-                    key
-                )
+    best_hyper = score_info[0]["language"][0][1]
+    if abs(best_hyper - TEST_INFO["language"]) > 1e-4:
+        raise ValueError(
+            "Value issue in the test case, might be some issue in scorer {}".format(
+                "language"
             )
+        )
     print("check successful", flush=True)
 
 

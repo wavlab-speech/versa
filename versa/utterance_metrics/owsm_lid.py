@@ -116,7 +116,7 @@ class OwsmLidMetric(BaseMetric):
         return MetricMetadata(
             name="lid",
             category=MetricCategory.INDEPENDENT,
-            metric_type=MetricType.STRING,
+            metric_type=MetricType.LIST,
             requires_reference=False,
             requires_text=False,
             gpu_compatible=True,
@@ -133,7 +133,7 @@ def register_owsm_lid_metric(registry):
     metric_metadata = MetricMetadata(
         name="lid",
         category=MetricCategory.INDEPENDENT,
-        metric_type=MetricType.STRING,
+        metric_type=MetricType.LIST,
         requires_reference=False,
         requires_text=False,
         gpu_compatible=True,
