@@ -194,46 +194,6 @@ def register_discrete_speech_metric(registry):
     )
 
 
-# Legacy functions for backward compatibility
-def discrete_speech_setup(use_gpu=False):
-    """Set up discrete speech metrics (legacy function).
-
-    Args:
-        use_gpu (bool, optional): Whether to use GPU. Defaults to False.
-
-    Returns:
-        dict: Dictionary containing the initialized metrics.
-    """
-    config = {"use_gpu": use_gpu}
-    metric = DiscreteSpeechMetric(config)
-    return {
-        "speech_bert": metric.speech_bert,
-        "speech_bleu": metric.speech_bleu,
-        "speech_token_distance": metric.speech_token_distance,
-    }
-
-
-def discrete_speech_metric(discrete_speech_predictors, pred_x, gt_x, fs):
-    """Calculate discrete speech metrics (legacy function).
-
-    Args:
-        discrete_speech_predictors (dict): Dictionary of speech metrics.
-        pred_x (np.ndarray): Predicted audio signal.
-        gt_x (np.ndarray): Ground truth audio signal.
-        fs (int): Sampling rate.
-
-    Returns:
-        dict: Dictionary containing the metric scores.
-    """
-    config = {"use_gpu": False}  # Default config
-    metric = DiscreteSpeechMetric(config)
-    metric.speech_bert = discrete_speech_predictors["speech_bert"]
-    metric.speech_bleu = discrete_speech_predictors["speech_bleu"]
-    metric.speech_token_distance = discrete_speech_predictors["speech_token_distance"]
-    metadata = {"sample_rate": fs}
-    return metric.compute(pred_x, gt_x, metadata=metadata)
-
-
 if __name__ == "__main__":
     a = np.random.random(16000)
     b = np.random.random(16000)

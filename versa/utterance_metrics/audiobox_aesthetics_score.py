@@ -164,61 +164,6 @@ def register_audiobox_aesthetics_metric(registry):
     )
 
 
-# Legacy functions for backward compatibility
-def audiobox_aesthetics_setup(
-    model_path=None,
-    batch_size=1,
-    precision="bf16",
-    cache_dir="versa_cache/audiobox",
-    use_huggingface=True,
-    use_gpu=False,
-):
-    """Set up the AudioBox Aesthetics model for inference (legacy function).
-
-    Args:
-        model_path (str, optional): Path to model weights. Defaults to None.
-        batch_size (int, optional): Batch size for inference. Defaults to 1.
-        precision (str, optional): Precision for inference. Defaults to "bf16".
-        cache_dir (str, optional): Directory to cache model. Defaults to "versa_cache/audiobox".
-        use_huggingface (bool, optional): Whether to use Hugging Face. Defaults to True.
-        use_gpu (bool, optional): Whether to use GPU. Defaults to False.
-
-    Returns:
-        AesWavlmPredictorMultiOutput: The loaded model.
-
-    Raises:
-        ImportError: If audiobox_aesthetics is not installed.
-    """
-    config = {
-        "model_path": model_path,
-        "batch_size": batch_size,
-        "precision": precision,
-        "cache_dir": cache_dir,
-        "use_huggingface": use_huggingface,
-        "use_gpu": use_gpu,
-    }
-    metric = AudioBoxAestheticsMetric(config)
-    return metric.model
-
-
-def audiobox_aesthetics_score(model, pred_x, fs):
-    """Calculate AudioBox Aesthetics scores for audio (legacy function).
-
-    Args:
-        model (AesWavlmPredictorMultiOutput): The loaded model.
-        pred_x (np.ndarray): Audio signal.
-        fs (int): Sampling rate.
-
-    Returns:
-        dict: Dictionary containing the AudioBox Aesthetics scores.
-    """
-    config = {"use_gpu": False}  # Default config
-    metric = AudioBoxAestheticsMetric(config)
-    metric.model = model
-    metadata = {"sample_rate": fs}
-    return metric.compute(pred_x, metadata=metadata)
-
-
 if __name__ == "__main__":
     a = np.random.random(16000)
 

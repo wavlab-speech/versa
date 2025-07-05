@@ -7,7 +7,7 @@ import yaml
 from versa.scorer_shared import VersaScorer, compute_summary
 from versa.utils_shared import find_files
 from versa.definition import MetricRegistry
-from versa.utterance_metrics.emo_similarity import register_emotion_metric
+from versa.utterance_metrics.emo_similarity import register_emo2vec_metric
 
 TEST_INFO = {
     "emotion_similarity": 0.9984976053237915,
@@ -31,7 +31,7 @@ def info_update():
 
     # Create registry and register Emotion metric
     registry = MetricRegistry()
-    register_emotion_metric(registry)
+    register_emo2vec_metric(registry)
 
     # Initialize VersaScorer with the populated registry
     scorer = VersaScorer(registry)

@@ -327,64 +327,6 @@ def register_chroma_alignment_metric(registry):
     )
 
 
-# Legacy functions for backward compatibility
-def chroma_metric(pred_x, gt_x, sr=22050, return_alignment=False, scale_factor=100.0):
-    """
-    Calculate multiple chroma-based distance metrics (legacy function).
-
-    Args:
-        pred_x: Predicted audio signal (1D numpy array)
-        gt_x: Ground truth audio signal (1D numpy array)
-        sr: Sample rate
-        return_alignment: Whether to return alignment paths
-        scale_factor: Multiplicative scaling factor for distances
-
-    Returns:
-        Dictionary of chroma distance metrics
-    """
-    config = {
-        "sample_rate": sr,
-        "scale_factor": scale_factor,
-        "return_alignment": return_alignment,
-    }
-    metric = ChromaAlignmentMetric(config)
-    metadata = {"sample_rate": sr}
-    return metric.compute(pred_x, gt_x, metadata=metadata)
-
-
-def simple_chroma_distance(
-    pred_x,
-    gt_x,
-    sr=22050,
-    feature_type="stft",
-    distance_metric="cosine",
-    scale_factor=100.0,
-):
-    """
-    Simple chroma distance calculation (legacy function).
-
-    Args:
-        pred_x: Predicted audio signal
-        gt_x: Ground truth audio signal
-        sr: Sample rate
-        feature_type: Chroma feature type
-        distance_metric: Distance metric
-        scale_factor: Multiplicative scaling factor
-
-    Returns:
-        DTW distance value
-    """
-    dtw_dist, _ = calculate_chroma_distance(
-        pred_x,
-        gt_x,
-        sr=sr,
-        feature_type=feature_type,
-        distance_metric=distance_metric,
-        scale_factor=scale_factor,
-    )
-    return dtw_dist
-
-
 if __name__ == "__main__":
     # Create test signals with different lengths
     sr = 22050

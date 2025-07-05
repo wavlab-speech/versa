@@ -2,13 +2,13 @@ import logging
 
 __version__ = "0.0.1"  # noqa: F401
 
-from versa.sequence_metrics.mcd_f0 import mcd_f0
-from versa.sequence_metrics.signal_metric import signal_metric
+# from versa.sequence_metrics.mcd_f0 import McdF0Metric, register_mcd_f0_metric
+# from versa.sequence_metrics.signal_metric import SignalMetric, register_signal_metric
 
 try:
     from versa.utterance_metrics.discrete_speech import (
-        discrete_speech_metric,
-        discrete_speech_setup,
+        DiscreteSpeechMetric,
+        register_discrete_speech_metric,
     )
 except ImportError:
     logging.info(
@@ -19,99 +19,112 @@ except RuntimeError:
         "Issues detected in discrete speech metrics, please double check the environment."
     )
 
-from versa.utterance_metrics.pseudo_mos import pseudo_mos_metric, pseudo_mos_setup
+# from versa.utterance_metrics.pseudo_mos import PseudoMosMetric, register_pseudo_mos_metric
 
-try:
-    from versa.utterance_metrics.pesq_score import pesq_metric
-except ImportError:
-    logging.info("Please install pesq with `pip install pesq` and retry")
+# try:
+#     from versa.utterance_metrics.pesq_score import PesqMetric, register_pesq_metric
+# except ImportError:
+#     logging.info("Please install pesq with `pip install pesq` and retry")
 
-try:
-    from versa.utterance_metrics.stoi import stoi_metric, estoi_metric
-except ImportError:
-    logging.info("Please install pystoi with `pip install pystoi` and retry")
+# try:
+#     from versa.utterance_metrics.stoi import StoiMetric, register_stoi_metric
+# except ImportError:
+#     logging.info("Please install pystoi with `pip install pystoi` and retry")
 
-try:
-    from versa.utterance_metrics.speaker import speaker_metric, speaker_model_setup
-except ImportError:
-    logging.info("Please install espnet with `pip install espnet` and retry")
+# try:
+#     from versa.utterance_metrics.speaker import SpeakerMetric, register_speaker_metric
+# except ImportError:
+#     logging.info("Please install espnet with `pip install espnet` and retry")
 
-try:
-    from versa.utterance_metrics.singer import singer_metric, singer_model_setup
-except ImportError:
-    logging.info("Please install ...")
+# try:
+#     from versa.utterance_metrics.singer import SingerMetric, register_singer_metric
+# except ImportError:
+#     logging.info("Please install ...")
 
-try:
-    from versa.utterance_metrics.visqol_score import visqol_metric, visqol_setup
-except ImportError:
-    logging.info(
-        "Please install visqol follow https://github.com/google/visqol and retry"
-    )
+# try:
+#     from versa.utterance_metrics.visqol_score import VisqolMetric, register_visqol_metric
+# except ImportError:
+#     logging.info(
+#         "Please install visqol follow https://github.com/google/visqol and retry"
+#     )
 
-from versa.corpus_metrics.espnet_wer import espnet_levenshtein_metric, espnet_wer_setup
-from versa.corpus_metrics.fad import fad_scoring, fad_setup
-from versa.corpus_metrics.owsm_wer import owsm_levenshtein_metric, owsm_wer_setup
-from versa.corpus_metrics.whisper_wer import (
-    whisper_levenshtein_metric,
-    whisper_wer_setup,
-)
+# from versa.corpus_metrics.espnet_wer import EspnetWerMetric, register_espnet_wer_metric
+# from versa.corpus_metrics.fad import FadMetric, register_fad_metric
+# from versa.corpus_metrics.owsm_wer import OwsmWerMetric, register_owsm_wer_metric
+# from versa.corpus_metrics.whisper_wer import (
+#     WhisperWerMetric,
+#     register_whisper_wer_metric
+# )
 from versa.utterance_metrics.asr_matching import (
     ASRMatchMetric,
     register_asr_match_metric,
 )
 from versa.utterance_metrics.audiobox_aesthetics_score import (
-    audiobox_aesthetics_score,
-    audiobox_aesthetics_setup,
+    AudioBoxAestheticsMetric,
+    register_audiobox_aesthetics_metric,
 )
-from versa.utterance_metrics.emo_similarity import emo2vec_setup, emo_sim
-from versa.utterance_metrics.nomad import nomad, nomad_setup
-from versa.utterance_metrics.noresqa import noresqa_metric, noresqa_model_setup
-from versa.utterance_metrics.owsm_lid import language_id, owsm_lid_model_setup
-from versa.utterance_metrics.pysepm import pysepm_metric
-from versa.utterance_metrics.qwen2_audio import (
-    qwen2_channel_type_metric,
-    qwen2_language_metric,
-    qwen2_laughter_crying_metric,
-    qwen2_model_setup,
-    qwen2_overlapping_speech_metric,
-    qwen2_pitch_range_metric,
-    qwen2_recording_quality_metric,
-    qwen2_speaker_age_metric,
-    qwen2_speaker_count_metric,
-    qwen2_speaker_gender_metric,
-    qwen2_speaking_style_metric,
-    qwen2_speech_background_environment_metric,
-    qwen2_speech_clarity_metric,
-    qwen2_speech_emotion_metric,
-    qwen2_speech_impairment_metric,
-    qwen2_speech_purpose_metric,
-    qwen2_speech_rate_metric,
-    qwen2_speech_register_metric,
-    qwen2_speech_volume_level_metric,
-    qwen2_vocabulary_complexity_metric,
-    qwen2_voice_pitch_metric,
-    qwen2_voice_type_metric,
-    qwen2_singing_technique_metric,
+from versa.utterance_metrics.emo_similarity import (
+    Emo2vecMetric,
+    register_emo2vec_metric,
 )
-from versa.utterance_metrics.qwen_omni import (
-    qwen_omni_model_setup,
-    qwen_omni_singing_technique_metric,
-)
-from versa.utterance_metrics.scoreq import (
-    scoreq_nr,
-    scoreq_nr_setup,
-    scoreq_ref,
-    scoreq_ref_setup,
-)
-from versa.utterance_metrics.se_snr import se_snr, se_snr_setup
-from versa.utterance_metrics.sheet_ssqa import sheet_ssqa, sheet_ssqa_setup
-from versa.utterance_metrics.speaking_rate import (
-    speaking_rate_metric,
-    speaking_rate_model_setup,
-)
-from versa.utterance_metrics.squim import squim_metric, squim_metric_no_ref
+from versa.utterance_metrics.nomad import NomadMetric, register_nomad_metric
+from versa.utterance_metrics.noresqa import NoresqaMetric, register_noresqa_metric
+from versa.utterance_metrics.owsm_lid import OwsmLidMetric, register_owsm_lid_metric
+
+# from versa.utterance_metrics.pysepm import PysepmMetric, register_pysepm_metric
+# from versa.utterance_metrics.qwen2_audio import (
+#     Qwen2ChannelTypeMetric,
+#     Qwen2LanguageMetric,
+#     Qwen2LaughterCryingMetric,
+#     Qwen2ModelSetup,
+#     Qwen2OverlappingSpeechMetric,
+#     Qwen2PitchRangeMetric,
+#     Qwen2RecordingQualityMetric,
+#     Qwen2SpeakerAgeMetric,
+#     Qwen2SpeakerCountMetric,
+#     Qwen2SpeakerGenderMetric,
+#     Qwen2SpeakingStyleMetric,
+#     Qwen2SpeechBackgroundEnvironmentMetric,
+#     Qwen2SpeechClarityMetric,
+#     Qwen2SpeechEmotionMetric,
+#     Qwen2SpeechImpairmentMetric,
+#     Qwen2SpeechPurposeMetric,
+#     Qwen2SpeechRateMetric,
+#     Qwen2SpeechRegisterMetric,
+#     Qwen2SpeechVolumeLevelMetric,
+#     Qwen2VocabularyComplexityMetric,
+#     Qwen2VoicePitchMetric,
+#     Qwen2VoiceTypeMetric,
+#     Qwen2SingingTechniqueMetric,
+# )
+# from versa.utterance_metrics.qwen_omni import (
+#     QwenOmniMetric,
+#     register_qwen_omni_metric
+# )
+# from versa.utterance_metrics.scoreq import (
+#     ScoreqMetric,
+#     register_scoreq_metric
+# )
+# from versa.utterance_metrics.se_snr import SeSnrMetric, register_se_snr_metric
+# from versa.utterance_metrics.sheet_ssqa import SheetSsqaMetric, register_sheet_ssqa_metric
+# from versa.utterance_metrics.speaking_rate import (
+#     SpeakingRateMetric,
+#     register_speaking_rate_metric
+# )
+# from versa.utterance_metrics.squim import SquimMetric, register_squim_metric
 from versa.utterance_metrics.srmr import SRMRMetric, register_srmr_metric
-from versa.utterance_metrics.chroma_alignment import chroma_metric
-from versa.utterance_metrics.dpam_distance import dpam_metric, dpam_model_setup
-from versa.utterance_metrics.cdpam_distance import cdpam_metric, cdpam_model_setup
-from versa.utterance_metrics.vqscore import vqscore_metric, vqscore_setup
+from versa.utterance_metrics.chroma_alignment import (
+    ChromaAlignmentMetric,
+    register_chroma_alignment_metric,
+)
+from versa.utterance_metrics.dpam_distance import (
+    DpamDistanceMetric,
+    register_dpam_distance_metric,
+)
+from versa.utterance_metrics.cdpam_distance import (
+    CdpamDistanceMetric,
+    register_cdpam_distance_metric,
+)
+
+# from versa.utterance_metrics.vqscore import VqscoreMetric, register_vqscore_metric
+from versa.utterance_metrics.nisqa import NisqaMetric, register_nisqa_metric

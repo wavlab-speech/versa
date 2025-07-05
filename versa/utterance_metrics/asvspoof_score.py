@@ -180,49 +180,6 @@ def register_asvspoof_metric(registry):
     )
 
 
-# Legacy functions for backward compatibility
-def deepfake_detection_model_setup(
-    model_tag="default", model_path=None, model_config=None, use_gpu=False
-):
-    """Setup deepfake detection model (legacy function).
-
-    Args:
-        model_tag (str): Model tag. Defaults to "default".
-        model_path (str, optional): Path to model weights. Defaults to None.
-        model_config (str, optional): Path to model config. Defaults to None.
-        use_gpu (bool, optional): Whether to use GPU. Defaults to False.
-
-    Returns:
-        AASIST: The loaded model.
-    """
-    config = {
-        "model_tag": model_tag,
-        "model_path": model_path,
-        "model_config": model_config,
-        "use_gpu": use_gpu,
-    }
-    metric = ASVSpoofMetric(config)
-    return metric.model
-
-
-def asvspoof_metric(model, pred_x, fs):
-    """Calculate ASVspoof score for audio (legacy function).
-
-    Args:
-        model (AASIST): The loaded deepfake detection model.
-        pred_x (np.ndarray): Audio signal.
-        fs (int): Sampling rate.
-
-    Returns:
-        dict: Dictionary containing the ASVspoof score.
-    """
-    config = {"use_gpu": hasattr(model, "device") and model.device == "cuda"}
-    metric = ASVSpoofMetric(config)
-    metric.model = model
-    metadata = {"sample_rate": fs}
-    return metric.compute(pred_x, metadata=metadata)
-
-
 if __name__ == "__main__":
     a = np.random.random(16000)
 

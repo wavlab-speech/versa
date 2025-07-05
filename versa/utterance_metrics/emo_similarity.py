@@ -48,7 +48,7 @@ def is_emo2vec_available():
     return EMO2VEC_AVAILABLE
 
 
-class EmotionMetric(BaseMetric):
+class Emo2vecMetric(BaseMetric):
     """Emotion similarity metric using EMO2VEC."""
 
     def _setup(self):
@@ -144,7 +144,7 @@ class EmotionMetric(BaseMetric):
         )
 
 
-def register_emotion_metric(registry):
+def register_emo2vec_metric(registry):
     """Register Emotion metric with the registry."""
     metric_metadata = MetricMetadata(
         name="emotion",
@@ -160,55 +160,10 @@ def register_emotion_metric(registry):
         implementation_source="https://github.com/ddlBoJack/emotion2vec",
     )
     registry.register(
-        EmotionMetric,
+        Emo2vecMetric,
         metric_metadata,
         aliases=["Emotion", "emotion", "emo2vec_similarity"],
     )
-
-
-# Legacy functions for backward compatibility
-def emo2vec_setup(model_tag="default", model_path=None, use_gpu=False):
-    """Set up EMO2VEC model for emotion embedding extraction (legacy function).
-
-    Args:
-        model_tag (str, optional): Model tag. Defaults to "default".
-        model_path (str, optional): Path to model weights. Defaults to None.
-        use_gpu (bool, optional): Whether to use GPU. Defaults to False.
-
-    Returns:
-        EMO2VEC: The loaded model.
-
-    Raises:
-        ImportError: If emo2vec_versa is not installed.
-        ValueError: If model_tag is unknown.
-        FileNotFoundError: If model file is not found.
-    """
-    config = {
-        "model_tag": model_tag,
-        "model_path": model_path,
-        "use_gpu": use_gpu,
-    }
-    metric = EmotionMetric(config)
-    return metric.model
-
-
-def emo_sim(model, pred_x, gt_x, fs):
-    """Calculate emotion similarity between two audio samples (legacy function).
-
-    Args:
-        model (EMO2VEC): The loaded EMO2VEC model.
-        pred_x (np.ndarray): Predicted audio signal.
-        gt_x (np.ndarray): Ground truth audio signal.
-        fs (int): Sampling rate.
-
-    Returns:
-        dict: Dictionary containing the emotion similarity score.
-    """
-    config = {"use_gpu": False}
-    metric = EmotionMetric(config)
-    metric.model = model
-    metadata = {"sample_rate": fs}
-    return metric.compute(pred_x, gt_x, metadata=metadata)
 
 
 if __name__ == "__main__":
@@ -217,7 +172,7 @@ if __name__ == "__main__":
 
     # Test the new class-based metric
     config = {"use_gpu": False}
-    metric = EmotionMetric(config)
+    metric = Emo2vecMetric(config)
     metadata = {"sample_rate": 16000}
     score = metric.compute(a, b, metadata=metadata)
     print(f"metrics: {score}")

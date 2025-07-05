@@ -225,54 +225,6 @@ def register_emo_vad_metric(registry):
     registry.register(EmoVadMetric, metric_metadata, aliases=["EmoVad", "emo_vad"])
 
 
-# Legacy functions for backward compatibility
-def w2v2_emo_dim_setup(
-    model_tag="default", model_path=None, model_config=None, use_gpu=False
-):
-    """Set up w2v2 emotion dimensional model (legacy function).
-
-    Args:
-        model_tag (str): Model tag. Defaults to "default".
-        model_path (str, optional): Path to model weights. Defaults to None.
-        model_config (str, optional): Path to model config. Defaults to None.
-        use_gpu (bool, optional): Whether to use GPU. Defaults to False.
-
-    Returns:
-        dict: Dictionary containing the initialized model components.
-    """
-    config = {
-        "model_tag": model_tag,
-        "model_path": model_path,
-        "model_config": model_config,
-        "use_gpu": use_gpu,
-    }
-    metric = EmoVadMetric(config)
-    return {
-        "model": metric.model,
-        "processor": metric.processor,
-        "device": metric.device,
-    }
-
-
-def dim_emo_pred(emo_utils, pred_x, fs):
-    """Calculate dimensional emotion (arousal, dominance, valence) of input audio samples (legacy function).
-
-    Args:
-        emo_utils (dict): Dictionary containing model components.
-        pred_x (np.ndarray): Predicted audio signal.
-        fs (int): Sampling rate.
-
-    Returns:
-        dict: Dictionary containing the dimensional emotion predictions.
-    """
-    config = {"use_gpu": emo_utils["device"] == "cuda"}
-    metric = EmoVadMetric(config)
-    metric.model = emo_utils["model"]
-    metric.processor = emo_utils["processor"]
-    metadata = {"sample_rate": fs}
-    return metric.compute(pred_x, metadata=metadata)
-
-
 if __name__ == "__main__":
     a = np.random.random(16000)
 

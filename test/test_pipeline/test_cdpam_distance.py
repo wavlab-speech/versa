@@ -1,10 +1,3 @@
-#!/usr/bin/env python3
-
-# Copyright 2024 Jiatong Shi
-#  Apache 2.0  (http://www.apache.org/licenses/LICENSE-2.0)
-
-"""Test pipeline for NOMAD metric using the VersaScorer API."""
-
 import logging
 import math
 import os
@@ -14,29 +7,31 @@ import yaml
 from versa.scorer_shared import VersaScorer, compute_summary
 from versa.utils_shared import find_files
 from versa.definition import MetricRegistry
-from versa.utterance_metrics.nomad import register_nomad_metric
+from versa.utterance_metrics.cdpam_distance import register_cdpam_distance_metric
 
-TEST_INFO = {"nomad": 0.0336}
+TEST_INFO = {
+    "cdpam_distance": 0.051460444927215576,
+}
 
 
 def info_update():
+
     # find files
     if os.path.isdir("test/test_samples/test2"):
         gen_files = find_files("test/test_samples/test2")
 
     # find reference file
-    gt_files = None
     if os.path.isdir("test/test_samples/test1"):
         gt_files = find_files("test/test_samples/test1")
 
     logging.info("The number of utterances = %d" % len(gen_files))
 
-    with open("egs/separate_metrics/nomad.yaml", "r", encoding="utf-8") as f:
+    with open("egs/separate_metrics/cdpam_distance.yaml", "r", encoding="utf-8") as f:
         score_config = yaml.full_load(f)
 
-    # Create registry and register NOMAD metric
+    # Create registry and register CDPAM distance metric
     registry = MetricRegistry()
-    register_nomad_metric(registry)
+    register_cdpam_distance_metric(registry)
 
     # Initialize VersaScorer with the populated registry
     scorer = VersaScorer(registry)
@@ -52,7 +47,7 @@ def info_update():
 
     # Score utterances using the new API
     score_info = scorer.score_utterances(
-        gen_files, metric_suite, gt_files, output_file=None, io="soundfile"
+        gen_files, metric_suite, gt_files=gt_files, output_file=None, io="soundfile"
     )
 
     summary = compute_summary(score_info)
@@ -60,7 +55,9 @@ def info_update():
 
     for key in summary:
         if math.isinf(TEST_INFO[key]) and math.isinf(summary[key]):
+            # for sir"
             continue
+        # the plc mos is undeterministic
         if abs(TEST_INFO[key] - summary[key]) > 1e-4 and key != "plcmos":
             raise ValueError(
                 "Value issue in the test case, might be some issue in scorer {}".format(
