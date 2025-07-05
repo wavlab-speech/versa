@@ -1,5 +1,0 @@
-# Dimensional emotion prediction calculated based on w2v2
-# More info in https://github.com/audeering/w2v2-how-to
-
-# --w2v2_dimensional_emotion: the dimensional emotion prediction with w2v2
-- name: w2v2_dimensional_emotion

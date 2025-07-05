@@ -1,4 +1,8 @@
 # noresqa related metrics
-# -- noresqa: non-matching reference based speech quality assessment
-- name: noresqa
-  metric_type: 1 #0: NORESQA-score, 1: NORESQA-MOS
+# -- noresqa_mos: NORESQA-MOS (metric_type=1)
+# -- noresqa_score: NORESQA-score (metric_type=0)
+- name: noresqa_mos
+  metric_type: 1  # 0: NORESQA-score, 1: NORESQA-MOS
+  model_tag: default
+  cache_dir: versa_cache/noresqa_model
+  use_gpu: false

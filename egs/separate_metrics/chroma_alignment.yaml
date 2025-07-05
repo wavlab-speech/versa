@@ -1,0 +1,20 @@
+# Chroma Alignment related metrics
+# Chroma-based distance estimation with dynamic programming alignment
+# Uses librosa chroma features (STFT, CQT, CENS) with DTW alignment
+# -- chroma_stft_cosine_dtw: STFT chroma features with cosine distance and DTW
+# -- chroma_stft_euclidean_dtw: STFT chroma features with euclidean distance and DTW
+# -- chroma_cqt_cosine_dtw: CQT chroma features with cosine distance and DTW
+# -- chroma_cqt_euclidean_dtw: CQT chroma features with euclidean distance and DTW
+# -- chroma_cens_cosine_dtw: CENS chroma features with cosine distance and DTW
+# -- chroma_cens_euclidean_dtw: CENS chroma features with euclidean distance and DTW
+# -- chroma_stft_cosine_dtw_raw: Raw DTW distance with higher scaling
+# -- chroma_stft_cosine_dtw_log: Log-scaled DTW distance
+- name: chroma_alignment
+  sample_rate: 22050
+  feature_types: ["stft", "cqt", "cens"]
+  distance_metrics: ["cosine", "euclidean"]
+  scale_factor: 100.0
+  normalize: True
+  normalize_by_path: True
+  return_alignment: False
+  chroma_kwargs: {} 
