@@ -933,15 +933,12 @@ def process_cache_info(cache_info, score_modules, output_file):
     for utt_info in cache_info:
         key, gen_wav, gt_wav, gen_sr, text = utt_info
         utt_score = {"key": key}
-        # try:
-        #     utt_score.update(
-        #         use_score_modules(score_modules, gen_wav, gt_wav, gen_sr, text)
-        #     )
-        # except Exception as e:
-        #     print("error processing file: {} with error {}".format(key, e))
-        utt_score.update(
-            use_score_modules(score_modules, gen_wav, gt_wav, gen_sr, text)
-        )
+        try:
+            utt_score.update(
+                use_score_modules(score_modules, gen_wav, gt_wav, gen_sr, text)
+            )
+        except Exception as e:
+            print("error processing file: {} with error {}".format(key, e))
         batch_score_info.append(utt_score)
         if output_file is not None:
             printable_result = json.dumps(utt_score, default=default_numpy_serializer)
