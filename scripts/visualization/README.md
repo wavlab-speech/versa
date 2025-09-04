@@ -2,7 +2,7 @@
 ### Steps
 * Additional Package Dependency Installation
 ```
-pip install -r requirements.txt
+pip install -r scripts/visualization/requirements.txt
 ```
 
 * Aggregate the Results to Text Table
