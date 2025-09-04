@@ -38,9 +38,5 @@ Please also set ``--save_html Ture`` if your machine cannot directly forward por
 ``html`` file to your local machine.
 
 ### Samples
-![Sunburst Chart](sample_sunburstchart.png)
-![Radar Chart](radar_chart.png)
-
-
-### TODO
-radar chart
+![Sunburst Chart](https://github.com/wavlab-speech/versa/blob/main/scripts/visualization/sample_sunburstchart.png)
+![Radar Chart](https://github.com/wavlab-speech/versa/blob/main/scripts/visualization/radar_chart.png)
