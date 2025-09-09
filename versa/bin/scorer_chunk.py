@@ -8,22 +8,21 @@
 import argparse
 import logging
 import os
-from pathlib import Path
 import re
+from pathlib import Path
 
 import numpy as np
 import soundfile as sf
 import torch
 import yaml
-
 from versa.scorer_shared import (
     audio_loader_setup,
     corpus_scoring,
     list_scoring,
+    load_audio,
     load_corpus_modules,
     load_score_modules,
     load_summary,
-    load_audio,
     wav_normalize,
 )
 
@@ -114,11 +113,12 @@ def get_parser() -> argparse.Namespace:
         type=str,
         default=None,
         help="Directory to write temporary chunk wavs. "
-             "Defaults to <output_file>.chunks or ./chunks when not provided.",
+        "Defaults to <output_file>.chunks or ./chunks when not provided.",
     )
     # -------------------------------------------
 
     return parser
+
 
 def _write_wav(path: Path, wav: np.ndarray, sr: int):
     """Write mono PCM16 WAV safely."""
@@ -128,7 +128,9 @@ def _write_wav(path: Path, wav: np.ndarray, sr: int):
     sf.write(str(path), wav, sr, subtype="PCM_16")
 
 
-def _chunk_bounds(n_samples: int, sr: int, chunk_sec: float, hop_sec: float, min_last_sec: float):
+def _chunk_bounds(
+    n_samples: int, sr: int, chunk_sec: float, hop_sec: float, min_last_sec: float
+):
     """Yield (start, end) sample indices for chunks covering [0, n_samples]."""
     chunk_len = int(round(chunk_sec * sr))
     hop_len = int(round(hop_sec * sr))
@@ -191,7 +193,9 @@ def _chunk_pair_to_tmp(
     gen_out = {}
     gt_out = {} if gt_wav is not None else None
 
-    for idx, (s, e) in enumerate(_chunk_bounds(n_use, gen_sr, chunk_sec, hop_sec, min_last_sec)):
+    for idx, (s, e) in enumerate(
+        _chunk_bounds(n_use, gen_sr, chunk_sec, hop_sec, min_last_sec)
+    ):
         t0 = s / gen_sr
         t1 = e / gen_sr
         new_key = f"{key}@{t0:.3f}-{t1:.3f}"
@@ -325,7 +329,11 @@ def main():
     # Get and divide list
     if len(gen_files) == 0:
         raise FileNotFoundError("Not found any generated audio files.")
-    if gt_files is not None and len(gen_files) > len(gt_files) and not args.enable_chunking:
+    if (
+        gt_files is not None
+        and len(gen_files) > len(gt_files)
+        and not args.enable_chunking
+    ):
         # (For chunking, we later truncate to min length per pair, so we don't pre-check count equality.)
         raise ValueError(
             "#groundtruth files are less than #generated files "
