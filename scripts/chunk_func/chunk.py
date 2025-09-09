@@ -3,19 +3,14 @@
 # Copyright 2025 BoHao Su
 #  Apache 2.0  (http://www.apache.org/licenses/LICENSE-2.0)
 
-import os
 import argparse
+import os
 from pathlib import Path
 
 import numpy as np
 import soundfile as sf
 from tqdm import tqdm
-
-from versa.scorer_shared import (
-    audio_loader_setup,
-    load_audio,
-    wav_normalize,
-)
+from versa.scorer_shared import audio_loader_setup, load_audio, wav_normalize
 
 
 def get_parser() -> argparse.Namespace:
@@ -45,7 +40,7 @@ def get_parser() -> argparse.Namespace:
         type=float,
         default=None,
         help="Hop size (sec) between chunk starts. "
-             "If None, equals --chunk_duration (non-overlap).",
+        "If None, equals --chunk_duration (non-overlap).",
     )
     parser.add_argument(
         "--output_dir",
@@ -58,9 +53,10 @@ def get_parser() -> argparse.Namespace:
         type=float,
         default=0.0,
         help="Minimum duration (sec) required to keep the final (short) chunk. "
-             "Set >0 to drop very short tails.",
+        "Set >0 to drop very short tails.",
     )
     return parser
+
 
 def main():
     args = get_parser().parse_args()
@@ -71,7 +67,9 @@ def main():
     if args.chunk_duration <= 0:
         raise ValueError("--chunk_duration must be > 0")
 
-    hop_duration = args.hop_duration if args.hop_duration is not None else args.chunk_duration
+    hop_duration = (
+        args.hop_duration if args.hop_duration is not None else args.chunk_duration
+    )
     if hop_duration <= 0:
         raise ValueError("--hop_duration must be > 0")
 
@@ -80,7 +78,9 @@ def main():
 
     gen_files = audio_loader_setup(args.pred, args.io)
     if len(gen_files) == 0:
-        raise FileNotFoundError("Not found any generated audio files from --pred with --io.")
+        raise FileNotFoundError(
+            "Not found any generated audio files from --pred with --io."
+        )
 
     total_chunks = 0
     for key in tqdm(list(gen_files.keys()), desc="Chunking"):
