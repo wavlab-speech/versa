@@ -925,6 +925,110 @@ def load_score_modules(score_config, use_gt=True, use_gt_text=False, use_gpu=Fal
                 "args": {"model": vqscore_model},
             }
             logging.info("Initiate VQScore evaluation successfully.")
+
+        elif config["name"] == "universa_noref":
+            logging.info("Loading Universa no-reference model...")
+            from versa.utterance_metrics.universa import (
+                universa_noref_metric,
+                universa_model_setup,
+            )
+
+            universa_model = universa_model_setup(
+                model_tag=config.get("model_tag", "noref"),
+                use_gpu=use_gpu,
+            )
+            score_modules["universa_noref"] = {
+                "module": universa_noref_metric,
+                "model": universa_model,
+            }
+            logging.info("Initiate Universa no-reference evaluation successfully.")
+
+        elif config["name"] == "universa_audioref":
+            if not use_gt:
+                logging.warning(
+                    "Cannot use universa_audioref because no gt audio is provided"
+                )
+                continue
+
+            logging.info("Loading Universa audio reference model...")
+            from versa.utterance_metrics.universa import (
+                universa_audioref_metric,
+                universa_model_setup,
+            )
+
+            universa_model = universa_model_setup(
+                model_tag=config.get("model_tag", "audioref"),
+                use_gpu=use_gpu,
+            )
+            score_modules["universa_audioref"] = {
+                "module": universa_audioref_metric,
+                "model": universa_model,
+            }
+            logging.info("Initiate Universa audio reference evaluation successfully.")
+
+        elif config["name"] == "universa_textref":
+            if not use_gt_text:
+                logging.warning(
+                    "Cannot use universa_textref because no gt text is provided"
+                )
+                continue
+
+            logging.info("Loading Universa text reference model...")
+            from versa.utterance_metrics.universa import (
+                universa_textref_metric,
+                universa_model_setup,
+            )
+
+            universa_model = universa_model_setup(
+                model_tag=config.get("model_tag", "textref"),
+                use_gpu=use_gpu,
+            )
+            score_modules["universa_textref"] = {
+                "module": universa_textref_metric,
+                "model": universa_model,
+            }
+            logging.info("Initiate Universa text reference evaluation successfully.")
+
+        elif config["name"] == "universa_fullref":
+            if not use_gt or not use_gt_text:
+                logging.warning(
+                    "Cannot use universa_fullref because no gt audio or text is provided"
+                )
+                continue
+
+            logging.info("Loading Universa full reference model...")
+            from versa.utterance_metrics.universa import (
+                universa_fullref_metric,
+                universa_model_setup,
+            )
+
+            universa_model = universa_model_setup(
+                model_tag=config.get("model_tag", "fullref"),
+                use_gpu=use_gpu,
+            )
+            score_modules["universa_fullref"] = {
+                "module": universa_fullref_metric,
+                "model": universa_model,
+            }
+            logging.info("Initiate Universa full reference evaluation successfully.")
+
+        elif config["name"] == "arecho":
+            logging.info("Loading ARECHO no-reference model...")
+            from versa.utterance_metrics.arecho import (
+                arecho_noref_metric,
+                arecho_model_setup,
+            )
+
+            arecho_model = arecho_model_setup(
+                model_tag=config.get("model_tag", "base_v0"),
+                use_gpu=use_gpu,
+            )
+            score_modules["arecho"] = {
+                "module": arecho_noref_metric,
+                "model": arecho_model,
+            }
+            logging.info("Initiate ARECHO no-reference evaluation successfully.")
+
     return score_modules
 
 
@@ -1139,8 +1243,30 @@ def use_score_modules(score_modules, gen_wav, gt_wav, gen_sr, text=None):
             score = score_modules[key]["module"](
                 score_modules[key]["args"]["model"], gen_wav, gen_sr
             )
+        elif key == "universa_noref":
+            score = score_modules[key]["module"](
+                score_modules[key]["model"], gen_wav, gen_sr
+            )
+        elif key == "universa_audioref":
+            score = score_modules[key]["module"](
+                score_modules[key]["model"], gen_wav, gen_sr, gt_wav
+            )
+        elif key == "universa_textref":
+            score = score_modules[key]["module"](
+                score_modules[key]["model"], gen_wav, gen_sr, ref_text=text
+            )
+        elif key == "universa_fullref":
+            score = score_modules[key]["module"](
+                score_modules[key]["model"], gen_wav, gen_sr, gt_wav, text
+            )
+        elif key == "arecho":
+            score = score_modules[key]["module"](
+                score_modules[key]["model"], gen_wav, gen_sr
+            )
         else:
-            raise NotImplementedError(f"Not supported {key}")
+            raise NotImplementedError(
+                f"Not supported metrics: {key}, check egs/separate_metrics/README.md for supported metrics"
+            )
 
         logging.info(f"Score for {key} is {score}")
         utt_score.update(score)

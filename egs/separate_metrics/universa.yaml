@@ -1,0 +1,26 @@
+# Universa audio reference speech quality assessment
+#  -- universa_score: Uni-VERSA multi-metric score with audio reference
+
+# Requires ground truth audio files for comparison
+- name: universa_audioref
+  model_tag: audioref  # Uses audio reference model
+
+# Universa full reference speech quality assessment
+#  -- universa_score: Uni-VERSA multi-metric score with both audio and text reference
+
+# Requires both ground truth audio and text files for comparison
+- name: universa_fullref
+  model_tag: fullref  # Uses full reference model (audio + text)
+
+# Universa no-reference speech quality assessment
+#  -- universa_score: Uni-VERSA multi-metric score without reference
+
+- name: universa_noref
+  model_tag: noref  # Options: noref, default (both use no-reference model)
+
+# Universa text reference speech quality assessment
+#  -- universa_score: Uni-VERSA multi-metric score with text reference
+
+# Requires ground truth text files for comparison
+- name: universa_textref
+  model_tag: textref  # Uses text reference model

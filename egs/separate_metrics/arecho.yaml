@@ -1,0 +1,5 @@
+# ARECHO no-reference speech quality assessment
+#  -- arecho_score: ARECHO multi-metric score without reference
+
+- name: arecho
+  model_tag: base_v0  # Options: base_v0, scale_v0, base_v0.1-large-decoder, scale_v0.1-larger-decoder
