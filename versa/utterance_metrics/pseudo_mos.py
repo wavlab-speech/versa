@@ -263,6 +263,8 @@ def pseudo_mos_metric(pred, fs, predictor_dict, predictor_fs, use_gpu=False):
                 return spec
 
             spec = torch.FloatTensor(stft(pred_dnsmos_pro))
+            if use_gpu:
+                spec = spec.to("cuda")
             with torch.no_grad():
                 prediction = predictor_dict[predictor](spec[None, None, ...])
             scores[predictor] = prediction[0, 0].item()
