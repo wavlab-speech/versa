@@ -40,6 +40,10 @@ cd versa
 pip install .
 ```
 
+or alternatively, without cloning: 
+```bash
+python -m pip install git+https://github.com/wavlab-speech/versa.git#egg=versa-speech-audio-toolkit --no-build-isolation
+```
 ### Metric-Specific Dependencies
 
 VERSA aligns with original APIs provided by algorithm developers rather than redistributing models. The core package includes many metrics by default, but some require additional installation.
