@@ -158,7 +158,7 @@ def pseudo_mos_metric(pred, fs, predictor_dict, predictor_fs, use_gpu=False):
                 # defined at https://github.com/ftshijt/UTMOSv2/blob/main/utmosv2/dataset/_utils.py#L8
                 data_type = np.zeros(10)
                 # we use general version dataset label: sarulab (1)
-                data_type[1] = 0
+                data_type[1] = 1
                 d = torch.tensor(data_type, dtype=torch.float32).unsqueeze(0)
                 if use_gpu:
                     spec_info = spec_info.to("cuda")
