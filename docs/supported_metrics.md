@@ -13,8 +13,7 @@ We include x mark if the metric is auto-installed in versa.
 | 6 | x | PESQ in TorchAudio-Squim  | squim_no_ref | torch_squim_pesq | [torch_squim](https://pytorch.org/audio/main/tutorials/squim_tutorial.html) | [paper](https://arxiv.org/abs/2304.01448) |
 | 7 | x | STOI in TorchAudio-Squim  | squim_no_ref | torch_squim_stoi | [torch_squim](https://pytorch.org/audio/main/tutorials/squim_tutorial.html) | [paper](https://arxiv.org/abs/2304.01448) |
 | 8 | x | SI-SDR in TorchAudio-Squim  | squim_no_ref | torch_squim_si_sdr | [torch_squim](https://pytorch.org/audio/main/tutorials/squim_tutorial.html) | [paper](https://arxiv.org/abs/2304.01448) |
-| 9 | x | Singing voice MOS  | singmos | singmos |[singmos](https://github.com/South-Twilight/SingMOS/tree/main) | [paper](https://arxiv.org/abs/2406.10911) |
-| 9 | x | Singing voice MOS  | singmos_v2 | singmos_v2 |[singmos](https://github.com/South-Twilight/SingMOS/tree/main) | [paper](https://arxiv.org/abs/2406.10911) |
+| 9 | x | Singing voice MOS  | pseudo_mos | singmos_v1 |[singmos](https://github.com/South-Twilight/SingMOS) | [paper](https://arxiv.org/abs/2406.10911) |
 | 10 | x | Sheet SSQA MOS Models | sheet_ssqa | sheet_ssqa |[Sheet](https://github.com/unilight/sheet/tree/main) | [paper](https://arxiv.org/abs/2411.03715) |
 | 11 |   | UTMOSv2: UTokyo-SaruLab MOS Prediction System | utmosv2 | utmosv2 |[UTMOSv2](https://github.com/sarulab-speech/UTMOSv2) | [paper](https://arxiv.org/abs/2409.09305) |
 | 12 |   | Speech Contrastive Regression for Quality Assessment without reference (ScoreQ) | scoreq_nr | scoreq_nr |[ScoreQ](https://github.com/ftshijt/scoreq/tree/main) | [paper](https://arxiv.org/pdf/2410.06675) |
@@ -60,7 +59,7 @@ We include x mark if the metric is auto-installed in versa.
 | 52 |   | WV-MOS (MOS score prediction by fine-tuned wav2vec2.0 model) | wvmos | wvmos | [wvmos](https://github.com/AndreevP/wvmos) | [paper](https://arxiv.org/abs/2203.13086) |
 | 53 |   |SIG-MOS | sigmos | {SIGMOS_COL, SIGMOS_DISC, SIGMOS_LOUD, SIGMOS_REVERB, SIGMOS_SIG, SIGMOS_OVRL} | [sigmos](https://github.com/microsoft/SIG-Challenge/tree/main/ICASSP2024/sigmos) |[paper](https://arxiv.org/pdf/2309.07385) |
 | 54 | x | VQScore (Self-Supervised Speech Quality Estimation and Enhancement Using Only Clean Speech)  | vqscore | vqscore | [VQScore](https://github.com/JasonSWFu/VQscore) | [paper](https://arxiv.org/abs/2402.16321) |
-
+| 55 | x | Singing voice MOS  | pseudo_mos | singmos_pro |[singmos](https://github.com/South-Twilight/SingMOS) | [paper](https://arxiv.org/abs/2510.01812) |
 
 ### Dependent Metrics
 |Number| Auto-Install | Metric Name  (Auto-Install)  | Key in config | Key in report |  Code Source                                                                                                     | References                                                                                       |
