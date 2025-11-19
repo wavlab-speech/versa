@@ -89,20 +89,20 @@ def pseudo_mos_setup(
                 predictor_fs["plcmos"] = predictor_args["plcmos"]["fs"]
         elif predictor == "utmos" or predictor == "utmosv2":
             continue  # already initialized
-        elif predictor == "singmos":
+        elif predictor == "singmos_v1":
             torch.hub.set_dir(cache_dir)
             singmos = torch.hub.load(
-                "South-Twilight/SingMOS:v0.2.0", "singing_ssl_mos", trust_repo=True
+                "South-Twilight/SingMOS:v1.1.1", "singmos_v1", trust_repo=True
             ).to(device)
-            predictor_dict["singmos"] = singmos
-            predictor_fs["singmos"] = 16000
-        elif predictor == "singmos_v2":
+            predictor_dict["singmos_v1"] = singmos
+            predictor_fs["singmos_v1"] = 16000
+        elif predictor == "singmos_pro":
             torch.hub.set_dir(cache_dir)
             singmos = torch.hub.load(
-                "South-Twilight/SingMOS:v0.3.0", "singing_ssl_mos_v2", trust_repo=True
+                "South-Twilight/SingMOS:v1.1.1", "singmos_pro", trust_repo=True
             ).to(device)
-            predictor_dict["singmos_v2"] = singmos
-            predictor_fs["singmos_v2"] = 16000
+            predictor_dict["singmos_pro"] = singmos
+            predictor_fs["singmos_pro"] = 16000
         elif predictor.startswith("dnsmos_pro_"):
             variant = predictor[len("dnsmos_pro_") :]
             model_path = Path(cache_dir) / f"dnsmos_pro_{variant}.pt"
@@ -209,10 +209,10 @@ def pseudo_mos_metric(pred, fs, predictor_dict, predictor_fs, use_gpu=False):
             max_val = np.max(np.abs(pred_plcmos))
             score = predictor_dict["plcmos"].run(pred_plcmos / max_val, sr=fs)
             scores.update(plcmos=score["plcmos"])
-        elif predictor == "singmos":
-            if fs != predictor_fs["singmos"]:
+        elif predictor == "singmos_v1":
+            if fs != predictor_fs["singmos_v1"]:
                 pred_singmos = librosa.resample(
-                    pred, orig_sr=fs, target_sr=predictor_fs["singmos"]
+                    pred, orig_sr=fs, target_sr=predictor_fs["singmos_v1"]
                 )
             else:
                 pred_singmos = pred
@@ -221,14 +221,14 @@ def pseudo_mos_metric(pred, fs, predictor_dict, predictor_fs, use_gpu=False):
             if use_gpu:
                 pred_tensor = pred_tensor.to("cuda")
                 length_tensor = length_tensor.to("cuda")
-            score = predictor_dict["singmos"](pred_tensor.float(), length_tensor)[
+            score = predictor_dict["singmos_v1"](pred_tensor.float(), length_tensor)[
                 0
             ].item()
-            scores.update(singmos=score)
-        elif predictor == "singmos_v2":
-            if fs != predictor_fs["singmos_v2"]:
+            scores.update(singmos_v1=score)
+        elif predictor == "singmos_pro":
+            if fs != predictor_fs["singmos_pro"]:
                 pred_singmos = librosa.resample(
-                    pred, orig_sr=fs, target_sr=predictor_fs["singmos_v2"]
+                    pred, orig_sr=fs, target_sr=predictor_fs["singmos_pro"]
                 )
             else:
                 pred_singmos = pred
@@ -237,10 +237,10 @@ def pseudo_mos_metric(pred, fs, predictor_dict, predictor_fs, use_gpu=False):
             if use_gpu:
                 pred_tensor = pred_tensor.to("cuda")
                 length_tensor = length_tensor.to("cuda")
-            score = predictor_dict["singmos_v2"](pred_tensor.float(), length_tensor)[
+            score = predictor_dict["singmos_pro"](pred_tensor.float(), length_tensor)[
                 0
             ].item()
-            scores.update(singmos_v2=score)
+            scores.update(singmos_pro=score)
         elif predictor.startswith("dnsmos_pro_"):
             if fs != predictor_fs[predictor]:
                 pred_dnsmos_pro = librosa.resample(
@@ -305,8 +305,8 @@ if __name__ == "__main__":
             "utmos",
             "dnsmos",
             "plcmos",
-            "singmos",
-            "singmos_v2",
+            "singmos_v1",
+            "singmos_pro",
             "dnsmos_pro_bvcc",
             "dnsmos_pro_nisqa",
             "dnsmos_pro_vcc2018",

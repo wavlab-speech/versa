@@ -12,9 +12,9 @@
       fs: 16000
     plcmos:
       fs: 16000
-    singmos:
+    singmos_v1:
       fs: 16000
-    singmos_v2:
+    singmos_pro:
       fs: 16000
     dnsmos_pro_bvcc:
       fs: 16000
