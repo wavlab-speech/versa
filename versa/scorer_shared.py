@@ -97,7 +97,6 @@ def load_score_modules(score_config, use_gt=True, use_gt_text=False, use_gpu=Fal
             logging.info("Initiate WARP-Q metric...")
 
         elif config["name"] == "nisqa":
-
             logging.info("Loading NISQA evaluation...")
             from versa.utterance_metrics.nisqa import nisqa_metric, nisqa_model_setup
 
@@ -257,7 +256,6 @@ def load_score_modules(score_config, use_gt=True, use_gt_text=False, use_gpu=Fal
             logging.info("Initiate singer evaluation successfully.")
 
         elif config["name"] == "sheet_ssqa":
-
             logging.info("Loading Sheet SSQA models for evaluation...")
             from versa import sheet_ssqa, sheet_ssqa_setup
 
@@ -287,7 +285,6 @@ def load_score_modules(score_config, use_gt=True, use_gt_text=False, use_gpu=Fal
             logging.info("Initiate torch squim (with reference) successfully")
 
         elif config["name"] == "squim_no_ref":
-
             logging.info("Loading squim metrics with reference")
             from versa import squim_metric_no_ref
 
@@ -466,7 +463,6 @@ def load_score_modules(score_config, use_gt=True, use_gt_text=False, use_gpu=Fal
             logging.info("Initiate se_snr successfully")
 
         elif config["name"] == "pam":
-
             logging.info("Loading pam metric without reference...")
             from versa.utterance_metrics.pam import pam_metric, pam_model_setup
 
@@ -494,7 +490,6 @@ def load_score_modules(score_config, use_gt=True, use_gt_text=False, use_gpu=Fal
             logging.info("Initiate vad metric successfully.")
 
         elif config["name"] == "asvspoof_score":
-
             logging.info("Loading asvspoof score metric without reference...")
             from versa.utterance_metrics.asvspoof_score import (
                 asvspoof_metric,
@@ -897,6 +892,29 @@ def load_score_modules(score_config, use_gt=True, use_gt_text=False, use_gpu=Fal
                     "scale_factor": config.get("scale_factor", 100),
                 },
             }
+        elif "wvmos" in config["name"]:
+            logging.info("Loading WVMOS metric")
+            from versa import wvmos_setup, wvmos_calculate
+
+            model = wvmos_setup(
+                use_gpu=use_gpu,
+            )
+            score_modules["wvmos"] = {
+                "module": wvmos_calculate,
+                "args": {"model": model},
+            }
+            logging.info("Initiate WVMOS metric successfully")
+        elif "sigmos" in config["name"]:
+            logging.info("Loading SIGMOS metric")
+            from versa import sigmos_setup, sigmos_calculate
+
+            model = sigmos_setup()
+
+            score_modules["sigmos"] = {
+                "module": sigmos_calculate,
+                "args": {"model": model},
+            }
+            logging.info("Initiate SIGMOS metric successfully")
         elif "vqscore" in config["name"]:
             logging.info("Loading VQScore model")
             from versa import vqscore_metric, vqscore_setup
@@ -907,6 +925,110 @@ def load_score_modules(score_config, use_gt=True, use_gt_text=False, use_gpu=Fal
                 "args": {"model": vqscore_model},
             }
             logging.info("Initiate VQScore evaluation successfully.")
+
+        elif config["name"] == "universa_noref":
+            logging.info("Loading Universa no-reference model...")
+            from versa.utterance_metrics.universa import (
+                universa_noref_metric,
+                universa_model_setup,
+            )
+
+            universa_model = universa_model_setup(
+                model_tag=config.get("model_tag", "noref"),
+                use_gpu=use_gpu,
+            )
+            score_modules["universa_noref"] = {
+                "module": universa_noref_metric,
+                "model": universa_model,
+            }
+            logging.info("Initiate Universa no-reference evaluation successfully.")
+
+        elif config["name"] == "universa_audioref":
+            if not use_gt:
+                logging.warning(
+                    "Cannot use universa_audioref because no gt audio is provided"
+                )
+                continue
+
+            logging.info("Loading Universa audio reference model...")
+            from versa.utterance_metrics.universa import (
+                universa_audioref_metric,
+                universa_model_setup,
+            )
+
+            universa_model = universa_model_setup(
+                model_tag=config.get("model_tag", "audioref"),
+                use_gpu=use_gpu,
+            )
+            score_modules["universa_audioref"] = {
+                "module": universa_audioref_metric,
+                "model": universa_model,
+            }
+            logging.info("Initiate Universa audio reference evaluation successfully.")
+
+        elif config["name"] == "universa_textref":
+            if not use_gt_text:
+                logging.warning(
+                    "Cannot use universa_textref because no gt text is provided"
+                )
+                continue
+
+            logging.info("Loading Universa text reference model...")
+            from versa.utterance_metrics.universa import (
+                universa_textref_metric,
+                universa_model_setup,
+            )
+
+            universa_model = universa_model_setup(
+                model_tag=config.get("model_tag", "textref"),
+                use_gpu=use_gpu,
+            )
+            score_modules["universa_textref"] = {
+                "module": universa_textref_metric,
+                "model": universa_model,
+            }
+            logging.info("Initiate Universa text reference evaluation successfully.")
+
+        elif config["name"] == "universa_fullref":
+            if not use_gt or not use_gt_text:
+                logging.warning(
+                    "Cannot use universa_fullref because no gt audio or text is provided"
+                )
+                continue
+
+            logging.info("Loading Universa full reference model...")
+            from versa.utterance_metrics.universa import (
+                universa_fullref_metric,
+                universa_model_setup,
+            )
+
+            universa_model = universa_model_setup(
+                model_tag=config.get("model_tag", "fullref"),
+                use_gpu=use_gpu,
+            )
+            score_modules["universa_fullref"] = {
+                "module": universa_fullref_metric,
+                "model": universa_model,
+            }
+            logging.info("Initiate Universa full reference evaluation successfully.")
+
+        elif config["name"] == "arecho":
+            logging.info("Loading ARECHO no-reference model...")
+            from versa.utterance_metrics.arecho import (
+                arecho_noref_metric,
+                arecho_model_setup,
+            )
+
+            arecho_model = arecho_model_setup(
+                model_tag=config.get("model_tag", "base_v0"),
+                use_gpu=use_gpu,
+            )
+            score_modules["arecho"] = {
+                "module": arecho_noref_metric,
+                "model": arecho_model,
+            }
+            logging.info("Initiate ARECHO no-reference evaluation successfully.")
+
     return score_modules
 
 
@@ -915,15 +1037,12 @@ def process_cache_info(cache_info, score_modules, output_file):
     for utt_info in cache_info:
         key, gen_wav, gt_wav, gen_sr, text = utt_info
         utt_score = {"key": key}
-        # try:
-        #     utt_score.update(
-        #         use_score_modules(score_modules, gen_wav, gt_wav, gen_sr, text)
-        #     )
-        # except Exception as e:
-        #     print("error processing file: {} with error {}".format(key, e))
-        utt_score.update(
-            use_score_modules(score_modules, gen_wav, gt_wav, gen_sr, text)
-        )
+        try:
+            utt_score.update(
+                use_score_modules(score_modules, gen_wav, gt_wav, gen_sr, text)
+            )
+        except Exception as e:
+            print("error processing file: {} with error {}".format(key, e))
         batch_score_info.append(utt_score)
         if output_file is not None:
             printable_result = json.dumps(utt_score, default=default_numpy_serializer)
@@ -1108,12 +1227,46 @@ def use_score_modules(score_modules, gen_wav, gt_wav, gen_sr, text=None):
                 gen_sr,
                 custom_prompt=score_modules[key]["prompt"],
             )
+        elif key == "wvmos":
+            score = score_modules[key]["module"](
+                score_modules[key]["args"]["model"],
+                gen_wav,
+                gen_sr,
+            )
+        elif key == "sigmos":
+            score = score_modules[key]["module"](
+                score_modules[key]["args"]["model"],
+                gen_wav,
+                gen_sr,
+            )
         elif key == "vqscore":
             score = score_modules[key]["module"](
                 score_modules[key]["args"]["model"], gen_wav, gen_sr
             )
+        elif key == "universa_noref":
+            score = score_modules[key]["module"](
+                score_modules[key]["model"], gen_wav, gen_sr
+            )
+        elif key == "universa_audioref":
+            score = score_modules[key]["module"](
+                score_modules[key]["model"], gen_wav, gen_sr, gt_wav
+            )
+        elif key == "universa_textref":
+            score = score_modules[key]["module"](
+                score_modules[key]["model"], gen_wav, gen_sr, ref_text=text
+            )
+        elif key == "universa_fullref":
+            score = score_modules[key]["module"](
+                score_modules[key]["model"], gen_wav, gen_sr, gt_wav, text
+            )
+        elif key == "arecho":
+            score = score_modules[key]["module"](
+                score_modules[key]["model"], gen_wav, gen_sr
+            )
         else:
-            raise NotImplementedError(f"Not supported {key}")
+            raise NotImplementedError(
+                f"Not supported metrics: {key}, check egs/separate_metrics/README.md for supported metrics"
+            )
 
         logging.info(f"Score for {key} is {score}")
         utt_score.update(score)

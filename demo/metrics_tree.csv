@@ -1,0 +1,77 @@
+name,parent,value,mean,std
+Versa Metrics,,63,,
+aesthetics,Versa Metrics,4,,
+asr_wer_cer,Versa Metrics,3,,
+audio_features,Versa Metrics,1,,
+audio_quality,Versa Metrics,14,,
+nisqa_components,Versa Metrics,4,,
+other,Versa Metrics,1,,
+pitch_f0,Versa Metrics,3,,
+psychoacoustic,Versa Metrics,14,,
+security,Versa Metrics,2,,
+semantic,Versa Metrics,3,,
+similarity,Versa Metrics,2,,
+speech_enhancement,Versa Metrics,12,,
+arecho_asr_match_error_rate,asr_wer_cer,1,0.0,0.0
+arecho_asvspoof_score,security,1,0.9953,0.0001
+arecho_audiobox_aesthetics_CE,aesthetics,1,5.8413,0.2612
+arecho_audiobox_aesthetics_CU,aesthetics,1,6.36,0.2327
+arecho_audiobox_aesthetics_PC,aesthetics,1,1.5121,0.0504
+arecho_audiobox_aesthetics_PQ,aesthetics,1,6.7121,0.5824
+arecho_cer,asr_wer_cer,1,0.0444,0.077
+arecho_ci_sdr,speech_enhancement,1,14.9341,1.2819
+arecho_dns_overall,audio_quality,1,3.0865,0.306
+arecho_dns_p808,audio_quality,1,3.4223,0.4606
+arecho_emotion_similarity,similarity,1,0.9975,0.0016
+arecho_f0corr,pitch_f0,1,0.7667,0.2634
+arecho_f0rmse,pitch_f0,1,72.0737,17.5261
+arecho_mcd,pitch_f0,1,8.9341,6.86
+arecho_nisqa_col_pred,nisqa_components,1,3.8088,0.2104
+arecho_nisqa_dis_pred,nisqa_components,1,4.3007,0.1489
+arecho_nisqa_loud_pred,nisqa_components,1,4.0427,0.2124
+arecho_nisqa_mos_pred,audio_quality,1,3.7513,0.5874
+arecho_nisqa_noi_pred,nisqa_components,1,3.9531,0.2134
+arecho_nisqa_real_mos,audio_quality,1,4.6,0.6928
+arecho_nomad,security,1,0.7898,0.031
+arecho_noresqa_score,audio_quality,1,1.9333,0.6884
+arecho_pam_score,psychoacoustic,1,0.3535,0.0
+arecho_pesq,speech_enhancement,1,2.5088,0.2495
+arecho_plcmos,audio_quality,1,2.5926,0.4532
+arecho_pysepm_c_bak,psychoacoustic,1,3.2034,0.6452
+arecho_pysepm_c_ovl,psychoacoustic,1,2.4,1.2311
+arecho_pysepm_c_sig,psychoacoustic,1,2.4769,1.3837
+arecho_pysepm_cd,psychoacoustic,1,6.2029,3.5156
+arecho_pysepm_csii_high,psychoacoustic,1,0.9597,0.0424
+arecho_pysepm_csii_low,psychoacoustic,1,0.7824,0.1741
+arecho_pysepm_csii_mid,psychoacoustic,1,0.9408,0.0375
+arecho_pysepm_fwsegsnr,psychoacoustic,1,17.5401,1.6709
+arecho_pysepm_llr,psychoacoustic,1,0.9946,0.908
+arecho_pysepm_ncm,psychoacoustic,1,0.896,0.0403
+arecho_pysepm_wss,psychoacoustic,1,24.3183,4.1035
+arecho_qwen_speaker_count,other,1,1.0,0.0
+arecho_rt60,psychoacoustic,1,0.2092,0.0949
+arecho_sar,speech_enhancement,1,14.9382,1.3003
+arecho_scoreq_nr,audio_quality,1,4.1085,0.1149
+arecho_scoreq_ref,audio_quality,1,0.3431,0.0
+arecho_sdr,speech_enhancement,1,14.9382,1.3003
+arecho_se_ci_sdr,speech_enhancement,1,31.3837,6.6195
+arecho_se_sar,speech_enhancement,1,32.7436,7.3203
+arecho_se_sdr,speech_enhancement,1,32.7436,7.3203
+arecho_se_si_snr,speech_enhancement,1,31.6747,6.5046
+arecho_sheet_ssqa,audio_quality,1,4.3031,0.1286
+arecho_si_snr,speech_enhancement,1,14.4562,1.4474
+arecho_singmos,audio_quality,1,2.9376,0.2465
+arecho_snr_simulation,speech_enhancement,1,15.6289,5.2602
+arecho_speaking_rate,audio_features,1,2.5,0.3571
+arecho_speech_bert,semantic,1,0.9238,0.0415
+arecho_speech_bleu,semantic,1,0.7664,0.0352
+arecho_speech_token_distance,semantic,1,0.8729,0.024
+arecho_spk_similarity,similarity,1,0.8122,0.0983
+arecho_srmr,psychoacoustic,1,10.6857,1.3257
+arecho_stoi,speech_enhancement,1,0.9392,0.0273
+arecho_urgent_mos,audio_quality,1,3.4583,0.5637
+arecho_utmos,audio_quality,1,3.2904,0.5216
+arecho_utmosv2,audio_quality,1,3.2846,0.5053
+arecho_visqol,speech_enhancement,1,3.637,0.2254
+arecho_voicemos_real_mos,audio_quality,1,3.125,0.875
+arecho_wer,asr_wer_cer,1,0.0256,0.0444
