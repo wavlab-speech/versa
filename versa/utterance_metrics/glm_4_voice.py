@@ -73,218 +73,31 @@ except ImportError:
     )
     AutoModel, AutoTokenizer, WhisperFeatureExtractor, BitsAndBytesConfig = None, None, None, None
 
+from qwen2_audio import DEFAULT_PROMPTS
 # TO-DO: Remove this line when the GLM-4-Voice is installed in the environment
 # This is a workaround to ensure the GLM-4-Voice model can be imported correctly
-library_path = os.path.expanduser("~/GLM-4-Voice")
-if library_path not in sys.path:
-    sys.path.insert(0, library_path)
+current_dir = os.path.dirname(os.path.abspath(__file__))
+project_root = os.path.abspath(os.path.join(current_dir, "../.."))
+library_path = os.path.join(project_root, "GLM-4-Voice")
+
+if os.path.exists(library_path):
+    if library_path not in sys.path:
+        sys.path.insert(0, library_path)
+else:
+    logging.warning(f"GLM-4-Voice repository not found at {library_path}. Please run: git clone --recurse-submodules https://github.com/THUDM/GLM-4-Voice in the project root.")
+
+try:
+    from speech_tokenizer.modeling_whisper import WhisperVQEncoder
+    from speech_tokenizer.utils import extract_speech_token
+except ImportError:
+    logging.error("Failed to import GLM-4-Voice modules. Ensure the repository is cloned correctly.")
+    WhisperVQEncoder = None
+    extract_speech_token = None
 
 from speech_tokenizer.modeling_whisper import WhisperVQEncoder
 from speech_tokenizer.utils import extract_speech_token
 # from audio_process import AudioStreamProcessor
 # Default prompts for different metrics
-DEFAULT_PROMPTS = {
-    # Speaker Characteristics
-    "speaker_count": """Analyze the audio and determine the number of distinct speakers present.
-Provide your answer as a single number between 1-10.
-Examples:
-- For a monologue: 1
-- For an interview with host and guest: 2 
-- For a panel discussion with a moderator and three panelists: 4""",
-    "speaker_gender": """Identify the perceived gender of the speaker(s).
-If multiple speakers, list each speaker with their perceived gender.
-Choose from:
-- Male
-- Female
-- Non-binary/unclear
-- Multiple speakers with mixed genders""",
-    "speaker_age": """Identify the age group of the speaker.
-Choose exactly one label from the following categories:
-- Child: under 13 years
-- Teen: 13-19 years
-- Young adult: 20-35 years
-- Middle-aged adult: 36-55 years
-- Senior: over 55 years""",
-    "speech_impairment": """Assess whether there are any noticeable speech impairments or disorders in the speaker's voice.
-Choose exactly one category:
-- No apparent impairment: typical speech patterns
-- Stuttering/disfluency: repetitions, blocks, or prolongations of sounds
-- Articulation disorder: difficulty with specific speech sounds
-- Voice disorder: abnormal pitch, loudness, or quality
-- Fluency disorder: atypical rhythm, rate, or flow of speech
-- Foreign accent: non-native pronunciation patterns
-- Dysarthria: slurred or unclear speech from muscle weakness
-- Apraxia: difficulty with motor planning for speech
-- Other impairment: speech pattern that suggests a different disorder""",
-    # Voice Properties
-    "voice_pitch": """Analyze the voice pitch/tone of the speaker.
-Choose exactly one category from the following:
-- Very high: significantly higher than average for their perceived gender
-- High: noticeably above average pitch 
-- Medium: average pitch range
-- Low: noticeably below average pitch
-- Very low: significantly lower than average for their perceived gender""",
-    "pitch_range": """Assess the pitch variation/intonation range in the speaker's voice.
-Choose exactly one category:
-- Wide range: highly expressive with significant variation between high and low tones
-- Moderate range: normal variation in pitch during speech
-- Narrow range: minimal pitch variation, relatively monotone delivery
-- Monotone: almost no pitch variation""",
-    "voice_type": """Identify the dominant voice quality-related characteristic of the speaker.
-Choose exactly one category:
-- Clear: clean vocal production without noticeable texture issues
-- Breathy: voice has audible breath sounds, less vocal cord closure
-- Creaky/vocal fry: low-frequency rattling sound, especially at ends of phrases
-- Hoarse: rough, raspy quality indicating vocal strain
-- Nasal: voice resonates primarily through the nose
-- Pressed/tense: strained quality from excessive vocal cord pressure
-- Resonant: rich, vibrant voice with good projection
-- Whispered: intentionally quiet with minimal vocal cord vibration
-- Tremulous: shaky or quivery voice quality""",
-    "speech_volume_level": """Assess the overall volume or loudness level of the speaker.
-Choose exactly one category:
-- Very quiet: barely audible, whispering or very soft-spoken
-- Quiet: below average volume, soft-spoken
-- Moderate: normal conversational volume
-- Loud: above average volume, projecting voice
-- Very loud: shouting or extremely high volume
-- Variable: significant changes in volume throughout the recording""",
-    # Speech Content
-    "language": """Identify all languages spoken in the audio.
-List languages using their English names.
-Choose from common languages:
-- English
-- Spanish
-- Mandarin Chinese
-- Hindi
-- Arabic
-- French
-- Russian
-- Portuguese
-- German
-- Japanese
-- Other (specify if possible)""",
-    "speech_register": """Determine the speech register used by the speaker.
-Choose exactly one category:
-- Formal register: careful pronunciation, complex grammar, specialized vocabulary
-- Standard register: proper grammar and pronunciation for professional or educational contexts
-- Consultative register: mixture of formal and casual for everyday professional interactions
-- Casual register: relaxed grammar, contractions, colloquialisms for friends/family
-- Intimate register: highly familiar language used with close relations
-- Technical register: specialized terminology for a specific field or profession
-- Slang register: highly informal with group-specific vocabulary""",
-    "vocabulary_complexity": """Evaluate the vocabulary complexity level in the speech.
-Choose exactly one category:
-- Basic: simple, everyday vocabulary, mostly high-frequency words
-- General: standard vocabulary for common topics, occasional advanced words
-- Advanced: sophisticated vocabulary with specific terminology
-- Technical: specialized/domain-specific terminology
-- Academic: scholarly vocabulary with abstract concepts""",
-    "speech_purpose": """Identify the primary purpose of the speech.
-Choose one category:
-- Informative: primarily explains or educates
-- Persuasive: attempts to convince or change opinions
-- Entertainment: primarily aims to amuse or entertain
-- Narrative: tells a story or relates events
-- Conversational: casual exchange of information
-- Instructional: provides specific directions or guidance
-- Emotional expression: primarily conveys feelings or emotional state""",
-    # Speech Delivery
-    "speech_emotion": """Identify the dominant emotion expressed in this speech.
-Choose exactly one label from the following categories:
-- Neutral: even-toned, matter-of-fact delivery with minimal emotional expression
-- Happy: upbeat, positive, enthusiastic tone
-- Sad: downcast, melancholic, somber tone
-- Angry: irritated, frustrated, hostile tone  
-- Fearful: anxious, worried, frightened tone
-- Surprised: astonished, shocked tone
-- Disgusted: repulsed, revolted tone
-- Other: other emotion that cannot be classified by above classes""",
-    "speech_clarity": """Rate the overall clarity and intelligibility of the speech.
-Choose one category:
-- High clarity: perfectly intelligible, professional quality
-- Medium clarity: generally understandable with occasional unclear segments
-- Low clarity: difficult to understand, frequent unclear segments
-- Very low clarity: mostly unintelligible""",
-    "speech_rate": """Assess the rate of speech in the audio.
-Choose one category:
-- Very slow: deliberate, significantly slower than average speech
-- Slow: relaxed pace, slower than conversational speech
-- Medium: average conversational pace
-- Fast: quicker than average conversational speech
-- Very fast: rapid delivery, difficult to follow""",
-    "speaking_style": """Identify the predominant speaking style of the speaker.
-Choose exactly one category:
-- Formal: structured, proper, adherence to linguistic conventions
-- Professional: clear, efficient communication focused on task/topic
-- Casual/conversational: relaxed, everyday speech
-- Animated/enthusiastic: highly energetic, expressive speech
-- Deliberate: careful, measured delivery
-- Dramatic: theatrical, performance-oriented speech
-- Authoritative: commanding, confident tone
-- Hesitant: uncertain, tentative speech with pauses""",
-    "laughter_crying": """Identify if there is laughter, crying, or other emotional vocalizations in the audio.
-Choose exactly one category:
-- No laughter or crying: speech only
-- Contains laughter: audible laughter is present
-- Contains crying: audible crying or sobbing is present
-- Contains both: both laughter and crying are present
-- Contains other emotional sounds: sighs, gasps, etc.
-- Contains multiple emotional vocalizations: combination of various emotional sounds""",
-    # Interaction Patterns
-    "overlapping_speech": """Determine if there is overlapping speech in the audio (people talking simultaneously).
-Choose exactly one category:
-- No overlap: clean turn-taking with no simultaneous speech
-- Minimal overlap: occasional brief instances of overlapping speech
-- Moderate overlap: noticeable instances where speakers talk over each other
-- Significant overlap: frequent overlapping speech, making it difficult to follow
-- Constant overlap: multiple speakers talking simultaneously throughout most of the audio""",
-    # Recording Environment
-    "speech_background_environment": """Identify the dominant background environment or setting.
-Choose one category:
-- Quiet indoor: minimal background noise, likely studio environment
-- Noisy indoor: indoor setting with noticeable background sounds (cafe, office)
-- Outdoor urban: city sounds, traffic
-- Outdoor natural: nature sounds, birds, wind, water
-- Event/crowd: audience sounds, applause, crowd noise
-- Music background: music playing behind speech
-- Multiple environments: changes throughout recording""",
-    "recording_quality": """Assess the technical quality of the audio recording.
-Choose one category:
-- Professional: studio-quality, broadcast standard
-- Good: clear recording with minimal issues
-- Fair: noticeable recording artifacts but generally clear
-- Poor: significant recording issues affecting comprehension
-- Very poor: severe technical problems making content difficult to understand""",
-    "channel_type": """Identify the likely recording channel or device type used to record this audio.
-Choose exactly one category:
-- Professional microphone: high-quality, full-range audio
-- Consumer microphone: decent quality but less clarity than professional
-- Smartphone: typical mobile phone recording quality
-- Telephone/VoIP: limited frequency range, compression artifacts
-- Webcam/computer mic: variable quality, often with computer fan noise
-- Headset microphone: close to mouth, may have breathing sounds
-- Distant microphone: recorded from a distance, may have room echo
-- Radio/broadcast: compressed audio with limited frequency range
-- Surveillance/hidden mic: typically lower quality with background noise""",
-    # Vocal Evaluation
-    "singing_technique": """You are an expert in vocal performance and singing technique.
-Given the following audio clip of a singing voice, your task is to identify the predominant singing style used.
-Choose one of the following seven styles based on the vocal characteristics:
-
-Breathy: Light, airy voice with noticeable breathiness.
-Falsetto: High-pitched, flute-like sound, especially for male voices.
-Mixed Voice: A blend of chest and head voice, balanced resonance.
-Pharyngeal: Focused, twangy tone with forward placement in the pharynx.
-Glissando: Smooth, sliding transitions between notes.
-Vibrato: Regular, pulsating pitch variation while sustaining a note.
-Control: A neutral, well-supported tone without stylistic effects.
-
-Carefully listen to the tone quality, pitch control, resonance, and transitions in the audio.
-Then, output only the predicted singing style from the list above.
-""",
-}
-
 
 class Processor:
     """Preprocessor for GLM-4-Voice audio tokenization.
@@ -313,9 +126,6 @@ def glm_4_voice_model_setup(
     if model_tag == "default":
         model_tag = "THUDM/glm-4-voice-9b"
         tokenizer_tag = "THUDM/glm-4-voice-tokenizer"
-    # Can not download the model checkpoint from the Hugging Face Hub
-    # Use the local model checkpoint for quick testing
-    # tokenizer_tag = "/home/stan/GLM-4-Voice/model_checkpoint/glm-4-voice-tokenizer"
         
     if  AutoModel is None or  AutoTokenizer is None or BitsAndBytesConfig is None or WhisperFeatureExtractor is None:
         raise RuntimeError(
@@ -424,8 +234,8 @@ def glm_4_voice_base_metric(
             continue
         else:
             text_tokens.append(token_id)
-    response = processor.text_tokenizer.decode(text_tokens, ignore_special_tokens=False)
-    
+    responses = processor.text_tokenizer.decode(text_tokens, ignore_special_tokens=True)
+    response = responses.split("<|assistant|>")[-1].split("\n")[-1].replace('<|user|>', '').strip()
     return response
 
 
@@ -536,5 +346,3 @@ if __name__ == "__main__":
 
     for fn in all_metrics:
         print("metrics: {}".format(fn(glm_4_voice_utils, a, 16000)))
-        break
-    # print("metrics: {}".format(glm_4_voice_speech_emotion_metric(glm_4_voice_utils, a, 16000)))
