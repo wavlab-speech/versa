@@ -216,4 +216,6 @@ NUM_METRIC = [
     "arecho_wer",
     "arecho_cer",
     "arecho_nisqa_real_mos",
+    "multigauss_mean",
+    "multigauss_covariance",
 ]
