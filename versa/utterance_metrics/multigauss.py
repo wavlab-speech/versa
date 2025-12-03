@@ -95,6 +95,7 @@ def multigauss_model_setup(
     return {
         "ssl_model_extract": ssl_model_extract,
         "multigauss_model": multigauss_model,
+        "model_tag": model_tag,
         "device": device,
     }
 
@@ -122,20 +123,28 @@ def multigauss_metric(models, pred_x, fs):
         feature = (
             models["ssl_model_extract"](pred_x.to(device=models["device"])).squeeze().T
         )
-        mean_prediction, covariance_prediction = models["multigauss_model"](
-            feature.unsqueeze(0)
-        )
-    return {
+        if models["model_tag"] == "probabilistic":
+            mean_prediction, covariance_prediction = models["multigauss_model"](
+                feature.unsqueeze(0)
+            )
+        else:
+            mean_prediction = models["multigauss_model"](feature.unsqueeze(0))
+            covariance_prediction = None
+    result = {
         "multigauss_mos": mean_prediction[0][0].item(),
         "multigauss_noi": mean_prediction[0][1].item(),
         "multigauss_col": mean_prediction[0][2].item(),
         "multigauss_dis": mean_prediction[0][3].item(),
         "multigauss_loud": mean_prediction[0][4].item(),
-        "multigauss_covariance": covariance_prediction[0].cpu().numpy(), # ["mos", "noi", "col", "dis", "loud"]
     }
+    if covariance_prediction is not None:
+        result["multigauss_covariance"] = covariance_prediction[0].cpu().numpy() # ["mos", "noi", "col", "dis", "loud"]
+    return result
 
 
 if __name__ == "__main__":
     a = np.random.random(16000)
-    model = multigauss_model_setup(use_gpu=True if torch.cuda.is_available() else False)
+    model = multigauss_model_setup(model_tag="probabilistic", use_gpu=True if torch.cuda.is_available() else False)
+    print(f"MultiGauss metrics: {multigauss_metric(model, a, 16000)}")
+    model = multigauss_model_setup(model_tag="non_probabilistic", use_gpu=True if torch.cuda.is_available() else False)
     print(f"MultiGauss metrics: {multigauss_metric(model, a, 16000)}")
