@@ -148,6 +148,23 @@ def load_score_modules(score_config, use_gt=True, use_gt_text=False, use_gpu=Fal
             }
             logging.info("Initiate pseudo MOS evaluation successfully.")
 
+        elif config["name"] == "songeval":
+            logging.info("Loading SongEval evaluation...")
+            from versa import songeval_metric, songeval_model_setup
+
+            model_dict = songeval_model_setup(
+                use_gpu=use_gpu
+            )
+            score_modules["songeval"] = {     
+                "module": songeval_metric,
+                "args": {
+                    "model_dict": model_dict,
+                    "fs": 24000,
+                    "use_gpu": use_gpu,
+                },
+            }
+            logging.info("Initiate SongEval evaluation successfully.")
+
         elif config["name"] == "pesq":
             if not use_gt:
                 logging.warning(
@@ -1101,6 +1118,12 @@ def use_score_modules(score_modules, gen_wav, gt_wav, gen_sr, text=None):
             score = score_modules[key]["module"](
                 gen_wav, gen_sr, **score_modules[key]["args"]
             )
+        elif key == "songeval":
+            score = score_modules[key]["module"](
+                score_modules[key]["args"]["model_dict"],
+                gen_wav,
+                gen_sr,
+            )
         elif key in ["pesq", "stoi", "estoi"]:
             score = score_modules[key]["module"](gen_wav, gt_wav, gen_sr)
         elif key == "visqol":
@@ -1207,6 +1230,7 @@ def use_score_modules(score_modules, gen_wav, gt_wav, gen_sr, text=None):
                 gt_wav,
                 gen_sr,
             )
+
 
         elif "qwen2_audio" in key:
             if key == "qwen2_audio":

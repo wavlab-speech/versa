@@ -60,6 +60,7 @@ We include x mark if the metric is auto-installed in versa.
 | 52 |   | WV-MOS (MOS score prediction by fine-tuned wav2vec2.0 model) | wvmos | wvmos | [wvmos](https://github.com/AndreevP/wvmos) | [paper](https://arxiv.org/abs/2203.13086) |
 | 53 |   |SIG-MOS | sigmos | {SIGMOS_COL, SIGMOS_DISC, SIGMOS_LOUD, SIGMOS_REVERB, SIGMOS_SIG, SIGMOS_OVRL} | [sigmos](https://github.com/microsoft/SIG-Challenge/tree/main/ICASSP2024/sigmos) |[paper](https://arxiv.org/pdf/2309.07385) |
 | 54 | x | VQScore (Self-Supervised Speech Quality Estimation and Enhancement Using Only Clean Speech)  | vqscore | vqscore | [VQScore](https://github.com/JasonSWFu/VQscore) | [paper](https://arxiv.org/abs/2402.16321) |
+| 55 | x | SongEval (A Benchmark Dataset for Song Aesthetics Evaluation) | songeval | songeval | [SongEval](https://github.com/ASLP-lab/SongEval) | [paper](https://arxiv.org/abs/2505.10793) |
 
 
 ### Dependent Metrics
