@@ -131,7 +131,7 @@ def multigauss_metric(models, pred_x, fs):
         "multigauss_col": mean_prediction[0][2].item(),
         "multigauss_dis": mean_prediction[0][3].item(),
         "multigauss_loud": mean_prediction[0][4].item(),
-        "multigauss_covariance": covariance_prediction[0].numpy(), # ["mos", "noi", "col", "dis", "loud"]
+        "multigauss_covariance": covariance_prediction[0].cpu().numpy(), # ["mos", "noi", "col", "dis", "loud"]
     }
 
 
