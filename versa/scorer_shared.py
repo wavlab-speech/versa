@@ -1031,7 +1031,11 @@ def load_score_modules(score_config, use_gt=True, use_gt_text=False, use_gpu=Fal
 
         elif config["name"] == "multigauss":
             logging.info("Loading MultiGauss model...")
-            from versa.utterance_metrics.multigauss import multigauss_model_setup, multigauss_metric
+            from versa.utterance_metrics.multigauss import (
+                multigauss_model_setup,
+                multigauss_metric,
+            )
+
             multigauss_model = multigauss_model_setup(
                 model_tag=config.get("model_tag", "probabilistic"),
                 use_gpu=use_gpu,
