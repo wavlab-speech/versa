@@ -8,20 +8,22 @@
 [![arXiv](https://img.shields.io/badge/arXiv-2412.17667-b31b1b.svg)](https://arxiv.org/abs/2412.17667)
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 
-VERSA (Versatile Evaluation of Speech and Audio) is a comprehensive toolkit for evaluating speech and audio quality. It provides seamless access to over 80 evaluation/profiling metrics with 10x variants, enabling researchers and developers to assess audio quality through multiple dimensions.
+VERSA (Versatile Evaluation of Speech and Audio) is a comprehensive toolkit for evaluating speech and audio quality. It provides seamless access to over 90 evaluation/profiling metrics with 10x variants, enabling researchers and developers to assess audio quality through multiple dimensions.
 
 ## 🚨 Exciting News
+- Sep 2025 - Add visualization and text LLM summarization supports for VERSA-v2.
 - Jun 2025 - Update launch scripts for local machine to support multi-process/multi-gpu (automatic rank assignment) for VERSA.
 - May 2025 – VERSA presented at NAACL 2025, showcasing its unified multi-metric evaluation framework for speech and audio ([🎥 Presentation Video](https://www.youtube.com/watch?v=e7TdOlzyJcE))
 - Feb 2025 – Integrated support for Qwen2-Audio-based perceptual metrics, extending VERSA's capacity for LLM-informed audio quality profiling
-- Dec 2024 – Official release of VERSA v1.0, featuring 80+ evaluation metrics and full integration with ESPnet and Slurm-based distributed evaluation
+- Dec 2024 – Official release of VERSA v1.0, featuring 90+ evaluation metrics and full integration with ESPnet and Slurm-based distributed evaluation
 
 ## 🚀 Features
 
-- **Comprehensive**: 80+ metrics covering perceptual quality, intelligibility, and technical measurements (check [full metrics documentation](https://github.com/wavlab-speech/versa/blob/main/docs/supported_metrics.md) for a complete list)
-- **Integrated**: Tightly integrated with [ESPnet](https://github.com/espnet/espnet.git)
+- **Comprehensive**: 90+ metrics covering perceptual quality, intelligibility, and technical measurements (check [full metrics documentation](https://github.com/wavlab-speech/versa/blob/main/docs/supported_metrics.md) for a complete list)
+- **Integrated**: Widely used in speech toolkits and challenges (check the [incomplete list of toolkits/challenges](https://github.com/wavlab-speech/versa/blob/main/docs/users.md) using versa)
 - **Flexible**: Support for various input formats (file paths, SCP files, Kaldi-style ARKs)
 - **Scalable**: Built-in support for distributed evaluation using Slurm
+- **Visualizable**: Interactive visualization with VERSA results (check [our visualization guideline](https://github.com/wavlab-speech/versa/blob/main/docs/visualization.md))
 
 ## 🔍 Interactive Demo
 
@@ -38,6 +40,10 @@ cd versa
 pip install .
 ```
 
+or alternatively, without cloning: 
+```bash
+python -m pip install git+https://github.com/wavlab-speech/versa.git#egg=versa-speech-audio-toolkit --no-build-isolation
+```
 ### Metric-Specific Dependencies
 
 VERSA aligns with original APIs provided by algorithm developers rather than redistributing models. The core package includes many metrics by default, but some require additional installation.

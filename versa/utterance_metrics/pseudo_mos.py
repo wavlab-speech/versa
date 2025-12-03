@@ -2,6 +2,7 @@
 
 # Copyright 2023 Takaaki Saeki
 # Copyright 2024 Jiatong Shi
+# Copyright 2025 Jionghao Han
 #  Apache 2.0  (http://www.apache.org/licenses/LICENSE-2.0)
 
 import logging
@@ -11,6 +12,9 @@ logger = logging.getLogger(__name__)
 import librosa
 import numpy as np
 import torch
+import requests
+from pathlib import Path
+from typing import Optional
 
 try:
     import utmosv2
@@ -92,6 +96,27 @@ def pseudo_mos_setup(
             ).to(device)
             predictor_dict["singmos"] = singmos
             predictor_fs["singmos"] = 16000
+        elif predictor == "singmos_v2":
+            torch.hub.set_dir(cache_dir)
+            singmos = torch.hub.load(
+                "South-Twilight/SingMOS:v0.3.0", "singing_ssl_mos_v2", trust_repo=True
+            ).to(device)
+            predictor_dict["singmos_v2"] = singmos
+            predictor_fs["singmos_v2"] = 16000
+        elif predictor.startswith("dnsmos_pro_"):
+            variant = predictor[len("dnsmos_pro_") :]
+            model_path = Path(cache_dir) / f"dnsmos_pro_{variant}.pt"
+            if not model_path.exists():
+                url = f"https://github.com/fcumlin/DNSMOSPro/raw/refs/heads/main/runs/{variant.upper()}/model_best.pt"
+                model_path.parent.mkdir(parents=True, exist_ok=True)
+                logger.info(f'Downloading: "{url}" to {model_path}')
+                response = requests.get(url)
+                with open(model_path, "wb") as f:
+                    f.write(response.content)
+            else:
+                logger.info(f"Using cached model: {model_path}")
+            predictor_dict[predictor] = torch.jit.load(model_path, map_location=device)
+            predictor_fs[predictor] = 16000
         else:
             raise NotImplementedError("Not supported {}".format(predictor))
 
@@ -200,6 +225,72 @@ def pseudo_mos_metric(pred, fs, predictor_dict, predictor_fs, use_gpu=False):
                 0
             ].item()
             scores.update(singmos=score)
+        elif predictor == "singmos_v2":
+            if fs != predictor_fs["singmos_v2"]:
+                pred_singmos = librosa.resample(
+                    pred, orig_sr=fs, target_sr=predictor_fs["singmos_v2"]
+                )
+            else:
+                pred_singmos = pred
+            pred_tensor = torch.from_numpy(pred_singmos).unsqueeze(0)
+            length_tensor = torch.tensor([pred_tensor.size(1)]).int()
+            if use_gpu:
+                pred_tensor = pred_tensor.to("cuda")
+                length_tensor = length_tensor.to("cuda")
+            score = predictor_dict["singmos_v2"](pred_tensor.float(), length_tensor)[
+                0
+            ].item()
+            scores.update(singmos_v2=score)
+        elif predictor.startswith("dnsmos_pro_"):
+            if fs != predictor_fs[predictor]:
+                pred_dnsmos_pro = librosa.resample(
+                    pred, orig_sr=fs, target_sr=predictor_fs[predictor]
+                )
+            else:
+                pred_dnsmos_pro = pred
+
+            def stft(
+                samples: np.ndarray,
+                win_length: int = 320,
+                hop_length: int = 160,
+                n_fft: int = 320,
+                use_log: bool = True,
+                use_magnitude: bool = True,
+                n_mels: Optional[int] = None,
+            ) -> np.ndarray:
+                if use_log and not use_magnitude:
+                    raise ValueError(
+                        "Log is only available if the magnitude is to be computed."
+                    )
+                if n_mels is None:
+                    spec = librosa.stft(
+                        y=samples,
+                        win_length=win_length,
+                        hop_length=hop_length,
+                        n_fft=n_fft,
+                    )
+                else:
+                    spec = librosa.feature.melspectrogram(
+                        y=samples,
+                        win_length=win_length,
+                        hop_length=hop_length,
+                        n_fft=n_fft,
+                        n_mels=n_mels,
+                    )
+                spec = spec.T
+                if use_magnitude:
+                    spec = np.abs(spec)
+                if use_log:
+                    spec = np.clip(spec, 10 ** (-7), 10**7)
+                    spec = np.log10(spec)
+                return spec
+
+            spec = torch.FloatTensor(stft(pred_dnsmos_pro))
+            if use_gpu:
+                spec = spec.to("cuda")
+            with torch.no_grad():
+                prediction = predictor_dict[predictor](spec[None, None, ...])
+            scores[predictor] = prediction[0, 0].item()
         else:
             raise NotImplementedError("Not supported {}".format(predictor))
 
@@ -210,7 +301,16 @@ if __name__ == "__main__":
     a = np.random.random(16000)
     print(a)
     predictor_dict, predictor_fs = pseudo_mos_setup(
-        ["utmos", "dnsmos", "plcmos", "singmos"],
+        [
+            "utmos",
+            "dnsmos",
+            "plcmos",
+            "singmos",
+            "singmos_v2",
+            "dnsmos_pro_bvcc",
+            "dnsmos_pro_nisqa",
+            "dnsmos_pro_vcc2018",
+        ],
         predictor_args={
             "dnsmos": {"fs": 16000},
             "plcmos": {"fs": 16000},
