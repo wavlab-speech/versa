@@ -126,8 +126,12 @@ def multigauss_metric(models, pred_x, fs):
             feature.unsqueeze(0)
         )
     return {
-        "multigauss_mean": mean_prediction,
-        "multigauss_covariance": covariance_prediction,
+        "multigauss_mos": mean_prediction[0][0].item(),
+        "multigauss_noi": mean_prediction[0][1].item(),
+        "multigauss_col": mean_prediction[0][2].item(),
+        "multigauss_dis": mean_prediction[0][3].item(),
+        "multigauss_loud": mean_prediction[0][4].item(),
+        "multigauss_covariance": covariance_prediction[0].numpy(), # ["mos", "noi", "col", "dis", "loud"]
     }
 
 
