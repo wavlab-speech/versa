@@ -1,0 +1,8 @@
+# interpreter example yaml config
+# A list of interpreter backends your code will load.
+# Each item must have at least `model_name`.
+# For some models (Mistral, Llama 3.1), you must also provide HF_TOKEN.
+
+interpreter_config:
+  # Easiest path: no HF login required in your loader
+  - model_name: "Qwen/Qwen2.5-7B-Instruct"

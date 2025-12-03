@@ -1,0 +1,4 @@
+
+# Uni-VERSA no-reference evaluation
+- name: universa_noref
+  model_tag: noref

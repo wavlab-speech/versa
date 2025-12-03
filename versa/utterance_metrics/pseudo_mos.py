@@ -96,6 +96,13 @@ def pseudo_mos_setup(
             ).to(device)
             predictor_dict["singmos"] = singmos
             predictor_fs["singmos"] = 16000
+        elif predictor == "singmos_v2":
+            torch.hub.set_dir(cache_dir)
+            singmos = torch.hub.load(
+                "South-Twilight/SingMOS:v0.3.0", "singing_ssl_mos_v2", trust_repo=True
+            ).to(device)
+            predictor_dict["singmos_v2"] = singmos
+            predictor_fs["singmos_v2"] = 16000
         elif predictor.startswith("dnsmos_pro_"):
             variant = predictor[len("dnsmos_pro_") :]
             model_path = Path(cache_dir) / f"dnsmos_pro_{variant}.pt"
@@ -218,6 +225,22 @@ def pseudo_mos_metric(pred, fs, predictor_dict, predictor_fs, use_gpu=False):
                 0
             ].item()
             scores.update(singmos=score)
+        elif predictor == "singmos_v2":
+            if fs != predictor_fs["singmos_v2"]:
+                pred_singmos = librosa.resample(
+                    pred, orig_sr=fs, target_sr=predictor_fs["singmos_v2"]
+                )
+            else:
+                pred_singmos = pred
+            pred_tensor = torch.from_numpy(pred_singmos).unsqueeze(0)
+            length_tensor = torch.tensor([pred_tensor.size(1)]).int()
+            if use_gpu:
+                pred_tensor = pred_tensor.to("cuda")
+                length_tensor = length_tensor.to("cuda")
+            score = predictor_dict["singmos_v2"](pred_tensor.float(), length_tensor)[
+                0
+            ].item()
+            scores.update(singmos_v2=score)
         elif predictor.startswith("dnsmos_pro_"):
             if fs != predictor_fs[predictor]:
                 pred_dnsmos_pro = librosa.resample(
@@ -263,6 +286,8 @@ def pseudo_mos_metric(pred, fs, predictor_dict, predictor_fs, use_gpu=False):
                 return spec
 
             spec = torch.FloatTensor(stft(pred_dnsmos_pro))
+            if use_gpu:
+                spec = spec.to("cuda")
             with torch.no_grad():
                 prediction = predictor_dict[predictor](spec[None, None, ...])
             scores[predictor] = prediction[0, 0].item()
@@ -281,6 +306,7 @@ if __name__ == "__main__":
             "dnsmos",
             "plcmos",
             "singmos",
+            "singmos_v2",
             "dnsmos_pro_bvcc",
             "dnsmos_pro_nisqa",
             "dnsmos_pro_vcc2018",
