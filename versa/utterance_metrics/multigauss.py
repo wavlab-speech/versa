@@ -119,7 +119,9 @@ def multigauss_metric(models, pred_x, fs):
     )
 
     with torch.no_grad():
-        feature = models["ssl_model_extract"](pred_x.to(device=models["device"])).squeeze().T
+        feature = (
+            models["ssl_model_extract"](pred_x.to(device=models["device"])).squeeze().T
+        )
         mean_prediction, covariance_prediction = models["multigauss_model"](
             feature.unsqueeze(0)
         )
