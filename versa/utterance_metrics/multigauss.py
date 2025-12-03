@@ -138,13 +138,20 @@ def multigauss_metric(models, pred_x, fs):
         "multigauss_loud": mean_prediction[0][4].item(),
     }
     if covariance_prediction is not None:
-        result["multigauss_covariance"] = covariance_prediction[0].cpu().numpy() # ["mos", "noi", "col", "dis", "loud"]
+        result["multigauss_covariance"] = (
+            covariance_prediction[0].cpu().numpy()
+        )  # ["mos", "noi", "col", "dis", "loud"]
     return result
 
 
 if __name__ == "__main__":
     a = np.random.random(16000)
-    model = multigauss_model_setup(model_tag="probabilistic", use_gpu=True if torch.cuda.is_available() else False)
+    model = multigauss_model_setup(
+        model_tag="probabilistic", use_gpu=True if torch.cuda.is_available() else False
+    )
     print(f"MultiGauss metrics: {multigauss_metric(model, a, 16000)}")
-    model = multigauss_model_setup(model_tag="non_probabilistic", use_gpu=True if torch.cuda.is_available() else False)
+    model = multigauss_model_setup(
+        model_tag="non_probabilistic",
+        use_gpu=True if torch.cuda.is_available() else False,
+    )
     print(f"MultiGauss metrics: {multigauss_metric(model, a, 16000)}")
