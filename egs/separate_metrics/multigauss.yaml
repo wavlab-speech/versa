@@ -1,0 +1,4 @@
+# Multivariate Probabilistic Assessment of Speech Quality (MultiGauss)
+
+- name: multigauss
+  model_tag: probabilistic

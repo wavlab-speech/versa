@@ -1029,6 +1029,23 @@ def load_score_modules(score_config, use_gt=True, use_gt_text=False, use_gpu=Fal
             }
             logging.info("Initiate ARECHO no-reference evaluation successfully.")
 
+        elif config["name"] == "multigauss":
+            logging.info("Loading MultiGauss model...")
+            from versa.utterance_metrics.multigauss import (
+                multigauss_model_setup,
+                multigauss_metric,
+            )
+
+            multigauss_model = multigauss_model_setup(
+                model_tag=config.get("model_tag", "probabilistic"),
+                use_gpu=use_gpu,
+            )
+            score_modules["multigauss"] = {
+                "module": multigauss_metric,
+                "model": multigauss_model,
+            }
+            logging.info("Initiate MultiGauss evaluation successfully.")
+
     return score_modules
 
 
@@ -1260,6 +1277,10 @@ def use_score_modules(score_modules, gen_wav, gt_wav, gen_sr, text=None):
                 score_modules[key]["model"], gen_wav, gen_sr, gt_wav, text
             )
         elif key == "arecho":
+            score = score_modules[key]["module"](
+                score_modules[key]["model"], gen_wav, gen_sr
+            )
+        elif key == "multigauss":
             score = score_modules[key]["module"](
                 score_modules[key]["model"], gen_wav, gen_sr
             )
