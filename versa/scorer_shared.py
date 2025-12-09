@@ -602,6 +602,7 @@ def load_score_modules(score_config, use_gt=True, use_gt_text=False, use_gpu=Fal
                     model_tag=config.get("model_tag", "default"),
                     beam_size=config.get("beam_size", 1),
                     text_cleaner=config.get("text_cleaner", "whisper_basic"),
+                    calc_per=config.get("calc_per", False),
                     use_gpu=use_gpu,
                 )
 
@@ -1392,7 +1393,7 @@ def load_summary(score_info):
             # NOTE(jiatong): skip text cases
             continue
         summary[key] = sum([score[key] for score in score_info])
-        if "_wer" not in key and "_cer" not in key:
+        if "_wer" not in key and "_cer" not in key and "_per" not in key:
             # Average for non-WER/CER metrics
             summary[key] /= len(score_info)
     return summary
