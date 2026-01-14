@@ -10,6 +10,12 @@
 
 VERSA (Versatile Evaluation of Speech and Audio) is a comprehensive toolkit for evaluating speech and audio quality. It provides seamless access to over 90 evaluation/profiling metrics with 10x variants, enabling researchers and developers to assess audio quality through multiple dimensions.
 
+
+## 🚩 Add New Features
+- SongEval
+- DNSMOS
+- Vox-Profile
+
 ## 🚨 Exciting News
 - Sep 2025 - Add visualization and text LLM summarization supports for VERSA-v2.
 - Jun 2025 - Update launch scripts for local machine to support multi-process/multi-gpu (automatic rank assignment) for VERSA.
