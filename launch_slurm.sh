@@ -13,6 +13,7 @@
 #   --cpu-only: Optional flag to run only CPU jobs
 #   --gpu-only: Optional flag to run only GPU jobs
 #   --text=FILE: Path to text file to be processed (optional)
+#   --yes: Skip confirmation prompt
 #
 # Example: ./launcher.sh data/pred.scp data/gt.scp results/experiment1 10
 # Example: ./launcher.sh data/pred.scp data/gt.scp results/experiment1 10 --cpu-only
@@ -27,9 +28,17 @@ RED='\033[0;31m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
+# ============================================================
+# Safeguard defaults — tune these to your cluster's fair-share
+# budget to avoid accidental resource overconsumption.
+# Override via environment variables if needed.
+# ============================================================
+MAX_JOBS=${MAX_JOBS:-50}             # Max simultaneous job submissions
+MAX_TOTAL_CPU_HOURS=${MAX_TOTAL_CPU_HOURS:-5000}  # Abort if estimated CPU-hours exceed this
+
 # Function to display usage
 show_usage() {
-    echo -e "${BLUE}Usage: $0 <pred_wavscp> <gt_wavscp> <score_dir> <split_size> [--cpu-only|--gpu-only] [--text=FILE]${NC}"
+    echo -e "${BLUE}Usage: $0 <pred_wavscp> <gt_wavscp> <score_dir> <split_size> [--cpu-only|--gpu-only] [--text=FILE] [--yes]${NC}"
     echo -e "  <pred_wavscp>: Path to prediction wav script file"
     echo -e "  <gt_wavscp>: Path to ground truth wav script file (use \"None\" if not available)"
     echo -e "  <score_dir>: Directory to store results"
@@ -37,6 +46,15 @@ show_usage() {
     echo -e "  --cpu-only: Optional flag to run only CPU jobs"
     echo -e "  --gpu-only: Optional flag to run only GPU jobs"
     echo -e "  --text=FILE: Path to text file to be processed (optional)"
+    echo -e "  --yes: Skip the confirmation prompt"
+    echo ""
+    echo -e "${YELLOW}Safeguard environment variables:${NC}"
+    echo -e "  MAX_JOBS=N             Max number of jobs to submit (default: 50)"
+    echo -e "  MAX_TOTAL_CPU_HOURS=N  Abort if estimated total CPU-hours exceed this (default: 5000)"
+    echo -e "  GPU_TIME=D-HH:MM:SS   GPU job time limit (default: 0-12:00:00)"
+    echo -e "  CPU_TIME=D-HH:MM:SS   CPU job time limit (default: 0-12:00:00)"
+    echo -e "  CPUS=N                 CPUs per task (default: 4)"
+    echo -e "  MEM=N                  Memory per CPU in MB (default: 2000)"
 }
 
 # Check for minimum required arguments
@@ -58,6 +76,7 @@ echo ${IO_TYPE}
 RUN_CPU=true
 RUN_GPU=true
 TEXT_FILE=""  # Optional text file
+SKIP_CONFIRM=false
 
 # Parse optional arguments
 shift 4
@@ -82,6 +101,10 @@ while [[ $# -gt 0 ]]; do
                 exit 1
             fi
             echo -e "${YELLOW}Text file set to: ${TEXT_FILE}${NC}"
+            shift
+            ;;
+        --yes)
+            SKIP_CONFIRM=true
             shift
             ;;
         *)
@@ -112,14 +135,72 @@ fi
 GPU_PART=${GPU_PARTITION:-general}
 CPU_PART=${CPU_PARTITION:-general}
 
-# Configure resource requirements
-GPU_TIME=${GPU_TIME:-2-0:00:00}      # 2 days
-CPU_TIME=${CPU_TIME:-2-0:00:00}      # 2 days
-CPUS_PER_TASK=${CPUS:-8}             # 8 CPUs per task
+# Configure resource requirements — LOWERED DEFAULTS as safeguard
+GPU_TIME=${GPU_TIME:-0-12:00:00}     # 12 hours (was 2 days)
+CPU_TIME=${CPU_TIME:-0-12:00:00}     # 12 hours (was 2 days)
+CPUS_PER_TASK=${CPUS:-4}             # 4 CPUs per task (was 8)
 MEM_PER_CPU=${MEM:-2000}             # 2000MB per CPU
 GPU_TYPE=${GPU_TYPE:-}               # GPU type
 CPU_OTHER_OPTS=${CPU_OTHER_OPTS:-}   # other options for cpu
 GPU_OTHER_OPTS=${GPU_OTHER_OPTS:-}   # other options for gpu
+
+# ============================================================
+# Safeguard 1: Cap on max simultaneous jobs
+# ============================================================
+num_jobs_per_chunk=0
+$RUN_GPU && ((num_jobs_per_chunk+=1))
+$RUN_CPU && ((num_jobs_per_chunk+=1))
+total_jobs=$((SPLIT_SIZE * num_jobs_per_chunk))
+
+if [ "${total_jobs}" -gt "${MAX_JOBS}" ]; then
+    echo -e "${RED}Error: Would submit ${total_jobs} jobs, which exceeds MAX_JOBS=${MAX_JOBS}.${NC}"
+    echo -e "${YELLOW}Reduce --split_size or increase MAX_JOBS to proceed.${NC}"
+    echo -e "${YELLOW}  Suggested split_size: $(( MAX_JOBS / num_jobs_per_chunk ))${NC}"
+    exit 1
+fi
+
+# ============================================================
+# Safeguard 2: Estimate total CPU-hours and warn/abort
+# ============================================================
+# Parse time limit into hours (handles D-HH:MM:SS and HH:MM:SS)
+parse_time_to_hours() {
+    local time_str=$1
+    local days=0 hours=0 mins=0 secs=0
+
+    if [[ "${time_str}" == *-* ]]; then
+        days="${time_str%%-*}"
+        time_str="${time_str#*-}"
+    fi
+
+    IFS=':' read -r hours mins secs <<< "${time_str}"
+    # Remove leading zeros to avoid octal interpretation
+    days=$((10#${days}))
+    hours=$((10#${hours}))
+    mins=$((10#${mins}))
+    secs=$((10#${secs:-0}))
+
+    echo $(( days * 24 + hours + (mins > 30 ? 1 : 0) ))
+}
+
+estimate_cpu_hours() {
+    local time_str=$1
+    local cpus=$2
+    local num_jobs=$3
+    local hours
+    hours=$(parse_time_to_hours "${time_str}")
+    echo $(( hours * cpus * num_jobs ))
+}
+
+total_estimated_cpu_hours=0
+
+if $RUN_GPU; then
+    gpu_cpu_hours=$(estimate_cpu_hours "${GPU_TIME}" "${CPUS_PER_TASK}" "${SPLIT_SIZE}")
+    total_estimated_cpu_hours=$((total_estimated_cpu_hours + gpu_cpu_hours))
+fi
+if $RUN_CPU; then
+    cpu_cpu_hours=$(estimate_cpu_hours "${CPU_TIME}" "${CPUS_PER_TASK}" "${SPLIT_SIZE}")
+    total_estimated_cpu_hours=$((total_estimated_cpu_hours + cpu_cpu_hours))
+fi
 
 # Print configuration summary
 echo -e "${BLUE}=== Configuration Summary ===${NC}"
@@ -136,17 +217,47 @@ if $RUN_GPU; then
     echo -e "GPU processing: Enabled"
     echo -e "GPU partition: ${GPU_PART}"
     echo -e "GPU type: ${GPU_TYPE}"
+    echo -e "GPU time limit: ${GPU_TIME}"
 else
     echo -e "GPU processing: Disabled"
 fi
 if $RUN_CPU; then
     echo -e "CPU processing: Enabled"
     echo -e "CPU partition: ${CPU_PART}"
+    echo -e "CPU time limit: ${CPU_TIME}"
 else
     echo -e "CPU processing: Disabled"
 fi
 echo -e "Resources per job: ${CPUS_PER_TASK} CPUs, ${MEM_PER_CPU}MB per CPU"
 echo ""
+echo -e "${YELLOW}=== Resource Estimate ===${NC}"
+echo -e "Total jobs to submit: ${total_jobs}"
+echo -e "Max estimated CPU-hours: ${total_estimated_cpu_hours} (worst case, all jobs run to time limit)"
+if $RUN_GPU; then
+    echo -e "  GPU jobs: ${SPLIT_SIZE} x ${CPUS_PER_TASK} CPUs x $(parse_time_to_hours "${GPU_TIME}")h = ${gpu_cpu_hours} CPU-hours"
+fi
+if $RUN_CPU; then
+    echo -e "  CPU jobs: ${SPLIT_SIZE} x ${CPUS_PER_TASK} CPUs x $(parse_time_to_hours "${CPU_TIME}")h = ${cpu_cpu_hours} CPU-hours"
+fi
+echo ""
+
+if [ "${total_estimated_cpu_hours}" -gt "${MAX_TOTAL_CPU_HOURS}" ]; then
+    echo -e "${RED}Error: Estimated CPU-hours (${total_estimated_cpu_hours}) exceeds MAX_TOTAL_CPU_HOURS=${MAX_TOTAL_CPU_HOURS}.${NC}"
+    echo -e "${YELLOW}Reduce split_size, time limits, or CPUs per task. Or override with MAX_TOTAL_CPU_HOURS=${total_estimated_cpu_hours}${NC}"
+    exit 1
+fi
+
+# ============================================================
+# Safeguard 3: Interactive confirmation before submission
+# ============================================================
+if [ "${SKIP_CONFIRM}" = false ]; then
+    echo -e "${YELLOW}Proceed with submission? [y/N]${NC}"
+    read -r response
+    if [[ ! "${response}" =~ ^[Yy]$ ]]; then
+        echo -e "${RED}Aborted by user.${NC}"
+        exit 0
+    fi
+fi
 
 # Create directory structure
 echo -e "${GREEN}Creating directory structure...${NC}"
