@@ -5,12 +5,22 @@ import torch
 from versa.definition import MetricRegistry
 from versa.sequence_metrics.signal_metric import SignalMetric, register_signal_metric
 from versa.utterance_metrics.pysepm import PysepmMetric, register_pysepm_metric
+from versa.utterance_metrics.scoreq import (
+    ScoreqNrMetric,
+    ScoreqRefMetric,
+    register_scoreq_metric,
+)
+from versa.utterance_metrics.sheet_ssqa import (
+    SheetSsqaMetric,
+    register_sheet_ssqa_metric,
+)
 from versa.utterance_metrics.squim import (
     SquimNoRefMetric,
     SquimRefMetric,
     register_squim_metric,
 )
 from versa.utterance_metrics.vad import VadMetric, register_vad_metric
+from versa.utterance_metrics.vqscore import VqscoreMetric, register_vqscore_metric
 
 
 def _audio_pair(length=16000):
@@ -153,3 +163,135 @@ def test_register_vad_metric():
     assert registry.get_metric("vad") is VadMetric
     assert registry.get_metric("silero_vad") is VadMetric
     assert registry.get_metadata("vad").requires_reference is False
+
+
+def test_sheet_ssqa_metric_class_returns_existing_key(monkeypatch):
+    class DummyInnerModel:
+        def to(self, device):
+            self.device = device
+            return self
+
+    class DummySheetModel:
+        def __init__(self):
+            self.model = DummyInnerModel()
+
+        def predict(self, wav):
+            return 3.25
+
+    monkeypatch.setattr(
+        "versa.utterance_metrics.sheet_ssqa.torch.hub.load",
+        lambda *args, **kwargs: DummySheetModel(),
+    )
+
+    pred, _ = _audio_pair()
+    metric = SheetSsqaMetric({"cache_dir": "test-cache", "use_gpu": False})
+    scores = metric.compute(pred, metadata={"sample_rate": 16000})
+
+    assert scores == {"sheet_ssqa": 3.25}
+
+
+def test_register_sheet_ssqa_metric():
+    registry = MetricRegistry()
+
+    register_sheet_ssqa_metric(registry)
+
+    assert registry.get_metric("sheet_ssqa") is SheetSsqaMetric
+    assert registry.get_metric("sheet") is SheetSsqaMetric
+    assert registry.get_metadata("sheet_ssqa").requires_reference is False
+
+
+def test_scoreq_metric_classes_return_existing_keys(monkeypatch):
+    calls = []
+
+    class DummyScoreq:
+        def __init__(self, data_domain, mode, cache_dir, device):
+            self.mode = mode
+            calls.append(
+                {
+                    "data_domain": data_domain,
+                    "mode": mode,
+                    "cache_dir": cache_dir,
+                    "device": device,
+                }
+            )
+
+        def predict(self, test_path, ref_path):
+            assert test_path is not None
+            if self.mode == "ref":
+                assert ref_path is not None
+                return 1.2
+            assert ref_path is None
+            return 2.4
+
+    monkeypatch.setattr("versa.utterance_metrics.scoreq.Scoreq", DummyScoreq)
+
+    pred, ref = _audio_pair()
+    nr_metric = ScoreqNrMetric({"data_domain": "natural", "model_cache": "cache-a"})
+    ref_metric = ScoreqRefMetric({"cache_dir": "cache-b"})
+
+    assert nr_metric.compute(pred, metadata={"sample_rate": 16000}) == {
+        "scoreq_nr": 2.4
+    }
+    assert ref_metric.compute(pred, ref, metadata={"sample_rate": 16000}) == {
+        "scoreq_ref": 1.2
+    }
+    assert calls[0] == {
+        "data_domain": "natural",
+        "mode": "nr",
+        "cache_dir": "cache-a",
+        "device": "cpu",
+    }
+    assert calls[1]["mode"] == "ref"
+    assert calls[1]["cache_dir"] == "cache-b"
+
+
+def test_register_scoreq_metric():
+    registry = MetricRegistry()
+
+    register_scoreq_metric(registry)
+
+    assert registry.get_metric("scoreq_nr") is ScoreqNrMetric
+    assert registry.get_metric("scoreq_ref") is ScoreqRefMetric
+    assert registry.get_metric("scoreq") is ScoreqNrMetric
+    assert registry.get_metadata("scoreq_nr").requires_reference is False
+    assert registry.get_metadata("scoreq_ref").requires_reference is True
+
+
+def test_scoreq_missing_dependency(monkeypatch):
+    monkeypatch.setattr("versa.utterance_metrics.scoreq.Scoreq", None)
+
+    with pytest.raises(ModuleNotFoundError, match="scoreq is not installed"):
+        ScoreqNrMetric()
+
+
+def test_vqscore_metric_class_returns_existing_key(monkeypatch):
+    class DummyVqscoreModel:
+        device = "cpu"
+        input_transform = "none"
+
+        def CNN_1D_encoder(self, sp_input):
+            return torch.ones((1, 2, 3))
+
+        def quantizer(self, z, stochastic=False, update=False):
+            return z.transpose(2, 1), None, None, None
+
+    monkeypatch.setattr(
+        "versa.utterance_metrics.vqscore.vqscore_setup",
+        lambda use_gpu=False: DummyVqscoreModel(),
+    )
+
+    pred, _ = _audio_pair()
+    metric = VqscoreMetric()
+    scores = metric.compute(pred, metadata={"sample_rate": 16000})
+
+    assert scores == {"vqscore": pytest.approx(1.0, abs=1e-4)}
+
+
+def test_register_vqscore_metric():
+    registry = MetricRegistry()
+
+    register_vqscore_metric(registry)
+
+    assert registry.get_metric("vqscore") is VqscoreMetric
+    assert registry.get_metric("vq_score") is VqscoreMetric
+    assert registry.get_metadata("vqscore").requires_reference is False

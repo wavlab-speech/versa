@@ -145,15 +145,20 @@ _optional_metric_import(
 #     QwenOmniMetric,
 #     register_qwen_omni_metric
 # )
-# from versa.utterance_metrics.scoreq import (
-#     ScoreqMetric,
-#     register_scoreq_metric
-# )
+_optional_metric_import(
+    "versa.utterance_metrics.scoreq",
+    (
+        "ScoreqMetric",
+        "ScoreqNrMetric",
+        "ScoreqRefMetric",
+        "register_scoreq_metric",
+    ),
+)
 # from versa.utterance_metrics.se_snr import SeSnrMetric, register_se_snr_metric
-# from versa.utterance_metrics.sheet_ssqa import (
-#     SheetSsqaMetric,
-#     register_sheet_ssqa_metric,
-# )
+_optional_metric_import(
+    "versa.utterance_metrics.sheet_ssqa",
+    ("SheetSsqaMetric", "register_sheet_ssqa_metric"),
+)
 _optional_metric_import(
     "versa.utterance_metrics.speaking_rate",
     ("SpeakingRateMetric", "register_speaking_rate_metric"),
@@ -179,7 +184,10 @@ _optional_metric_import(
     ("CdpamDistanceMetric", "register_cdpam_distance_metric"),
 )
 
-# from versa.utterance_metrics.vqscore import VqscoreMetric, register_vqscore_metric
+_optional_metric_import(
+    "versa.utterance_metrics.vqscore",
+    ("VqscoreMetric", "register_vqscore_metric"),
+)
 _optional_metric_import(
     "versa.utterance_metrics.vad",
     ("VadMetric", "register_vad_metric"),

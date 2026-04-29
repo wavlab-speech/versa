@@ -8,11 +8,13 @@ from pathlib import Path
 import sys
 import yaml
 
-logger = logging.getLogger(__name__)
-
 import librosa
 import numpy as np
 import torch
+
+from versa.definition import BaseMetric, MetricCategory, MetricMetadata, MetricType
+
+logger = logging.getLogger(__name__)
 
 
 vqscore_dir = str(Path(__file__).parent / "VQscore")
@@ -47,11 +49,17 @@ def vqscore_setup(use_gpu=False):
 
     vqscore_conf = str(
         Path(vqscore_dir)
-        / "config/QE_cbook_size_2048_1_32_IN_input_encoder_z_Librispeech_clean_github.yaml"
+        / (
+            "config/"
+            "QE_cbook_size_2048_1_32_IN_input_encoder_z_Librispeech_clean_github.yaml"
+        )
     )
     vqscore_model = str(
         Path(vqscore_dir)
-        / "exp/QE_cbook_size_2048_1_32_IN_input_encoder_z_Librispeech_clean_github/checkpoint-dnsmos_ovr_CC=0.835.pkl"
+        / (
+            "exp/QE_cbook_size_2048_1_32_IN_input_encoder_z_Librispeech_clean_github/"
+            "checkpoint-dnsmos_ovr_CC=0.835.pkl"
+        )
     )
 
     with open(vqscore_conf, "r") as f:
@@ -125,9 +133,52 @@ def vqscore_metric(model, pred_x, fs):
     return {"vqscore": float(VQScore_cos_z)}
 
 
+class VqscoreMetric(BaseMetric):
+    """VQScore speech quality assessment metric."""
+
+    def _setup(self):
+        self.use_gpu = self.config.get("use_gpu", False)
+        self.model = vqscore_setup(use_gpu=self.use_gpu)
+
+    def compute(self, predictions, references=None, metadata=None):
+        if predictions is None:
+            raise ValueError("Predicted signal must be provided")
+
+        fs = metadata.get("sample_rate", 16000) if metadata else 16000
+        return vqscore_metric(self.model, np.asarray(predictions), fs)
+
+    def get_metadata(self):
+        return _vqscore_metadata()
+
+
+def _vqscore_metadata():
+    return MetricMetadata(
+        name="vqscore",
+        category=MetricCategory.INDEPENDENT,
+        metric_type=MetricType.FLOAT,
+        requires_reference=False,
+        requires_text=False,
+        gpu_compatible=True,
+        auto_install=False,
+        dependencies=["torch", "librosa", "numpy", "yaml"],
+        description=(
+            "VQScore speech quality assessment from encoded and quantized features"
+        ),
+        paper_reference="https://arxiv.org/abs/2402.16321",
+        implementation_source="https://github.com/JasonSWFu/VQscore",
+    )
+
+
+def register_vqscore_metric(registry):
+    """Register VQScore with the registry."""
+    registry.register(
+        VqscoreMetric,
+        _vqscore_metadata(),
+        aliases=["vq_score", "vqscore_metric"],
+    )
+
+
 if __name__ == "__main__":
     a = np.random.random(16000)
-    qe_model = vqscore_setup(use_gpu=False)
-    fs = 16000
-    metric_qe = vqscore_metric(qe_model, a, fs)
-    print(metric_qe)
+    metric = VqscoreMetric()
+    print(metric.compute(a, metadata={"sample_rate": 16000}))

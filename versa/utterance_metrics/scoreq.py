@@ -5,11 +5,12 @@
 
 import logging
 
-logger = logging.getLogger(__name__)
-
 import librosa
 import numpy as np
-import torch
+
+from versa.definition import BaseMetric, MetricCategory, MetricMetadata, MetricType
+
+logger = logging.getLogger(__name__)
 
 try:
     from scoreq_versa import Scoreq
@@ -77,13 +78,109 @@ def scoreq_ref(model, pred_x, gt_x, fs):
     return {"scoreq_ref": model.predict(test_path=pred_x, ref_path=gt_x)}
 
 
+class ScoreqMetric(BaseMetric):
+    """ScoreQ speech quality metric."""
+
+    def _setup(self):
+        self.mode = self.config.get("mode", "nr")
+        if self.mode not in {"nr", "ref"}:
+            raise ValueError(f"Invalid ScoreQ mode: {self.mode}")
+
+        self.data_domain = self.config.get("data_domain", "synthetic")
+        self.cache_dir = self.config.get(
+            "cache_dir", self.config.get("model_cache", "versa_cache/scoreq_pt-models")
+        )
+        self.use_gpu = self.config.get("use_gpu", False)
+
+        if self.mode == "ref":
+            self.model = scoreq_ref_setup(
+                data_domain=self.data_domain,
+                cache_dir=self.cache_dir,
+                use_gpu=self.use_gpu,
+            )
+        else:
+            self.model = scoreq_nr_setup(
+                data_domain=self.data_domain,
+                cache_dir=self.cache_dir,
+                use_gpu=self.use_gpu,
+            )
+
+    def compute(self, predictions, references=None, metadata=None):
+        if predictions is None:
+            raise ValueError("Predicted signal must be provided")
+        if self.mode == "ref" and references is None:
+            raise ValueError("Reference signal must be provided for ScoreQ ref mode")
+
+        fs = metadata.get("sample_rate", 16000) if metadata else 16000
+        pred_x = np.asarray(predictions)
+        if self.mode == "ref":
+            return scoreq_ref(self.model, pred_x, np.asarray(references), fs)
+        return scoreq_nr(self.model, pred_x, fs)
+
+    def get_metadata(self):
+        return _scoreq_metadata(f"scoreq_{self.mode}", self.mode)
+
+
+class ScoreqNrMetric(ScoreqMetric):
+    """Reference-less ScoreQ speech quality metric."""
+
+    def _setup(self):
+        self.config = {**self.config, "mode": self.config.get("mode", "nr")}
+        super()._setup()
+
+
+class ScoreqRefMetric(ScoreqMetric):
+    """Reference-based ScoreQ speech quality metric."""
+
+    def _setup(self):
+        self.config = {**self.config, "mode": self.config.get("mode", "ref")}
+        super()._setup()
+
+
+def _scoreq_metadata(name, mode):
+    requires_reference = mode == "ref"
+    description = (
+        "ScoreQ reference-based speech quality assessment"
+        if requires_reference
+        else "ScoreQ reference-less speech quality assessment"
+    )
+    return MetricMetadata(
+        name=name,
+        category=(
+            MetricCategory.DEPENDENT
+            if requires_reference
+            else MetricCategory.INDEPENDENT
+        ),
+        metric_type=MetricType.FLOAT,
+        requires_reference=requires_reference,
+        requires_text=False,
+        gpu_compatible=True,
+        auto_install=False,
+        dependencies=["scoreq_versa", "torch", "librosa", "numpy"],
+        description=description,
+        paper_reference="https://arxiv.org/pdf/2410.06675",
+        implementation_source="https://github.com/ftshijt/scoreq",
+    )
+
+
+def register_scoreq_metric(registry):
+    """Register ScoreQ reference-less and reference-based metrics."""
+    registry.register(
+        ScoreqNrMetric,
+        _scoreq_metadata("scoreq_nr", "nr"),
+        aliases=["scoreq", "scoreq_metric", "scoreq_no_ref"],
+    )
+    registry.register(
+        ScoreqRefMetric,
+        _scoreq_metadata("scoreq_ref", "ref"),
+        aliases=["scoreq_reference"],
+    )
+
+
 if __name__ == "__main__":
     a = np.random.random(16000)
     b = np.random.random(16000)
-    nr_model = scoreq_nr_setup(use_gpu=True)
-    ref_model = scoreq_ref_setup(use_gpu=True)
-    fs = 16000
-    metric_nr = scoreq_nr(nr_model, a, fs)
-    metric_ref = scoreq_ref(ref_model, a, b, fs)
-    print(metric_nr)
-    print(metric_ref)
+    metric_nr = ScoreqNrMetric({"use_gpu": True})
+    metric_ref = ScoreqRefMetric({"use_gpu": True})
+    print(metric_nr.compute(a, metadata={"sample_rate": 16000}))
+    print(metric_ref.compute(a, b, metadata={"sample_rate": 16000}))

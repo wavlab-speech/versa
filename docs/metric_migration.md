@@ -92,11 +92,6 @@ be updated as each metric is migrated.
 ### Utterance-Level Metrics
 
 Good early candidates:
-
-- `versa/utterance_metrics/vad.py`
-- `versa/utterance_metrics/scoreq.py`
-- `versa/utterance_metrics/sheet_ssqa.py`
-- `versa/utterance_metrics/vqscore.py`
 - `versa/utterance_metrics/visqol_score.py`
 
 Model-backed or broader migrations:
@@ -130,9 +125,13 @@ Model-backed or broader migrations:
 Use these as local references when migrating the remaining metrics:
 
 - `versa/utterance_metrics/speaking_rate.py`
+- `versa/utterance_metrics/scoreq.py`
+- `versa/utterance_metrics/sheet_ssqa.py`
 - `versa/utterance_metrics/stoi.py`
 - `versa/utterance_metrics/pesq_score.py`
 - `versa/utterance_metrics/squim.py`
+- `versa/utterance_metrics/vad.py`
+- `versa/utterance_metrics/vqscore.py`
 - `versa/sequence_metrics/signal_metric.py`
 
 ## Verification
