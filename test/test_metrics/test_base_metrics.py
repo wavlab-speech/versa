@@ -10,6 +10,7 @@ from versa.utterance_metrics.squim import (
     SquimRefMetric,
     register_squim_metric,
 )
+from versa.utterance_metrics.vad import VadMetric, register_vad_metric
 
 
 def _audio_pair(length=16000):
@@ -106,3 +107,49 @@ def test_pysepm_registration_and_missing_dependency(monkeypatch):
     monkeypatch.setattr("versa.utterance_metrics.pysepm.pysepm", None)
     with pytest.raises(ImportError, match="pysepm is not installed"):
         PysepmMetric()
+
+
+def test_vad_metric_class_returns_existing_key(monkeypatch):
+    calls = {}
+
+    def dummy_get_speech_ts(pred_x, model, **kwargs):
+        calls["pred_x"] = pred_x
+        calls["model"] = model
+        calls["kwargs"] = kwargs
+        return [{"start": 0.1, "end": 0.4}]
+
+    monkeypatch.setattr(
+        "versa.utterance_metrics.vad.torch.hub.load",
+        lambda **kwargs: ("dummy-model", (dummy_get_speech_ts, None, None, None)),
+    )
+
+    pred, _ = _audio_pair()
+    metric = VadMetric(
+        {
+            "threshold": 0.3,
+            "min_speech_duration_ms": 100,
+            "max_speech_duration_s": 10,
+            "min_silence_duration_ms": 200,
+            "speech_pad_ms": 40,
+        }
+    )
+    scores = metric.compute(pred, metadata={"sample_rate": 16000})
+
+    assert scores == {"vad_info": [{"start": 0.1, "end": 0.4}]}
+    assert calls["model"] == "dummy-model"
+    assert calls["kwargs"]["sampling_rate"] == 16000
+    assert calls["kwargs"]["threshold"] == 0.3
+    assert calls["kwargs"]["min_speech_duration_ms"] == 100
+    assert calls["kwargs"]["max_speech_duration_s"] == 10
+    assert calls["kwargs"]["min_silence_duration_ms"] == 200
+    assert calls["kwargs"]["speech_pad_ms"] == 40
+
+
+def test_register_vad_metric():
+    registry = MetricRegistry()
+
+    register_vad_metric(registry)
+
+    assert registry.get_metric("vad") is VadMetric
+    assert registry.get_metric("silero_vad") is VadMetric
+    assert registry.get_metadata("vad").requires_reference is False

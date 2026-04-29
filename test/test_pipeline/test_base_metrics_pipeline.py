@@ -5,6 +5,7 @@ from versa.scorer_shared import VersaScorer, find_files
 from versa.sequence_metrics.signal_metric import register_signal_metric
 from versa.utterance_metrics.squim import register_squim_metric
 from versa.utterance_metrics.stoi import register_stoi_metric
+from versa.utterance_metrics.vad import register_vad_metric
 
 
 def _sample_files():
@@ -85,3 +86,33 @@ def test_squim_pipeline_with_registry_and_mocked_models(monkeypatch):
     assert score_info[0]["torch_squim_pesq"] == 1.2
     assert score_info[0]["torch_squim_si_sdr"] == -3.4
     assert score_info[0]["torch_squim_mos"] == 4.2
+
+
+def test_vad_pipeline_with_registry_and_mocked_model(monkeypatch):
+    def dummy_get_speech_ts(pred_x, model, **kwargs):
+        return [{"start": 0.1, "end": 0.2}]
+
+    monkeypatch.setattr(
+        "versa.utterance_metrics.vad.torch.hub.load",
+        lambda **kwargs: ("dummy-model", (dummy_get_speech_ts, None, None, None)),
+    )
+
+    gen_files, _ = _sample_files()
+    registry = MetricRegistry()
+    register_vad_metric(registry)
+    scorer = VersaScorer(registry)
+    metric_suite = scorer.load_metrics(
+        [{"name": "vad"}],
+        use_gt=False,
+        use_gpu=False,
+    )
+
+    score_info = scorer.score_utterances(
+        gen_files,
+        metric_suite,
+        output_file=None,
+        io="soundfile",
+    )
+
+    assert score_info
+    assert score_info[0]["vad_info"] == [{"start": 0.1, "end": 0.2}]
