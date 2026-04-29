@@ -9,6 +9,8 @@ import librosa
 import numpy as np
 import torch
 
+from versa.definition import BaseMetric, MetricCategory, MetricMetadata, MetricType
+
 
 def sheet_ssqa_setup(
     model_tag="default",
@@ -48,7 +50,60 @@ def sheet_ssqa(model, pred_x, fs, use_gpu=False):
     return {"sheet_ssqa": model.predict(wav=pred_x)}
 
 
+class SheetSsqaMetric(BaseMetric):
+    """Sheet SSQA MOS prediction metric."""
+
+    def _setup(self):
+        self.model_tag = self.config.get("model_tag", "default")
+        self.model_path = self.config.get("model_path")
+        self.model_config = self.config.get("model_config")
+        self.cache_dir = self.config.get("cache_dir", "versa_cache")
+        self.use_gpu = self.config.get("use_gpu", False)
+        self.model = sheet_ssqa_setup(
+            model_tag=self.model_tag,
+            model_path=self.model_path,
+            model_config=self.model_config,
+            cache_dir=self.cache_dir,
+            use_gpu=self.use_gpu,
+        )
+
+    def compute(self, predictions, references=None, metadata=None):
+        if predictions is None:
+            raise ValueError("Predicted signal must be provided")
+
+        fs = metadata.get("sample_rate", 16000) if metadata else 16000
+        return sheet_ssqa(self.model, np.asarray(predictions), fs, use_gpu=self.use_gpu)
+
+    def get_metadata(self):
+        return _sheet_ssqa_metadata()
+
+
+def _sheet_ssqa_metadata():
+    return MetricMetadata(
+        name="sheet_ssqa",
+        category=MetricCategory.INDEPENDENT,
+        metric_type=MetricType.FLOAT,
+        requires_reference=False,
+        requires_text=False,
+        gpu_compatible=True,
+        auto_install=False,
+        dependencies=["torch", "librosa", "numpy"],
+        description="Sheet SSQA MOS prediction metric",
+        paper_reference="https://arxiv.org/abs/2411.03715",
+        implementation_source="https://github.com/unilight/sheet",
+    )
+
+
+def register_sheet_ssqa_metric(registry):
+    """Register Sheet SSQA with the registry."""
+    registry.register(
+        SheetSsqaMetric,
+        _sheet_ssqa_metadata(),
+        aliases=["sheet", "sheet_ssqa_metric"],
+    )
+
+
 if __name__ == "__main__":
     a = np.random.random(16000)
-    model = sheet_ssqa_setup()
-    print("metrics: {}".format(sheet_ssqa(model, a, 16000)))
+    metric = SheetSsqaMetric()
+    print("metrics: {}".format(metric.compute(a, metadata={"sample_rate": 16000})))

@@ -9,13 +9,14 @@ import logging
 import os
 import sys
 import warnings
-from typing import Dict, Any, Optional, Union
+from typing import Dict, Any, Union
 
 import librosa
 import numpy as np
 import torch
-import torch.nn as nn
 from urllib.request import urlretrieve
+
+from versa.definition import BaseMetric, MetricMetadata, MetricCategory, MetricType
 
 logger = logging.getLogger(__name__)
 
@@ -37,15 +38,6 @@ base_path = os.path.abspath(
 )
 sys.path.insert(0, base_path)
 
-from noresqa_model import NORESQA
-from noresqa_utils import (
-    feats_loading,
-    model_prediction_noresqa,
-    model_prediction_noresqa_mos,
-)
-
-NORESQA_AVAILABLE = True
-
 try:
     from noresqa_model import NORESQA
     from noresqa_utils import (
@@ -64,8 +56,6 @@ except ImportError:
     model_prediction_noresqa = None
     model_prediction_noresqa_mos = None
     NORESQA_AVAILABLE = False
-
-from versa.definition import BaseMetric, MetricMetadata, MetricCategory, MetricType
 
 
 class NoresqaNotAvailableError(RuntimeError):
@@ -93,11 +83,13 @@ class NoresqaMetric(BaseMetric):
         """Initialize NORESQA-specific components."""
         if not NORESQA_AVAILABLE:
             raise ImportError(
-                "noresqa is not installed. Please use `tools/install_noresqa.sh` to install"
+                "noresqa is not installed. "
+                "Please use `tools/install_noresqa.sh` to install"
             )
         if not FAIRSEQ_AVAILABLE:
             raise ImportError(
-                "fairseq is not installed. Please use `tools/install_fairseq.sh` to install"
+                "fairseq is not installed. "
+                "Please use `tools/install_fairseq.sh` to install"
             )
 
         self.model_tag = self.config.get("model_tag", "default")
@@ -247,7 +239,10 @@ class NoresqaMetric(BaseMetric):
             gpu_compatible=True,
             auto_install=False,
             dependencies=["fairseq", "torch", "librosa", "numpy"],
-            description=f"{description}: Non-matching reference based speech quality assessment",
+            description=(
+                f"{description}: Non-matching reference based speech quality "
+                "assessment"
+            ),
             paper_reference="https://arxiv.org/abs/2104.09411",
             implementation_source="https://github.com/facebookresearch/NORESQA",
         )
@@ -268,7 +263,10 @@ def register_noresqa_metric(registry):
             gpu_compatible=True,
             auto_install=False,
             dependencies=["fairseq", "torch", "librosa", "numpy"],
-            description=f"{description}: Non-matching reference based speech quality assessment",
+            description=(
+                f"{description}: Non-matching reference based speech quality "
+                "assessment"
+            ),
             paper_reference="https://arxiv.org/abs/2104.09411",
             implementation_source="https://github.com/facebookresearch/NORESQA",
         )

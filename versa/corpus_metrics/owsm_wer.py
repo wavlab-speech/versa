@@ -3,14 +3,22 @@
 # Copyright 2024 Jiatong Shi
 #  Apache 2.0  (http://www.apache.org/licenses/LICENSE-2.0)
 
+import importlib.util
 import logging
 
 import librosa
 import numpy as np
 import torch
-from espnet2.bin.s2t_inference import Speech2Text
-from espnet2.text.cleaner import TextCleaner
 from Levenshtein import opcodes
+
+from versa.definition import BaseMetric, MetricCategory, MetricMetadata, MetricType
+
+try:
+    from espnet2.bin.s2t_inference import Speech2Text
+    from espnet2.text.cleaner import TextCleaner
+except ImportError:
+    Speech2Text = None
+    TextCleaner = None
 
 TARGET_FS = 16000
 CHUNK_SIZE = 30  # seconds
@@ -22,6 +30,8 @@ def owsm_wer_setup(
     if model_tag == "default":
         model_tag = "espnet/owsm_v3.1_ebf"
     device = "cuda" if use_gpu else "cpu"
+    if Speech2Text is None or TextCleaner is None:
+        raise ImportError("owsm_wer requires espnet. Please install espnet and retry")
     model = Speech2Text.from_pretrained(
         model_tag=model_tag,
         device=device,
@@ -31,9 +41,7 @@ def owsm_wer_setup(
     )
     textcleaner = TextCleaner(text_cleaner)
     if "whisper" in text_cleaner:
-        try:
-            import whisper
-        except ImportError:
+        if importlib.util.find_spec("whisper") is None:
             logging.warning(
                 "Whipser-based cleaner is used but openai-whisper is not installed"
             )
@@ -94,8 +102,6 @@ def owsm_predict(
 
     # Detect language using the first 30s of speech
     if src_lang == "none":
-        from espnet2.bin.s2t_inference_language import Speech2Language as Speech2Lang
-
         # default 30 seconds chunk for owsm training
         src_lang = model(
             librosa.util.fix_length(speech, size=(TARGET_FS * CHUNK_SIZE))
@@ -124,7 +130,7 @@ def owsm_predict(
             text = "\n".join(text)
 
             return text
-        except:
+        except Exception:
             print(
                 "An exception occurred in long-form decoding. "
                 "Fall back to standard decoding (only first 30s)"
@@ -211,11 +217,70 @@ def owsm_levenshtein_metric(wer_utils, pred_x, ref_text, fs=16000):
     return ret
 
 
+class OwsmWerMetric(BaseMetric):
+    """OWSM ASR-based WER/CER edit counts."""
+
+    def _setup(self):
+        self.model_tag = self.config.get("model_tag", "default")
+        self.beam_size = self.config.get("beam_size", 5)
+        self.text_cleaner = self.config.get("text_cleaner", "whisper_basic")
+        self.use_gpu = self.config.get("use_gpu", True)
+        self.wer_utils = owsm_wer_setup(
+            model_tag=self.model_tag,
+            beam_size=self.beam_size,
+            text_cleaner=self.text_cleaner,
+            use_gpu=self.use_gpu,
+        )
+
+    def compute(self, predictions, references=None, metadata=None):
+        if predictions is None:
+            raise ValueError("Predicted signal must be provided")
+
+        metadata = metadata or {}
+        ref_text = metadata.get("text")
+        if ref_text is None and isinstance(references, str):
+            ref_text = references
+        if ref_text is None:
+            raise ValueError("Reference text must be provided")
+
+        fs = metadata.get("sample_rate", 16000)
+        return owsm_levenshtein_metric(
+            self.wer_utils,
+            np.asarray(predictions),
+            ref_text,
+            fs=fs,
+        )
+
+    def get_metadata(self):
+        return _owsm_wer_metadata()
+
+
+def _owsm_wer_metadata():
+    return MetricMetadata(
+        name="owsm_wer",
+        category=MetricCategory.NON_MATCH,
+        metric_type=MetricType.DICT,
+        requires_reference=False,
+        requires_text=True,
+        gpu_compatible=True,
+        auto_install=False,
+        dependencies=["espnet2", "Levenshtein", "librosa", "numpy", "torch"],
+        description="OWSM ASR-based WER and CER edit counts",
+        paper_reference="https://arxiv.org/abs/2309.13876",
+        implementation_source="https://github.com/espnet/espnet",
+    )
+
+
+def register_owsm_wer_metric(registry):
+    """Register OWSM WER with the registry."""
+    registry.register(
+        OwsmWerMetric,
+        _owsm_wer_metadata(),
+        aliases=["owsm_asr_wer", "owsm_wer_metric"],
+    )
+
+
 if __name__ == "__main__":
     a = np.random.random(16000)
-    wer_utils = owsm_wer_setup()
-    print(
-        "metrics: {}".format(
-            owsm_levenshtein_metric(wer_utils, a, "test a sentence.", 16000)
-        )
-    )
+    metric = OwsmWerMetric()
+    print(metric.compute(a, metadata={"sample_rate": 16000, "text": "test sentence"}))

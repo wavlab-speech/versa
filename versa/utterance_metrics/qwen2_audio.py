@@ -3,6 +3,8 @@
 # Copyright 2025 Jiatong Shi
 #  Apache 2.0  (http://www.apache.org/licenses/LICENSE-2.0)
 
+# flake8: noqa: E501
+
 """
 Speech Properties for Metadata Modeling
 
@@ -59,10 +61,12 @@ model's response.
 
 import copy
 import logging
-from typing import Dict, Optional, Any, Union
+from typing import Dict, Optional, Any
 
 import librosa
 import numpy as np
+
+from versa.definition import BaseMetric, MetricCategory, MetricMetadata, MetricType
 
 try:
     from transformers import AutoProcessor, Qwen2AudioForConditionalGeneration
@@ -444,6 +448,100 @@ qwen2_recording_quality_metric = create_metric_fn("recording_quality")
 qwen2_channel_type_metric = create_metric_fn("channel_type")
 
 qwen2_singing_technique_metric = create_metric_fn("singing_technique")
+
+
+class Qwen2AudioMetric(BaseMetric):
+    """Speech property extraction with Qwen2-Audio."""
+
+    metric_name = None
+
+    def _setup(self):
+        self.model_tag = self.config.get("model_tag", "default")
+        self.start_prompt = self.config.get(
+            "start_prompt",
+            (
+                "The following is a conversation with an AI assistant. "
+                "The assistant is helpful, honest, and harmless."
+            ),
+        )
+        self.metric_name = self.config.get("metric_name", self.metric_name)
+        if self.metric_name is None:
+            raise ValueError("metric_name must be provided")
+        self.prompt = self.config.get("prompt")
+        self.max_length = self.config.get("max_length", 1000)
+        self.qwen_utils = qwen2_model_setup(
+            model_tag=self.model_tag,
+            start_prompt=self.start_prompt,
+        )
+
+    def compute(self, predictions, references=None, metadata=None):
+        if predictions is None:
+            raise ValueError("Predicted signal must be provided")
+
+        fs = metadata.get("sample_rate", 16000) if metadata else 16000
+        prompt = self.prompt or DEFAULT_PROMPTS.get(self.metric_name)
+        response = qwen2_base_metric(
+            self.qwen_utils,
+            np.asarray(predictions),
+            fs=fs,
+            custom_prompt=prompt,
+            max_length=self.max_length,
+        )
+        return {f"qwen_{self.metric_name}": response}
+
+    def get_metadata(self):
+        return _qwen2_audio_metadata(self.registry_name())
+
+    @classmethod
+    def registry_name(cls):
+        return f"qwen2_audio_{cls.metric_name}" if cls.metric_name else "qwen2_audio"
+
+
+def _qwen2_audio_metadata(name):
+    return MetricMetadata(
+        name=name,
+        category=MetricCategory.INDEPENDENT,
+        metric_type=MetricType.STRING,
+        requires_reference=False,
+        requires_text=False,
+        gpu_compatible=True,
+        auto_install=False,
+        dependencies=["transformers", "librosa", "numpy"],
+        description="Speech property extraction with Qwen2-Audio",
+        paper_reference="https://arxiv.org/abs/2407.10759",
+        implementation_source="https://github.com/QwenLM/Qwen2-Audio",
+    )
+
+
+def _make_qwen2_metric_class(metric_name):
+    class _SpecificQwen2AudioMetric(Qwen2AudioMetric):
+        pass
+
+    _SpecificQwen2AudioMetric.metric_name = metric_name
+    class_name = "".join(part.title() for part in metric_name.split("_"))
+    _SpecificQwen2AudioMetric.__name__ = f"Qwen2Audio{class_name}Metric"
+    return _SpecificQwen2AudioMetric
+
+
+QWEN2_AUDIO_METRIC_CLASSES = {
+    metric_name: _make_qwen2_metric_class(metric_name)
+    for metric_name in DEFAULT_PROMPTS.keys()
+}
+
+
+def register_qwen2_audio_metric(registry):
+    """Register Qwen2-Audio speech property metrics with the registry."""
+    for metric_name, metric_class in QWEN2_AUDIO_METRIC_CLASSES.items():
+        registry_name = f"qwen2_audio_{metric_name}"
+        registry.register(
+            metric_class,
+            _qwen2_audio_metadata(registry_name),
+            aliases=[
+                f"qwen2_{metric_name}_metric",
+                f"qwen_{metric_name}",
+            ],
+        )
+
 
 if __name__ == "__main__":
     a = np.random.random(16000)

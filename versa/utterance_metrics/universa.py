@@ -8,14 +8,32 @@ import numpy as np
 import torch
 import librosa
 import soundfile
-from espnet2.bin.universa_inference import UniversaInference
 
+
+def _ensure_torchaudio_legacy_backend_api():
+    try:
+        import torchaudio
+    except ImportError:
+        return
+
+    if not hasattr(torchaudio, "set_audio_backend"):
+        torchaudio.set_audio_backend = lambda *args, **kwargs: None
+
+
+_ensure_torchaudio_legacy_backend_api()
+
+try:
+    from espnet2.bin.universa_inference import UniversaInference
+except ImportError:
+    UniversaInference = None
+
+from versa.definition import BaseMetric, MetricCategory, MetricMetadata, MetricType
 
 # Global model instances to avoid reloading
 _universa_models = {}
 
 
-def get_universa_model(model_type="noref"):
+def get_universa_model(model_type="noref", cache_dir=None):
     """
     Get or load Universa model instance.
 
@@ -32,18 +50,35 @@ def get_universa_model(model_type="noref"):
         "fullref": "espnet/universa-wavlm_base_urgent24_multi-metric_fullref",
     }
 
-    if model_type not in _universa_models:
+    if UniversaInference is None:
+        raise ImportError("universa requires espnet. Please install espnet and retry")
+
+    cache_key = (model_type, cache_dir)
+    if cache_key not in _universa_models:
         if model_type not in model_mapping:
             raise ValueError(
-                f"Unknown model_type: {model_type}. Choose from {list(model_mapping.keys())}"
+                f"Unknown model_type: {model_type}. "
+                f"Choose from {list(model_mapping.keys())}"
             )
 
         print(f"Loading Universa model: {model_mapping[model_type]}")
-        _universa_models[model_type] = UniversaInference.from_pretrained(
-            model_mapping[model_type]
-        )
+        if cache_dir is None:
+            _universa_models[cache_key] = UniversaInference.from_pretrained(
+                model_mapping[model_type]
+            )
+        else:
+            try:
+                from espnet_model_zoo.downloader import ModelDownloader
+            except ImportError:
+                raise ImportError(
+                    "universa requires espnet_model_zoo. Please install it and retry"
+                )
+            model_kwargs = ModelDownloader(cachedir=cache_dir).download_and_unpack(
+                model_mapping[model_type]
+            )
+            _universa_models[cache_key] = UniversaInference(**model_kwargs)
 
-    return _universa_models[model_type]
+    return _universa_models[cache_key]
 
 
 def audio_preprocess(audio_data, original_sr=None, target_sr=16000):
@@ -82,7 +117,7 @@ def audio_preprocess(audio_data, original_sr=None, target_sr=16000):
     return audio_tensor, audio_lengths
 
 
-def universa_metric_noref(audio_data, original_sr=None):
+def universa_metric_noref(audio_data, original_sr=None, cache_dir=None):
     """
     Universa no-reference quality assessment.
 
@@ -93,7 +128,7 @@ def universa_metric_noref(audio_data, original_sr=None):
     Returns:
         dict: Universa quality metrics with float values and 'universa_' prefix
     """
-    model = get_universa_model("noref")
+    model = get_universa_model("noref", cache_dir=cache_dir)
     audio, audio_lengths = audio_preprocess(audio_data, original_sr)
 
     with torch.no_grad():
@@ -112,7 +147,9 @@ def universa_metric_noref(audio_data, original_sr=None):
     return formatted_result
 
 
-def universa_metric_audioref(audio_data, ref_audio_data, original_sr=None, ref_sr=None):
+def universa_metric_audioref(
+    audio_data, ref_audio_data, original_sr=None, ref_sr=None, cache_dir=None
+):
     """
     Universa inference with audio reference.
 
@@ -125,7 +162,7 @@ def universa_metric_audioref(audio_data, ref_audio_data, original_sr=None, ref_s
     Returns:
         dict: Universa quality metrics with float values and 'universa_' prefix
     """
-    model = get_universa_model("audioref")
+    model = get_universa_model("audioref", cache_dir=cache_dir)
     audio, audio_lengths = audio_preprocess(audio_data, original_sr)
     ref_audio, ref_audio_lengths = audio_preprocess(ref_audio_data, ref_sr)
 
@@ -150,7 +187,7 @@ def universa_metric_audioref(audio_data, ref_audio_data, original_sr=None, ref_s
     return formatted_result
 
 
-def universa_metric_textref(audio_data, ref_text, original_sr=None):
+def universa_metric_textref(audio_data, ref_text, original_sr=None, cache_dir=None):
     """
     Universa inference with text reference.
 
@@ -162,7 +199,7 @@ def universa_metric_textref(audio_data, ref_text, original_sr=None):
     Returns:
         dict: Universa quality metrics with float values and 'universa_' prefix
     """
-    model = get_universa_model("textref")
+    model = get_universa_model("textref", cache_dir=cache_dir)
     audio, audio_lengths = audio_preprocess(audio_data, original_sr)
 
     with torch.no_grad():
@@ -182,7 +219,12 @@ def universa_metric_textref(audio_data, ref_text, original_sr=None):
 
 
 def universa_metric_fullref(
-    audio_data, ref_audio_data, ref_text, original_sr=None, ref_sr=None
+    audio_data,
+    ref_audio_data,
+    ref_text,
+    original_sr=None,
+    ref_sr=None,
+    cache_dir=None,
 ):
     """
     Universa inference with both audio and text reference.
@@ -197,7 +239,7 @@ def universa_metric_fullref(
     Returns:
         dict: Universa quality metrics with float values and 'universa_' prefix
     """
-    model = get_universa_model("fullref")
+    model = get_universa_model("fullref", cache_dir=cache_dir)
     audio, audio_lengths = audio_preprocess(audio_data, original_sr)
     ref_audio, ref_audio_lengths = audio_preprocess(ref_audio_data, ref_sr)
 
@@ -224,7 +266,12 @@ def universa_metric_fullref(
 
 
 def universa_metric(
-    audio_data, ref_audio=None, ref_text=None, original_sr=16000, ref_sr=None
+    audio_data,
+    ref_audio=None,
+    ref_text=None,
+    original_sr=16000,
+    ref_sr=None,
+    cache_dir=None,
 ):
     """
     Universal Universa metric function that automatically selects the appropriate model
@@ -243,17 +290,113 @@ def universa_metric(
     if ref_audio is not None and ref_text is not None:
         # Full reference (both audio and text)
         return universa_metric_fullref(
-            audio_data, ref_audio, ref_text, original_sr, ref_sr
+            audio_data, ref_audio, ref_text, original_sr, ref_sr, cache_dir=cache_dir
         )
     elif ref_audio is not None:
         # Audio reference only
-        return universa_metric_audioref(audio_data, ref_audio, original_sr, ref_sr)
+        return universa_metric_audioref(
+            audio_data, ref_audio, original_sr, ref_sr, cache_dir=cache_dir
+        )
     elif ref_text is not None:
         # Text reference only
-        return universa_metric_textref(audio_data, ref_text, original_sr)
+        return universa_metric_textref(
+            audio_data, ref_text, original_sr, cache_dir=cache_dir
+        )
     else:
         # No reference
-        return universa_metric_noref(audio_data, original_sr)
+        return universa_metric_noref(audio_data, original_sr, cache_dir=cache_dir)
+
+
+class UniversaMetric(BaseMetric):
+    """Uni-VERSA speech assessment metric."""
+
+    def _setup(self):
+        self.model_type = self.config.get("model_type", "auto")
+        self.cache_dir = self.config.get("cache_dir")
+
+    def compute(self, predictions, references=None, metadata=None):
+        if predictions is None:
+            raise ValueError("Predicted signal must be provided")
+
+        metadata = metadata or {}
+        fs = metadata.get("sample_rate", 16000)
+        ref_sr = metadata.get("reference_sample_rate", fs)
+        ref_text = metadata.get("text")
+        if isinstance(references, str):
+            ref_text = references
+            ref_audio = None
+        else:
+            ref_audio = references
+
+        model_type = self.model_type
+        if model_type == "noref":
+            return universa_metric_noref(predictions, fs, cache_dir=self.cache_dir)
+        if model_type == "audioref":
+            if ref_audio is None:
+                raise ValueError("Audio reference must be provided")
+            return universa_metric_audioref(
+                predictions, ref_audio, fs, ref_sr, cache_dir=self.cache_dir
+            )
+        if model_type == "textref":
+            if ref_text is None:
+                raise ValueError("Text reference must be provided")
+            return universa_metric_textref(
+                predictions, ref_text, fs, cache_dir=self.cache_dir
+            )
+        if model_type == "fullref":
+            if ref_audio is None:
+                raise ValueError("Audio reference must be provided")
+            if ref_text is None:
+                raise ValueError("Text reference must be provided")
+            return universa_metric_fullref(
+                predictions,
+                ref_audio,
+                ref_text,
+                fs,
+                ref_sr,
+                cache_dir=self.cache_dir,
+            )
+
+        metric_kwargs = {
+            "ref_audio": ref_audio,
+            "ref_text": ref_text,
+            "original_sr": fs,
+            "ref_sr": ref_sr,
+        }
+        if self.cache_dir is not None:
+            metric_kwargs["cache_dir"] = self.cache_dir
+        return universa_metric(predictions, **metric_kwargs)
+
+    def get_metadata(self):
+        return _universa_metadata()
+
+
+def _universa_metadata():
+    return MetricMetadata(
+        name="universa",
+        category=MetricCategory.INDEPENDENT,
+        metric_type=MetricType.DICT,
+        requires_reference=False,
+        requires_text=False,
+        gpu_compatible=True,
+        auto_install=False,
+        dependencies=["espnet2", "torch", "librosa", "numpy", "soundfile"],
+        description="Uni-VERSA speech assessment metrics",
+        paper_reference="https://arxiv.org/abs/2505.20741",
+        implementation_source=(
+            "https://huggingface.co/collections/espnet/"
+            "universa-6834e7c0a28225bffb6e2526"
+        ),
+    )
+
+
+def register_universa_metric(registry):
+    """Register Uni-VERSA with the registry."""
+    registry.register(
+        UniversaMetric,
+        _universa_metadata(),
+        aliases=["uni_versa", "universal_speech_assessment"],
+    )
 
 
 # Debug code

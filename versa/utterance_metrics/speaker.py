@@ -3,16 +3,23 @@
 # Copyright 2024 Jiatong Shi
 #  Apache 2.0  (http://www.apache.org/licenses/LICENSE-2.0)
 
-import os
-
 import librosa
 import numpy as np
-from espnet2.bin.spk_inference import Speech2Embedding
+
+try:
+    from espnet2.bin.spk_inference import Speech2Embedding
+except ImportError:
+    Speech2Embedding = None
+
+from versa.definition import BaseMetric, MetricCategory, MetricMetadata, MetricType
 
 
 def speaker_model_setup(
     model_tag="default", model_path=None, model_config=None, use_gpu=False
 ):
+    if Speech2Embedding is None:
+        raise ImportError("speaker requires espnet. Please install espnet and retry")
+
     if use_gpu:
         device = "cuda"
     else:
@@ -42,8 +49,63 @@ def speaker_metric(model, pred_x, gt_x, fs):
     return {"spk_similarity": similarity}
 
 
+class SpeakerMetric(BaseMetric):
+    """Speaker embedding cosine similarity."""
+
+    def _setup(self):
+        self.model_tag = self.config.get("model_tag", "default")
+        self.model_path = self.config.get("model_path")
+        self.model_config = self.config.get("model_config")
+        self.use_gpu = self.config.get("use_gpu", False)
+        self.model = speaker_model_setup(
+            model_tag=self.model_tag,
+            model_path=self.model_path,
+            model_config=self.model_config,
+            use_gpu=self.use_gpu,
+        )
+
+    def compute(self, predictions, references=None, metadata=None):
+        if predictions is None:
+            raise ValueError("Predicted signal must be provided")
+        if references is None:
+            raise ValueError("Reference signal must be provided")
+
+        fs = metadata.get("sample_rate", 16000) if metadata else 16000
+        return speaker_metric(
+            self.model, np.asarray(predictions), np.asarray(references), fs
+        )
+
+    def get_metadata(self):
+        return _speaker_metadata()
+
+
+def _speaker_metadata():
+    return MetricMetadata(
+        name="speaker",
+        category=MetricCategory.NON_MATCH,
+        metric_type=MetricType.FLOAT,
+        requires_reference=True,
+        requires_text=False,
+        gpu_compatible=True,
+        auto_install=False,
+        dependencies=["espnet2", "librosa", "numpy"],
+        description="Speaker embedding cosine similarity",
+        paper_reference="https://arxiv.org/abs/2401.17230",
+        implementation_source="https://github.com/espnet/espnet",
+    )
+
+
+def register_speaker_metric(registry):
+    """Register speaker similarity with the registry."""
+    registry.register(
+        SpeakerMetric,
+        _speaker_metadata(),
+        aliases=["spk_similarity", "speaker_similarity"],
+    )
+
+
 if __name__ == "__main__":
     a = np.random.random(16000)
     b = np.random.random(16000)
-    model = speaker_model_setup()
-    print("metrics: {}".format(speaker_metric(model, a, b, 16000)))
+    metric = SpeakerMetric()
+    print("metrics: {}".format(metric.compute(a, b, metadata={"sample_rate": 16000})))
