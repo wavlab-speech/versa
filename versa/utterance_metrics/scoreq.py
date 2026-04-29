@@ -4,15 +4,68 @@
 #  Apache 2.0  (http://www.apache.org/licenses/LICENSE-2.0)
 
 import logging
+import sys
+import ast
 
 import librosa
 import numpy as np
+from omegaconf import OmegaConf
 
 from versa.definition import BaseMetric, MetricCategory, MetricMetadata, MetricType
 
 logger = logging.getLogger(__name__)
 
 try:
+    import fairseq.logging.meters as fairseq_meters
+    import fairseq.checkpoint_utils as fairseq_checkpoint_utils
+    import fairseq.dataclass.utils as fairseq_dataclass_utils
+
+    sys.modules.setdefault("fairseq.meters", fairseq_meters)
+
+    def _legacy_fairseq_args_to_cfg(args):
+        values = dict(vars(args))
+        for key in ("latent_temp",):
+            value = values.get(key)
+            if isinstance(value, str):
+                try:
+                    parsed = ast.literal_eval(value)
+                except (SyntaxError, ValueError):
+                    continue
+                values[key] = list(parsed) if isinstance(parsed, tuple) else parsed
+
+        generation = dict(values)
+        generation.setdefault("print_alignment", None)
+
+        def section(name, source_key=None):
+            data = dict(values)
+            data["_name"] = values.get(source_key or name)
+            return data
+
+        return OmegaConf.create(
+            {
+                "common": dict(values),
+                "common_eval": dict(values),
+                "distributed_training": dict(values),
+                "dataset": dict(values),
+                "optimization": dict(values),
+                "checkpoint": dict(values),
+                "bmuf": dict(values),
+                "generation": generation,
+                "eval_lm": dict(values),
+                "interactive": dict(values),
+                "ema": dict(values),
+                "task": section("task"),
+                "model": section("model", "arch"),
+                "optimizer": section("optimizer"),
+                "lr_scheduler": section("lr_scheduler"),
+                "criterion": section("criterion"),
+            }
+        )
+
+    fairseq_dataclass_utils.convert_namespace_to_omegaconf = _legacy_fairseq_args_to_cfg
+    fairseq_checkpoint_utils.convert_namespace_to_omegaconf = (
+        _legacy_fairseq_args_to_cfg
+    )
     from scoreq_versa import Scoreq
 except ImportError:
     logger.info(

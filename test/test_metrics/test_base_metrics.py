@@ -2,24 +2,53 @@ import numpy as np
 import pytest
 import torch
 
+from versa.corpus_metrics.espnet_wer import (
+    EspnetWerMetric,
+    register_espnet_wer_metric,
+)
+from versa.corpus_metrics.owsm_wer import OwsmWerMetric, register_owsm_wer_metric
+from versa.corpus_metrics.whisper_wer import (
+    WhisperWerMetric,
+    register_whisper_wer_metric,
+)
 from versa.definition import MetricRegistry
+from versa.sequence_metrics.mcd_f0 import McdF0Metric, register_mcd_f0_metric
 from versa.sequence_metrics.signal_metric import SignalMetric, register_signal_metric
+from versa.sequence_metrics.warpq import WarpqMetric, register_warpq_metric
+from versa.utterance_metrics.log_wmse import LogWmseMetric, register_log_wmse_metric
+from versa.utterance_metrics.pseudo_mos import (
+    PseudoMosMetric,
+    register_pseudo_mos_metric,
+)
 from versa.utterance_metrics.pysepm import PysepmMetric, register_pysepm_metric
+from versa.utterance_metrics.qwen2_audio import (
+    QWEN2_AUDIO_METRIC_CLASSES,
+    register_qwen2_audio_metric,
+)
+from versa.utterance_metrics.qwen_omni import (
+    QWEN_OMNI_METRIC_CLASSES,
+    register_qwen_omni_metric,
+)
 from versa.utterance_metrics.scoreq import (
     ScoreqNrMetric,
     ScoreqRefMetric,
     register_scoreq_metric,
 )
+from versa.utterance_metrics.se_snr import SeSnrMetric, register_se_snr_metric
 from versa.utterance_metrics.sheet_ssqa import (
     SheetSsqaMetric,
     register_sheet_ssqa_metric,
 )
+from versa.utterance_metrics.singer import SingerMetric, register_singer_metric
+from versa.utterance_metrics.speaker import SpeakerMetric, register_speaker_metric
 from versa.utterance_metrics.squim import (
     SquimNoRefMetric,
     SquimRefMetric,
     register_squim_metric,
 )
 from versa.utterance_metrics.vad import VadMetric, register_vad_metric
+from versa.utterance_metrics.universa import UniversaMetric, register_universa_metric
+from versa.utterance_metrics.visqol_score import VisqolMetric, register_visqol_metric
 from versa.utterance_metrics.vqscore import VqscoreMetric, register_vqscore_metric
 
 
@@ -40,6 +69,243 @@ def test_signal_metric_class_returns_existing_keys():
     assert all(isinstance(value, (float, np.floating)) for value in scores.values())
 
 
+def test_mcd_f0_metric_class_returns_existing_keys(monkeypatch):
+    calls = {}
+
+    def dummy_mcd_f0(pred_x, gt_x, fs, f0min, f0max, **kwargs):
+        calls["fs"] = fs
+        calls["f0min"] = f0min
+        calls["f0max"] = f0max
+        calls["kwargs"] = kwargs
+        return {"mcd": 1.2, "f0rmse": 3.4, "f0corr": 0.5}
+
+    monkeypatch.setattr(
+        "versa.sequence_metrics.mcd_f0._ensure_mcd_f0_dependencies", lambda: None
+    )
+    monkeypatch.setattr("versa.sequence_metrics.mcd_f0.mcd_f0", dummy_mcd_f0)
+
+    pred, ref = _audio_pair()
+    metric = McdF0Metric({"f0min": 50, "f0max": 700, "dtw": True})
+    scores = metric.compute(pred, ref, metadata={"sample_rate": 22050})
+
+    assert scores == {"mcd": 1.2, "f0rmse": 3.4, "f0corr": 0.5}
+    assert calls["fs"] == 22050
+    assert calls["f0min"] == 50
+    assert calls["f0max"] == 700
+    assert calls["kwargs"]["dtw"] is True
+
+
+def test_register_mcd_f0_metric():
+    registry = MetricRegistry()
+
+    register_mcd_f0_metric(registry)
+
+    assert registry.get_metric("mcd_f0") is McdF0Metric
+    assert registry.get_metric("mcd") is McdF0Metric
+    assert registry.get_metadata("mcd_f0").requires_reference is True
+
+
+def test_mcd_f0_missing_dependency(monkeypatch):
+    monkeypatch.setattr(
+        "versa.sequence_metrics.mcd_f0._ensure_mcd_f0_dependencies",
+        lambda: (_ for _ in ()).throw(ImportError("mcd_f0 requires pysptk")),
+    )
+
+    with pytest.raises(ImportError, match="mcd_f0 requires"):
+        McdF0Metric()
+
+
+def test_warpq_metric_class_returns_existing_key(monkeypatch):
+    calls = {}
+
+    class DummyWarpqModel:
+        args = {"sr": 16000}
+
+    def dummy_warpq_setup(**kwargs):
+        calls["setup"] = kwargs
+        return DummyWarpqModel()
+
+    def dummy_warpq(model, pred_x, gt_x, fs=8000):
+        calls["compute_fs"] = fs
+        return {"warpq": 3.8}
+
+    monkeypatch.setattr("versa.sequence_metrics.warpq.warpq_setup", dummy_warpq_setup)
+    monkeypatch.setattr("versa.sequence_metrics.warpq.warpq", dummy_warpq)
+
+    pred, ref = _audio_pair()
+    metric = WarpqMetric({"fs": 16000, "n_mfcc": 20, "apply_vad": True})
+    scores = metric.compute(pred, ref, metadata={"sample_rate": 22050})
+
+    assert scores == {"warpq": 3.8}
+    assert calls["setup"]["fs"] == 16000
+    assert calls["setup"]["n_mfcc"] == 20
+    assert calls["setup"]["apply_vad"] is True
+    assert calls["compute_fs"] == 22050
+
+
+def test_register_warpq_metric():
+    registry = MetricRegistry()
+
+    register_warpq_metric(registry)
+
+    assert registry.get_metric("warpq") is WarpqMetric
+    assert registry.get_metric("warp_q") is WarpqMetric
+    assert registry.get_metadata("warpq").requires_reference is True
+
+
+def test_warpq_missing_dependency(monkeypatch):
+    monkeypatch.setattr("versa.sequence_metrics.warpq.warpqMetric", None)
+
+    with pytest.raises(ImportError, match="Please install WARP-Q"):
+        WarpqMetric()
+
+
+def test_warpq_resamples_with_keyword_sample_rates(monkeypatch):
+    from types import SimpleNamespace
+
+    import versa.sequence_metrics.warpq as warpq_module
+
+    calls = []
+
+    class DummyWarpqModel:
+        args = {"sr": 8000}
+
+        def evaluate_versa(self, gt_x, pred_x):
+            calls.append(("evaluate", gt_x.shape[0], pred_x.shape[0]))
+            return 2.5
+
+    def dummy_resample(audio, *, orig_sr, target_sr):
+        calls.append(("resample", orig_sr, target_sr))
+        return audio[:2]
+
+    monkeypatch.setattr(
+        warpq_module,
+        "librosa",
+        SimpleNamespace(resample=dummy_resample),
+    )
+
+    scores = warpq_module.warpq(DummyWarpqModel(), np.arange(4), np.arange(4), fs=16000)
+
+    assert scores == {"warpq": 2.5}
+    assert calls == [
+        ("resample", 16000, 8000),
+        ("resample", 16000, 8000),
+        ("evaluate", 2, 2),
+    ]
+
+
+def test_espnet_wer_metric_class_uses_reference_text(monkeypatch):
+    calls = {}
+
+    monkeypatch.setattr(
+        "versa.corpus_metrics.espnet_wer.espnet_wer_setup",
+        lambda **kwargs: {"model": "dummy", "beam_size": kwargs["beam_size"]},
+    )
+
+    def dummy_metric(wer_utils, pred_x, ref_text, fs=16000):
+        calls["wer_utils"] = wer_utils
+        calls["ref_text"] = ref_text
+        calls["fs"] = fs
+        return {"espnet_hyp_text": "hello", "espnet_wer_equal": 1}
+
+    monkeypatch.setattr(
+        "versa.corpus_metrics.espnet_wer.espnet_levenshtein_metric",
+        dummy_metric,
+    )
+
+    pred, _ = _audio_pair()
+    metric = EspnetWerMetric({"beam_size": 7})
+    scores = metric.compute(pred, metadata={"sample_rate": 22050, "text": "hello"})
+
+    assert scores == {"espnet_hyp_text": "hello", "espnet_wer_equal": 1}
+    assert calls["wer_utils"]["beam_size"] == 7
+    assert calls["ref_text"] == "hello"
+    assert calls["fs"] == 22050
+
+
+def test_owsm_wer_metric_class_uses_reference_text(monkeypatch):
+    calls = {}
+
+    monkeypatch.setattr(
+        "versa.corpus_metrics.owsm_wer.owsm_wer_setup",
+        lambda **kwargs: {"model": "dummy", "beam_size": kwargs["beam_size"]},
+    )
+
+    def dummy_metric(wer_utils, pred_x, ref_text, fs=16000):
+        calls["ref_text"] = ref_text
+        calls["fs"] = fs
+        return {"owsm_hyp_text": "hello", "owsm_wer_equal": 1}
+
+    monkeypatch.setattr(
+        "versa.corpus_metrics.owsm_wer.owsm_levenshtein_metric",
+        dummy_metric,
+    )
+
+    pred, _ = _audio_pair()
+    metric = OwsmWerMetric()
+    scores = metric.compute(pred, references="hello", metadata={"sample_rate": 16000})
+
+    assert scores == {"owsm_hyp_text": "hello", "owsm_wer_equal": 1}
+    assert calls["ref_text"] == "hello"
+    assert calls["fs"] == 16000
+
+
+def test_whisper_wer_metric_class_uses_cached_text(monkeypatch):
+    calls = {}
+
+    monkeypatch.setattr(
+        "versa.corpus_metrics.whisper_wer.whisper_wer_setup",
+        lambda **kwargs: {"model": "dummy", "beam_size": kwargs["beam_size"]},
+    )
+
+    def dummy_metric(wer_utils, pred_x, ref_text, fs=16000, cache_pred_text=None):
+        calls["ref_text"] = ref_text
+        calls["cache_pred_text"] = cache_pred_text
+        return {"whisper_hyp_text": cache_pred_text, "whisper_wer_equal": 1}
+
+    monkeypatch.setattr(
+        "versa.corpus_metrics.whisper_wer.whisper_levenshtein_metric",
+        dummy_metric,
+    )
+
+    pred, _ = _audio_pair()
+    metric = WhisperWerMetric()
+    scores = metric.compute(
+        pred,
+        metadata={
+            "sample_rate": 16000,
+            "text": "hello",
+            "general_cache": {"whisper_hyp_text": "cached hello"},
+        },
+    )
+
+    assert scores == {"whisper_hyp_text": "cached hello", "whisper_wer_equal": 1}
+    assert calls["ref_text"] == "hello"
+    assert calls["cache_pred_text"] == "cached hello"
+
+
+def test_register_wer_metrics():
+    registry = MetricRegistry()
+
+    register_espnet_wer_metric(registry)
+    register_owsm_wer_metric(registry)
+    register_whisper_wer_metric(registry)
+
+    assert registry.get_metric("espnet_wer") is EspnetWerMetric
+    assert registry.get_metric("owsm_wer") is OwsmWerMetric
+    assert registry.get_metric("whisper_wer") is WhisperWerMetric
+    assert registry.get_metadata("espnet_wer").requires_text is True
+    assert registry.get_metadata("owsm_wer").requires_text is True
+    assert registry.get_metadata("whisper_wer").requires_text is True
+
+
+def test_whisper_wer_missing_dependency(monkeypatch):
+    monkeypatch.setattr("versa.corpus_metrics.whisper_wer.whisper", None)
+
+    with pytest.raises(RuntimeError, match="openai-whisper is not installed"):
+        WhisperWerMetric()
+
+
 def test_register_signal_metric():
     registry = MetricRegistry()
 
@@ -48,6 +314,401 @@ def test_register_signal_metric():
     assert registry.get_metric("signal_metric") is SignalMetric
     assert registry.get_metric("signal") is SignalMetric
     assert registry.get_metadata("signal_metric").requires_reference is True
+
+
+def test_se_snr_metric_class_returns_existing_keys(monkeypatch):
+    calls = {}
+
+    class DummySeModel:
+        pass
+
+    def dummy_setup(**kwargs):
+        calls["setup"] = kwargs
+        return DummySeModel()
+
+    def dummy_se_snr(model, pred_x, fs):
+        calls["model"] = model
+        calls["pred_x"] = pred_x
+        calls["fs"] = fs
+        return {
+            "se_sdr": 1.0,
+            "se_sar": 2.0,
+            "se_si_snr": 3.0,
+            "se_ci_sdr": 4.0,
+        }
+
+    monkeypatch.setattr("versa.utterance_metrics.se_snr.se_snr_setup", dummy_setup)
+    monkeypatch.setattr("versa.utterance_metrics.se_snr.se_snr", dummy_se_snr)
+
+    pred, _ = _audio_pair()
+    metric = SeSnrMetric({"model_tag": "test-tag", "use_gpu": True})
+    scores = metric.compute(pred, metadata={"sample_rate": 22050})
+
+    assert scores == {
+        "se_sdr": 1.0,
+        "se_sar": 2.0,
+        "se_si_snr": 3.0,
+        "se_ci_sdr": 4.0,
+    }
+    assert calls["setup"]["model_tag"] == "test-tag"
+    assert calls["setup"]["use_gpu"] is True
+    assert calls["fs"] == 22050
+
+
+def test_register_se_snr_metric():
+    registry = MetricRegistry()
+
+    register_se_snr_metric(registry)
+
+    assert registry.get_metric("se_snr") is SeSnrMetric
+    assert registry.get_metric("se_snr_metric") is SeSnrMetric
+    assert registry.get_metadata("se_snr").requires_reference is False
+
+
+def test_se_snr_missing_dependency(monkeypatch):
+    monkeypatch.setattr("versa.utterance_metrics.se_snr.SeparateSpeech", None)
+
+    with pytest.raises(ImportError, match="se_snr requires espnet"):
+        SeSnrMetric()
+
+
+def test_speaker_metric_class_returns_existing_key(monkeypatch):
+    calls = {}
+
+    class DummySpeakerModel:
+        pass
+
+    def dummy_setup(**kwargs):
+        calls["setup"] = kwargs
+        return DummySpeakerModel()
+
+    def dummy_speaker_metric(model, pred_x, gt_x, fs):
+        calls["model"] = model
+        calls["fs"] = fs
+        return {"spk_similarity": 0.75}
+
+    monkeypatch.setattr(
+        "versa.utterance_metrics.speaker.speaker_model_setup", dummy_setup
+    )
+    monkeypatch.setattr(
+        "versa.utterance_metrics.speaker.speaker_metric", dummy_speaker_metric
+    )
+
+    pred, ref = _audio_pair()
+    metric = SpeakerMetric({"model_tag": "test-speaker", "use_gpu": True})
+    scores = metric.compute(pred, ref, metadata={"sample_rate": 22050})
+
+    assert scores == {"spk_similarity": 0.75}
+    assert calls["setup"]["model_tag"] == "test-speaker"
+    assert calls["setup"]["use_gpu"] is True
+    assert calls["fs"] == 22050
+
+
+def test_register_speaker_metric():
+    registry = MetricRegistry()
+
+    register_speaker_metric(registry)
+
+    assert registry.get_metric("speaker") is SpeakerMetric
+    assert registry.get_metric("spk_similarity") is SpeakerMetric
+    assert registry.get_metadata("speaker").requires_reference is True
+
+
+def test_speaker_missing_dependency(monkeypatch):
+    monkeypatch.setattr("versa.utterance_metrics.speaker.Speech2Embedding", None)
+
+    with pytest.raises(ImportError, match="speaker requires espnet"):
+        SpeakerMetric()
+
+
+def test_singer_metric_class_returns_existing_key(monkeypatch):
+    calls = {}
+
+    class DummySingerModel:
+        pass
+
+    def dummy_setup(**kwargs):
+        calls["setup"] = kwargs
+        return DummySingerModel()
+
+    def dummy_singer_metric(model, pred_x, gt_x, fs, target_sr=44100):
+        calls["model"] = model
+        calls["fs"] = fs
+        calls["target_sr"] = target_sr
+        return {"singer_similarity": 0.5}
+
+    monkeypatch.setattr(
+        "versa.utterance_metrics.singer.singer_model_setup", dummy_setup
+    )
+    monkeypatch.setattr(
+        "versa.utterance_metrics.singer.singer_metric", dummy_singer_metric
+    )
+
+    pred, ref = _audio_pair()
+    metric = SingerMetric({"model_name": "contrastive", "target_sr": 48000})
+    scores = metric.compute(pred, ref, metadata={"sample_rate": 22050})
+
+    assert scores == {"singer_similarity": 0.5}
+    assert calls["setup"]["model_name"] == "contrastive"
+    assert calls["fs"] == 22050
+    assert calls["target_sr"] == 48000
+
+
+def test_register_singer_metric():
+    registry = MetricRegistry()
+
+    register_singer_metric(registry)
+
+    assert registry.get_metric("singer") is SingerMetric
+    assert registry.get_metric("singer_similarity") is SingerMetric
+    assert registry.get_metadata("singer").requires_reference is True
+
+
+def test_singer_missing_dependency(monkeypatch):
+    monkeypatch.setattr(
+        "versa.utterance_metrics.singer.singer_model_setup",
+        lambda **kwargs: (_ for _ in ()).throw(
+            ImportError("Please run `install_ssl-singer-identity.sh` in tools.")
+        ),
+    )
+
+    with pytest.raises(ImportError, match="install_ssl-singer-identity"):
+        SingerMetric()
+
+
+def test_log_wmse_metric_class_returns_existing_key(monkeypatch):
+    calls = {}
+
+    class DummyLogWMSE:
+        def __init__(self, **kwargs):
+            calls["setup"] = kwargs
+
+        def __call__(self, unproc_x, proc_x, gt_x):
+            calls["unproc_shape"] = tuple(unproc_x.shape)
+            calls["proc_shape"] = tuple(proc_x.shape)
+            calls["gt_shape"] = tuple(gt_x.shape)
+            return torch.tensor([0.33])
+
+    monkeypatch.setattr("versa.utterance_metrics.log_wmse.LogWMSE", DummyLogWMSE)
+
+    pred, ref = _audio_pair()
+    unprocessed = pred * 0.5
+    metric = LogWmseMetric({"audio_length": 2.0, "sample_rate": 48000})
+    scores = metric.compute(
+        pred,
+        ref,
+        metadata={"sample_rate": 16000, "unprocessed": unprocessed},
+    )
+
+    assert scores == {"log_wmse": pytest.approx(0.33)}
+    assert calls["setup"]["audio_length"] == 2.0
+    assert calls["setup"]["sample_rate"] == 48000
+    assert calls["unproc_shape"] == (1, 1, pred.shape[0])
+    assert calls["proc_shape"] == (1, 1, 1, pred.shape[0])
+    assert calls["gt_shape"] == (1, 1, 1, ref.shape[0])
+
+
+def test_register_log_wmse_metric():
+    registry = MetricRegistry()
+
+    register_log_wmse_metric(registry)
+
+    assert registry.get_metric("log_wmse") is LogWmseMetric
+    assert registry.get_metric("log-wmse") is LogWmseMetric
+    assert registry.get_metadata("log_wmse").requires_reference is True
+
+
+def test_log_wmse_missing_dependency(monkeypatch):
+    monkeypatch.setattr("versa.utterance_metrics.log_wmse.LogWMSE", None)
+
+    with pytest.raises(ImportError, match="torch-log-wmse"):
+        LogWmseMetric()
+
+
+def test_pseudo_mos_metric_class_returns_existing_keys(monkeypatch):
+    calls = {}
+
+    def dummy_setup(predictor_types, predictor_args, cache_dir, use_gpu):
+        calls["setup"] = {
+            "predictor_types": predictor_types,
+            "predictor_args": predictor_args,
+            "cache_dir": cache_dir,
+            "use_gpu": use_gpu,
+        }
+        return {"utmos": object()}, {"utmos": 16000}
+
+    def dummy_metric(pred, fs, predictor_dict, predictor_fs, use_gpu=False):
+        calls["fs"] = fs
+        calls["use_gpu"] = use_gpu
+        return {"utmos": 4.2}
+
+    monkeypatch.setattr(
+        "versa.utterance_metrics.pseudo_mos.pseudo_mos_setup", dummy_setup
+    )
+    monkeypatch.setattr(
+        "versa.utterance_metrics.pseudo_mos.pseudo_mos_metric", dummy_metric
+    )
+
+    pred, _ = _audio_pair()
+    metric = PseudoMosMetric(
+        {
+            "predictor_types": ["utmos"],
+            "predictor_args": {"utmos": {"fs": 16000}},
+            "cache_dir": "cache",
+            "use_gpu": True,
+        }
+    )
+    scores = metric.compute(pred, metadata={"sample_rate": 22050})
+
+    assert scores == {"utmos": 4.2}
+    assert calls["setup"]["predictor_types"] == ["utmos"]
+    assert calls["setup"]["cache_dir"] == "cache"
+    assert calls["setup"]["use_gpu"] is True
+    assert calls["fs"] == 22050
+    assert calls["use_gpu"] is True
+
+
+def test_register_pseudo_mos_metric():
+    registry = MetricRegistry()
+
+    register_pseudo_mos_metric(registry)
+
+    assert registry.get_metric("pseudo_mos") is PseudoMosMetric
+    assert registry.get_metric("utmos") is PseudoMosMetric
+    assert registry.get_metadata("pseudo_mos").requires_reference is False
+
+
+def test_universa_metric_class_auto_selects_references(monkeypatch):
+    calls = {}
+
+    def dummy_universa_metric(
+        audio_data, ref_audio=None, ref_text=None, original_sr=16000, ref_sr=None
+    ):
+        calls["ref_audio"] = ref_audio
+        calls["ref_text"] = ref_text
+        calls["original_sr"] = original_sr
+        calls["ref_sr"] = ref_sr
+        return {"universa_mos": 3.5}
+
+    monkeypatch.setattr(
+        "versa.utterance_metrics.universa.universa_metric", dummy_universa_metric
+    )
+
+    pred, ref = _audio_pair()
+    metric = UniversaMetric()
+    scores = metric.compute(
+        pred,
+        ref,
+        metadata={"sample_rate": 22050, "text": "hello"},
+    )
+
+    assert scores == {"universa_mos": 3.5}
+    assert calls["ref_audio"] is ref
+    assert calls["ref_text"] == "hello"
+    assert calls["original_sr"] == 22050
+
+
+def test_register_universa_metric():
+    registry = MetricRegistry()
+
+    register_universa_metric(registry)
+
+    assert registry.get_metric("universa") is UniversaMetric
+    assert registry.get_metric("uni_versa") is UniversaMetric
+    assert registry.get_metadata("universa").requires_reference is False
+
+
+def test_universa_missing_dependency(monkeypatch):
+    monkeypatch.setattr("versa.utterance_metrics.universa.UniversaInference", None)
+
+    with pytest.raises(ImportError, match="universa requires espnet"):
+        UniversaMetric({"model_type": "noref"}).compute(np.zeros(16000))
+
+
+def test_qwen2_audio_metric_class_returns_existing_key(monkeypatch):
+    calls = {}
+
+    monkeypatch.setattr(
+        "versa.utterance_metrics.qwen2_audio.qwen2_model_setup",
+        lambda **kwargs: {"model": "dummy"},
+    )
+
+    def dummy_base_metric(
+        qwen_utils, pred_x, fs=16000, custom_prompt=None, max_length=1000
+    ):
+        calls["fs"] = fs
+        calls["custom_prompt"] = custom_prompt
+        calls["max_length"] = max_length
+        return "young adult"
+
+    monkeypatch.setattr(
+        "versa.utterance_metrics.qwen2_audio.qwen2_base_metric",
+        dummy_base_metric,
+    )
+
+    pred, _ = _audio_pair()
+    metric_class = QWEN2_AUDIO_METRIC_CLASSES["speaker_age"]
+    metric = metric_class({"prompt": "Age?", "max_length": 77})
+    scores = metric.compute(pred, metadata={"sample_rate": 22050})
+
+    assert scores == {"qwen_speaker_age": "young adult"}
+    assert calls["fs"] == 22050
+    assert calls["custom_prompt"] == "Age?"
+    assert calls["max_length"] == 77
+
+
+def test_register_qwen2_audio_metric():
+    registry = MetricRegistry()
+
+    register_qwen2_audio_metric(registry)
+
+    metric_class = QWEN2_AUDIO_METRIC_CLASSES["speaker_age"]
+    assert registry.get_metric("qwen2_audio_speaker_age") is metric_class
+    assert registry.get_metric("qwen2_speaker_age_metric") is metric_class
+    assert registry.get_metadata("qwen2_audio_speaker_age").requires_reference is False
+
+
+def test_qwen_omni_metric_class_returns_existing_key(monkeypatch):
+    calls = {}
+
+    monkeypatch.setattr(
+        "versa.utterance_metrics.qwen_omni.qwen_omni_model_setup",
+        lambda **kwargs: {"model": "dummy"},
+    )
+
+    def dummy_base_metric(
+        qwen_utils, pred_x, fs=16000, custom_prompt=None, max_length=500
+    ):
+        calls["fs"] = fs
+        calls["custom_prompt"] = custom_prompt
+        calls["max_length"] = max_length
+        return "happy"
+
+    monkeypatch.setattr(
+        "versa.utterance_metrics.qwen_omni.qwen_omni_base_metric",
+        dummy_base_metric,
+    )
+
+    pred, _ = _audio_pair()
+    metric_class = QWEN_OMNI_METRIC_CLASSES["speech_emotion"]
+    metric = metric_class({"prompt": "Emotion?", "max_length": 88})
+    scores = metric.compute(pred, metadata={"sample_rate": 22050})
+
+    assert scores == {"qwen_omni_speech_emotion": "happy"}
+    assert calls["fs"] == 22050
+    assert calls["custom_prompt"] == "Emotion?"
+    assert calls["max_length"] == 88
+
+
+def test_register_qwen_omni_metric():
+    registry = MetricRegistry()
+
+    register_qwen_omni_metric(registry)
+
+    metric_class = QWEN_OMNI_METRIC_CLASSES["speech_emotion"]
+    assert registry.get_metric("qwen_omni_speech_emotion") is metric_class
+    assert registry.get_metric("qwen_omni_speech_emotion_metric") is metric_class
+    assert registry.get_metadata("qwen_omni_speech_emotion").requires_reference is False
 
 
 def test_squim_no_ref_metric_uses_cached_model(monkeypatch):
@@ -295,3 +956,41 @@ def test_register_vqscore_metric():
     assert registry.get_metric("vqscore") is VqscoreMetric
     assert registry.get_metric("vq_score") is VqscoreMetric
     assert registry.get_metadata("vqscore").requires_reference is False
+
+
+def test_visqol_metric_class_returns_existing_key(monkeypatch):
+    class DummySimilarityResult:
+        moslqo = 4.1
+
+    class DummyApi:
+        def Measure(self, gt_x, pred_x):
+            return DummySimilarityResult()
+
+    monkeypatch.setattr(
+        "versa.utterance_metrics.visqol_score.visqol_setup",
+        lambda model: (DummyApi(), 16000),
+    )
+
+    pred, ref = _audio_pair()
+    metric = VisqolMetric({"model": "speech"})
+    scores = metric.compute(pred, ref, metadata={"sample_rate": 16000})
+
+    assert scores == {"visqol": 4.1}
+
+
+def test_register_visqol_metric():
+    registry = MetricRegistry()
+
+    register_visqol_metric(registry)
+
+    assert registry.get_metric("visqol") is VisqolMetric
+    assert registry.get_metric("VISQOL") is VisqolMetric
+    assert registry.get_metadata("visqol").requires_reference is True
+
+
+def test_visqol_missing_dependency(monkeypatch):
+    monkeypatch.setattr("versa.utterance_metrics.visqol_score.visqol_lib_py", None)
+    monkeypatch.setattr("versa.utterance_metrics.visqol_score.visqol_config_pb2", None)
+
+    with pytest.raises(ImportError, match="visqol is not installed"):
+        VisqolMetric()

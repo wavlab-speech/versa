@@ -10,15 +10,21 @@ import numpy as np
 import torch
 from Levenshtein import opcodes
 
+from versa.definition import BaseMetric, MetricCategory, MetricMetadata, MetricType
+
 try:
     import whisper
 except ImportError:
     logging.warning(
-        "Whisper is not properly installed. Please install following https://github.com/openai/whisper"
+        "Whisper is not properly installed. Please install following "
+        "https://github.com/openai/whisper"
     )
     whisper = None
 
-from espnet2.text.cleaner import TextCleaner
+try:
+    from espnet2.text.cleaner import TextCleaner
+except ImportError:
+    TextCleaner = None
 
 TARGET_FS = 16000
 CHUNK_SIZE = 30  # seconds
@@ -34,6 +40,8 @@ def whisper_wer_setup(
         raise RuntimeError(
             "Whisper WER is used for evaluation while openai-whisper is not installed"
         )
+    if TextCleaner is None:
+        raise ImportError("whisper_wer requires espnet TextCleaner. Install espnet")
     model = whisper.load_model(model_tag, device=device)
     textcleaner = TextCleaner(text_cleaner)
     wer_utils = {"model": model, "cleaner": textcleaner, "beam_size": beam_size}
@@ -129,11 +137,76 @@ def whisper_levenshtein_metric(
     return ret
 
 
+class WhisperWerMetric(BaseMetric):
+    """Whisper ASR-based WER/CER edit counts."""
+
+    def _setup(self):
+        self.model_tag = self.config.get("model_tag", "default")
+        self.beam_size = self.config.get("beam_size", 5)
+        self.text_cleaner = self.config.get("text_cleaner", "whisper_basic")
+        self.use_gpu = self.config.get("use_gpu", True)
+        self.wer_utils = whisper_wer_setup(
+            model_tag=self.model_tag,
+            beam_size=self.beam_size,
+            text_cleaner=self.text_cleaner,
+            use_gpu=self.use_gpu,
+        )
+
+    def compute(self, predictions, references=None, metadata=None):
+        if predictions is None:
+            raise ValueError("Predicted signal must be provided")
+
+        metadata = metadata or {}
+        ref_text = metadata.get("text")
+        if ref_text is None and isinstance(references, str):
+            ref_text = references
+        if ref_text is None:
+            raise ValueError("Reference text must be provided")
+
+        cache_pred_text = metadata.get("whisper_hyp_text")
+        general_cache = metadata.get("general_cache")
+        if cache_pred_text is None and general_cache:
+            cache_pred_text = general_cache.get("whisper_hyp_text")
+
+        fs = metadata.get("sample_rate", 16000)
+        return whisper_levenshtein_metric(
+            self.wer_utils,
+            np.asarray(predictions),
+            ref_text,
+            fs=fs,
+            cache_pred_text=cache_pred_text,
+        )
+
+    def get_metadata(self):
+        return _whisper_wer_metadata()
+
+
+def _whisper_wer_metadata():
+    return MetricMetadata(
+        name="whisper_wer",
+        category=MetricCategory.NON_MATCH,
+        metric_type=MetricType.DICT,
+        requires_reference=False,
+        requires_text=True,
+        gpu_compatible=True,
+        auto_install=False,
+        dependencies=["whisper", "espnet2", "Levenshtein", "librosa", "numpy", "torch"],
+        description="Whisper ASR-based WER and CER edit counts",
+        paper_reference="https://arxiv.org/abs/2212.04356",
+        implementation_source="https://github.com/openai/whisper",
+    )
+
+
+def register_whisper_wer_metric(registry):
+    """Register Whisper WER with the registry."""
+    registry.register(
+        WhisperWerMetric,
+        _whisper_wer_metadata(),
+        aliases=["whisper_asr_wer", "whisper_wer_metric"],
+    )
+
+
 if __name__ == "__main__":
     a = np.random.random(16000)
-    wer_utils = whisper_wer_setup()
-    print(
-        "metrics: {}".format(
-            whisper_levenshtein_metric(wer_utils, a, "test a sentence.", 16000)
-        )
-    )
+    metric = WhisperWerMetric()
+    print(metric.compute(a, metadata={"sample_rate": 16000, "text": "test sentence"}))

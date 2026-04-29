@@ -43,7 +43,7 @@ def vqscore_setup(use_gpu=False):
             "After cloning this repository, please run the following command to"
             "initialize the submodule 'VQscore':"
             "```bash"
-            "git submodule update --init --recursive"
+            "./tools/install_vqscore.sh"
             "```"
         )
 

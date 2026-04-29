@@ -5,16 +5,19 @@
 # Copyright 2025 Jionghao Han
 #  Apache 2.0  (http://www.apache.org/licenses/LICENSE-2.0)
 
+# flake8: noqa: E501
+
 import logging
-
-logger = logging.getLogger(__name__)
-
 import librosa
 import numpy as np
 import torch
 import requests
 from pathlib import Path
 from typing import Optional
+
+from versa.definition import BaseMetric, MetricCategory, MetricMetadata, MetricType
+
+logger = logging.getLogger(__name__)
 
 try:
     import utmosv2
@@ -67,7 +70,7 @@ def pseudo_mos_setup(
         or "plcmos" in predictor_types
     ):
         try:
-            import onnxruntime  # NOTE(jiatong): a requirement of aecmos but not in requirements
+            import onnxruntime as _onnxruntime  # noqa: F401
             from speechmos import dnsmos, plcmos
         except ImportError:
             raise ImportError(
@@ -270,6 +273,74 @@ def pseudo_mos_metric(pred, fs, predictor_dict, predictor_fs, use_gpu=False):
             raise NotImplementedError("Not supported {}".format(predictor))
 
     return scores
+
+
+class PseudoMosMetric(BaseMetric):
+    """Pseudo-subjective MOS predictors."""
+
+    def _setup(self):
+        self.predictor_types = self.config.get(
+            "predictor_types", ["utmos", "dnsmos", "plcmos"]
+        )
+        self.predictor_args = self.config.get("predictor_args", {})
+        self.cache_dir = self.config.get("cache_dir", "versa_cache")
+        self.use_gpu = self.config.get("use_gpu", False)
+        self.predictor_dict, self.predictor_fs = pseudo_mos_setup(
+            self.predictor_types,
+            self.predictor_args,
+            cache_dir=self.cache_dir,
+            use_gpu=self.use_gpu,
+        )
+
+    def compute(self, predictions, references=None, metadata=None):
+        if predictions is None:
+            raise ValueError("Predicted signal must be provided")
+
+        fs = metadata.get("sample_rate", 16000) if metadata else 16000
+        return pseudo_mos_metric(
+            np.asarray(predictions),
+            fs=fs,
+            predictor_dict=self.predictor_dict,
+            predictor_fs=self.predictor_fs,
+            use_gpu=self.use_gpu,
+        )
+
+    def get_metadata(self):
+        return _pseudo_mos_metadata()
+
+
+def _pseudo_mos_metadata():
+    return MetricMetadata(
+        name="pseudo_mos",
+        category=MetricCategory.INDEPENDENT,
+        metric_type=MetricType.DICT,
+        requires_reference=False,
+        requires_text=False,
+        gpu_compatible=True,
+        auto_install=False,
+        dependencies=["torch", "librosa", "numpy", "requests"],
+        description=(
+            "Pseudo-subjective MOS predictors including UTMOS, DNSMOS, "
+            "PLCMOS, SingMOS, and DNSMOS Pro"
+        ),
+        implementation_source="https://github.com/tarepan/SpeechMOS",
+    )
+
+
+def register_pseudo_mos_metric(registry):
+    """Register pseudo MOS metric suite with the registry."""
+    registry.register(
+        PseudoMosMetric,
+        _pseudo_mos_metadata(),
+        aliases=[
+            "utmos",
+            "dnsmos",
+            "plcmos",
+            "singmos",
+            "utmosv2",
+            "dnsmos_pro",
+        ],
+    )
 
 
 if __name__ == "__main__":

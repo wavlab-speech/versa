@@ -89,32 +89,8 @@ The following modules still appear to use the old interface because they do not
 define or import `BaseMetric`. This list is based on a repository scan and should
 be updated as each metric is migrated.
 
-### Utterance-Level Metrics
-
-Good early candidates:
-- `versa/utterance_metrics/visqol_score.py`
-
-Model-backed or broader migrations:
-
-- `versa/utterance_metrics/pseudo_mos.py`
-- `versa/utterance_metrics/se_snr.py`
-- `versa/utterance_metrics/speaker.py`
-- `versa/utterance_metrics/singer.py`
-- `versa/utterance_metrics/qwen2_audio.py`
-- `versa/utterance_metrics/qwen_omni.py`
-- `versa/utterance_metrics/universa.py`
-- `versa/utterance_metrics/log_wmse.py`
-
-### Sequence Metrics
-
-- `versa/sequence_metrics/mcd_f0.py`
-- `versa/sequence_metrics/warpq.py`
-
 ### Corpus and Distributional Metrics
 
-- `versa/corpus_metrics/espnet_wer.py`
-- `versa/corpus_metrics/owsm_wer.py`
-- `versa/corpus_metrics/whisper_wer.py`
 - `versa/corpus_metrics/fad.py`
 - `versa/corpus_metrics/individual_fad.py`
 - `versa/corpus_metrics/kid.py`
@@ -124,15 +100,29 @@ Model-backed or broader migrations:
 
 Use these as local references when migrating the remaining metrics:
 
+- `versa/sequence_metrics/mcd_f0.py`
+- `versa/sequence_metrics/signal_metric.py`
+- `versa/sequence_metrics/warpq.py`
+- `versa/corpus_metrics/espnet_wer.py`
+- `versa/corpus_metrics/owsm_wer.py`
+- `versa/corpus_metrics/whisper_wer.py`
+- `versa/utterance_metrics/log_wmse.py`
+- `versa/utterance_metrics/pseudo_mos.py`
+- `versa/utterance_metrics/qwen2_audio.py`
+- `versa/utterance_metrics/qwen_omni.py`
 - `versa/utterance_metrics/speaking_rate.py`
 - `versa/utterance_metrics/scoreq.py`
+- `versa/utterance_metrics/se_snr.py`
 - `versa/utterance_metrics/sheet_ssqa.py`
+- `versa/utterance_metrics/singer.py`
+- `versa/utterance_metrics/speaker.py`
 - `versa/utterance_metrics/stoi.py`
 - `versa/utterance_metrics/pesq_score.py`
 - `versa/utterance_metrics/squim.py`
+- `versa/utterance_metrics/universa.py`
 - `versa/utterance_metrics/vad.py`
+- `versa/utterance_metrics/visqol_score.py`
 - `versa/utterance_metrics/vqscore.py`
-- `versa/sequence_metrics/signal_metric.py`
 
 ## Verification
 
@@ -143,3 +133,19 @@ Run focused checks before broader validation:
 /opt/homebrew/bin/mamba run -n versa-dev python -m black --check <touched files>
 /opt/homebrew/bin/mamba run -n versa-dev python -m flake8 <touched files>
 ```
+
+The base migration tests use mocks for heavy model-backed metrics. They validate
+registry integration, pipeline wiring, input handling, and output keys, but do
+not prove checkpoint download or real inference.
+
+Run optional real model checks locally after installing the metric dependencies:
+
+```bash
+tools/install_scoreq.sh
+VERSA_RUN_REAL_MODEL_TESTS=1 \
+  /opt/homebrew/bin/mamba run -n versa-dev python -m pytest \
+  test/test_pipeline/test_scoreq.py -q -s
+```
+
+These tests are marked `real_model` and are skipped unless
+`VERSA_RUN_REAL_MODEL_TESTS=1` is set.

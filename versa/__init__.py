@@ -24,8 +24,15 @@ def _optional_metric_import(module_name, names, install_hint=None):
         globals()[name] = getattr(module, name)
 
 
-# from versa.sequence_metrics.mcd_f0 import McdF0Metric, register_mcd_f0_metric
+_optional_metric_import(
+    "versa.sequence_metrics.mcd_f0",
+    ("McdF0Metric", "register_mcd_f0_metric"),
+)
 # from versa.sequence_metrics.signal_metric import SignalMetric, register_signal_metric
+_optional_metric_import(
+    "versa.sequence_metrics.warpq",
+    ("WarpqMetric", "register_warpq_metric"),
+)
 
 _optional_metric_import(
     "versa.utterance_metrics.discrete_speech",
@@ -36,10 +43,10 @@ _optional_metric_import(
     ),
 )
 
-# from versa.utterance_metrics.pseudo_mos import (
-#     PseudoMosMetric,
-#     register_pseudo_mos_metric,
-# )
+_optional_metric_import(
+    "versa.utterance_metrics.pseudo_mos",
+    ("PseudoMosMetric", "register_pseudo_mos_metric"),
+)
 
 # try:
 #     from versa.utterance_metrics.pesq_score import PesqMetric, register_pesq_metric
@@ -56,36 +63,36 @@ _optional_metric_import(
     "Please install pystoi with `pip install pystoi` and retry",
 )
 
-# try:
-#     from versa.utterance_metrics.speaker import SpeakerMetric, register_speaker_metric
-# except ImportError:
-#     logging.info("Please install espnet with `pip install espnet` and retry")
+_optional_metric_import(
+    "versa.utterance_metrics.speaker",
+    ("SpeakerMetric", "register_speaker_metric"),
+)
 
-# try:
-#     from versa.utterance_metrics.singer import SingerMetric, register_singer_metric
-# except ImportError:
-#     logging.info("Please install ...")
+_optional_metric_import(
+    "versa.utterance_metrics.singer",
+    ("SingerMetric", "register_singer_metric"),
+    "Please install singer_identity following tools/install_ssl-singer-identity.sh",
+)
 
-# try:
-#     from versa.utterance_metrics.visqol_score import (
-#         VisqolMetric,
-#         register_visqol_metric,
-#     )
-# except ImportError:
-#     logging.info(
-#         "Please install visqol follow https://github.com/google/visqol and retry"
-#     )
+_optional_metric_import(
+    "versa.utterance_metrics.visqol_score",
+    ("VisqolMetric", "register_visqol_metric"),
+    "Please install visqol following https://github.com/google/visqol and retry",
+)
 
-# from versa.corpus_metrics.espnet_wer import (
-#     EspnetWerMetric,
-#     register_espnet_wer_metric,
-# )
+_optional_metric_import(
+    "versa.corpus_metrics.espnet_wer",
+    ("EspnetWerMetric", "register_espnet_wer_metric"),
+)
 # from versa.corpus_metrics.fad import FadMetric, register_fad_metric
-# from versa.corpus_metrics.owsm_wer import OwsmWerMetric, register_owsm_wer_metric
-# from versa.corpus_metrics.whisper_wer import (
-#     WhisperWerMetric,
-#     register_whisper_wer_metric
-# )
+_optional_metric_import(
+    "versa.corpus_metrics.owsm_wer",
+    ("OwsmWerMetric", "register_owsm_wer_metric"),
+)
+_optional_metric_import(
+    "versa.corpus_metrics.whisper_wer",
+    ("WhisperWerMetric", "register_whisper_wer_metric"),
+)
 _optional_metric_import(
     "versa.utterance_metrics.asr_matching",
     ("ASRMatchMetric", "register_asr_match_metric"),
@@ -110,41 +117,29 @@ _optional_metric_import(
     "versa.utterance_metrics.owsm_lid",
     ("OwsmLidMetric", "register_owsm_lid_metric"),
 )
+_optional_metric_import(
+    "versa.utterance_metrics.log_wmse",
+    ("LogWmseMetric", "register_log_wmse_metric"),
+    "Please install torch-log-wmse and retry",
+)
+_optional_metric_import(
+    "versa.utterance_metrics.universa",
+    ("UniversaMetric", "register_universa_metric"),
+)
 
 # from versa.utterance_metrics.pysepm import PysepmMetric, register_pysepm_metric
 _optional_metric_import(
     "versa.utterance_metrics.pysepm",
     ("PysepmMetric", "register_pysepm_metric"),
 )
-# from versa.utterance_metrics.qwen2_audio import (
-#     Qwen2ChannelTypeMetric,
-#     Qwen2LanguageMetric,
-#     Qwen2LaughterCryingMetric,
-#     Qwen2ModelSetup,
-#     Qwen2OverlappingSpeechMetric,
-#     Qwen2PitchRangeMetric,
-#     Qwen2RecordingQualityMetric,
-#     Qwen2SpeakerAgeMetric,
-#     Qwen2SpeakerCountMetric,
-#     Qwen2SpeakerGenderMetric,
-#     Qwen2SpeakingStyleMetric,
-#     Qwen2SpeechBackgroundEnvironmentMetric,
-#     Qwen2SpeechClarityMetric,
-#     Qwen2SpeechEmotionMetric,
-#     Qwen2SpeechImpairmentMetric,
-#     Qwen2SpeechPurposeMetric,
-#     Qwen2SpeechRateMetric,
-#     Qwen2SpeechRegisterMetric,
-#     Qwen2SpeechVolumeLevelMetric,
-#     Qwen2VocabularyComplexityMetric,
-#     Qwen2VoicePitchMetric,
-#     Qwen2VoiceTypeMetric,
-#     Qwen2SingingTechniqueMetric,
-# )
-# from versa.utterance_metrics.qwen_omni import (
-#     QwenOmniMetric,
-#     register_qwen_omni_metric
-# )
+_optional_metric_import(
+    "versa.utterance_metrics.qwen2_audio",
+    ("Qwen2AudioMetric", "register_qwen2_audio_metric"),
+)
+_optional_metric_import(
+    "versa.utterance_metrics.qwen_omni",
+    ("QwenOmniMetric", "register_qwen_omni_metric"),
+)
 _optional_metric_import(
     "versa.utterance_metrics.scoreq",
     (
@@ -154,7 +149,10 @@ _optional_metric_import(
         "register_scoreq_metric",
     ),
 )
-# from versa.utterance_metrics.se_snr import SeSnrMetric, register_se_snr_metric
+_optional_metric_import(
+    "versa.utterance_metrics.se_snr",
+    ("SeSnrMetric", "register_se_snr_metric"),
+)
 _optional_metric_import(
     "versa.utterance_metrics.sheet_ssqa",
     ("SheetSsqaMetric", "register_sheet_ssqa_metric"),

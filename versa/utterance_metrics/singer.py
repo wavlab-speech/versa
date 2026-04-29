@@ -3,10 +3,11 @@
 # Adapted from speaker similarity code for singer identity
 # Uses SSL singer identity models from SonyCSLParis/ssl-singer-identity
 
-import os
 import librosa
 import numpy as np
 import torch
+
+from versa.definition import BaseMetric, MetricCategory, MetricMetadata, MetricType
 
 
 def singer_model_setup(
@@ -16,7 +17,8 @@ def singer_model_setup(
     Setup singer identity model
 
     Args:
-        model_name (str): Name of the pretrained model ('byol', 'contrastive', 'contrastive-vc', 'uniformity', 'vicreg')
+        model_name (str): Pretrained model name such as 'byol',
+            'contrastive', 'contrastive-vc', 'uniformity', or 'vicreg'.
         model_path (str): Path to local model (if None, downloads from HuggingFace)
         use_gpu (bool): Whether to use GPU
         input_sr (int): Input sample rate (will be upsampled to 44.1kHz if different)
@@ -146,6 +148,68 @@ def compute_similarity_matrix(embeddings):
     return similarity_matrix
 
 
+class SingerMetric(BaseMetric):
+    """Singer identity embedding cosine similarity."""
+
+    def _setup(self):
+        self.model_name = self.config.get("model_name", "byol")
+        self.model_path = self.config.get("model_path")
+        self.use_gpu = self.config.get("use_gpu", False)
+        self.input_sr = self.config.get("input_sr", 44100)
+        self.torchscript = self.config.get("torchscript", False)
+        self.target_sr = self.config.get("target_sr", 44100)
+        self.model = singer_model_setup(
+            model_name=self.model_name,
+            model_path=self.model_path,
+            use_gpu=self.use_gpu,
+            input_sr=self.input_sr,
+            torchscript=self.torchscript,
+        )
+
+    def compute(self, predictions, references=None, metadata=None):
+        if predictions is None:
+            raise ValueError("Predicted signal must be provided")
+        if references is None:
+            raise ValueError("Reference signal must be provided")
+
+        fs = metadata.get("sample_rate", 16000) if metadata else 16000
+        return singer_metric(
+            self.model,
+            np.asarray(predictions),
+            np.asarray(references),
+            fs,
+            target_sr=self.target_sr,
+        )
+
+    def get_metadata(self):
+        return _singer_metadata()
+
+
+def _singer_metadata():
+    return MetricMetadata(
+        name="singer",
+        category=MetricCategory.NON_MATCH,
+        metric_type=MetricType.FLOAT,
+        requires_reference=True,
+        requires_text=False,
+        gpu_compatible=True,
+        auto_install=False,
+        dependencies=["singer_identity", "librosa", "numpy", "torch"],
+        description="Singer identity embedding cosine similarity",
+        paper_reference="https://hal.science/hal-04186048v1",
+        implementation_source="https://github.com/SonyCSLParis/ssl-singer-identity",
+    )
+
+
+def register_singer_metric(registry):
+    """Register singer similarity with the registry."""
+    registry.register(
+        SingerMetric,
+        _singer_metadata(),
+        aliases=["singer_similarity", "singer_identity"],
+    )
+
+
 if __name__ == "__main__":
     # Example usage
 
@@ -162,12 +226,12 @@ if __name__ == "__main__":
 
     # Setup model (will download from HuggingFace on first use)
     try:
-        model = singer_model_setup(model_name="byol", use_gpu=False)
+        model = SingerMetric({"model_name": "byol", "use_gpu": False})
         print("Model loaded successfully!")
 
         # Compute similarity between two audio signals
         print("Computing singer similarity...")
-        result = singer_metric(model, audio_a, audio_b, sample_rate)
+        result = model.compute(audio_a, audio_b, metadata={"sample_rate": sample_rate})
         print(f"Singer similarity: {result['singer_similarity']:.4f}")
 
         # Example of batch processing

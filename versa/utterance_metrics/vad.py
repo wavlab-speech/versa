@@ -16,9 +16,18 @@ def vad_model_setup(
     max_speech_duration_s=float("inf"),
     min_silence_duration_ms=100,
     speech_pad_ms=30,
+    trust_repo=True,
+    force_reload=False,
 ):
 
-    model, utils = torch.hub.load(repo_or_dir="snakers4/silero-vad", model="silero_vad")
+    hub_kwargs = {
+        "repo_or_dir": "snakers4/silero-vad",
+        "model": "silero_vad",
+        "force_reload": force_reload,
+    }
+    if trust_repo is not None:
+        hub_kwargs["trust_repo"] = trust_repo
+    model, utils = torch.hub.load(**hub_kwargs)
     get_speech_ts, _, _, _, *_ = utils
     return {
         "module": model,
@@ -67,12 +76,16 @@ class VadMetric(BaseMetric):
         )
         self.min_silence_duration_ms = self.config.get("min_silence_duration_ms", 100)
         self.speech_pad_ms = self.config.get("speech_pad_ms", 30)
+        self.trust_repo = self.config.get("trust_repo", True)
+        self.force_reload = self.config.get("force_reload", False)
         self.model_info = vad_model_setup(
             threshold=self.threshold,
             min_speech_duration_ms=self.min_speech_duration_ms,
             max_speech_duration_s=self.max_speech_duration_s,
             min_silence_duration_ms=self.min_silence_duration_ms,
             speech_pad_ms=self.speech_pad_ms,
+            trust_repo=self.trust_repo,
+            force_reload=self.force_reload,
         )
 
     def compute(self, predictions, references=None, metadata=None):
