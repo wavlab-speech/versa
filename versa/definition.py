@@ -5,7 +5,7 @@
 
 
 from abc import ABC, abstractmethod
-from typing import Dict, List, Optional, Any, Union
+from typing import Dict, List, Optional, Any
 from dataclasses import dataclass
 from enum import Enum
 import logging
@@ -147,6 +147,7 @@ class MetricFactory:
     def __init__(self, registry: MetricRegistry):
         self.registry = registry
         self._dependency_cache = {}
+        self.logger = logging.getLogger(self.__class__.__name__)
 
     def create_metric(self, name: str, config: Dict[str, Any] = None) -> BaseMetric:
         """Create a metric instance with proper dependency resolution."""
@@ -166,6 +167,7 @@ class MetricFactory:
     ) -> "MetricSuite":
         """Create a suite of metrics."""
         metrics = {}
+        config = config or {}
         for name in metric_names:
             metrics[name] = self.create_metric(name, config.get(name, {}))
         return MetricSuite(metrics)
