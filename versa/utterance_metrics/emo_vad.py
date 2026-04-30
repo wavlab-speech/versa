@@ -10,7 +10,6 @@ import os
 from pathlib import Path
 from typing import Dict, Any, Optional, Union
 
-import librosa
 import numpy as np
 import torch
 import torch.nn as nn
@@ -36,6 +35,7 @@ except ImportError:
     Wav2Vec2PreTrainedModel = None
     TRANSFORMERS_AVAILABLE = False
 
+from versa.audio_utils import resample_audio
 from versa.definition import BaseMetric, MetricMetadata, MetricCategory, MetricType
 
 
@@ -86,6 +86,7 @@ class EmotionModel(Wav2Vec2PreTrainedModel):
         super().__init__(config)
 
         self.config = config
+        self.all_tied_weights_keys = {}
         self.wav2vec2 = Wav2Vec2Model(config)
         self.classifier = RegressionHead(config)
         self.init_weights()
@@ -169,7 +170,7 @@ class EmoVadMetric(BaseMetric):
 
         # NOTE(jiatong): only work for 16000 Hz
         if fs != 16000:
-            pred_x = librosa.resample(pred_x, orig_sr=fs, target_sr=16000)
+            pred_x = resample_audio(pred_x, fs, 16000)
 
         pred_x = self.processor(pred_x, sampling_rate=16000)
         pred_x = pred_x["input_values"][0]

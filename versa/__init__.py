@@ -1,9 +1,15 @@
 import importlib
 import logging
+import os
+from pathlib import Path
 
 __version__ = "0.0.1"  # noqa: F401
 
 logger = logging.getLogger(__name__)
+
+os.environ.setdefault(
+    "NUMBA_CACHE_DIR", str(Path.cwd() / "versa_cache" / "numba_cache")
+)
 
 
 def _optional_metric_import(module_name, names, install_hint=None):

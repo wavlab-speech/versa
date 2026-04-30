@@ -11,11 +11,11 @@ import sys
 import warnings
 from typing import Dict, Any, Union
 
-import librosa
 import numpy as np
 import torch
 from urllib.request import urlretrieve
 
+from versa.audio_utils import resample_audio
 from versa.definition import BaseMetric, MetricMetadata, MetricCategory, MetricType
 
 logger = logging.getLogger(__name__)
@@ -200,8 +200,8 @@ class NoresqaMetric(BaseMetric):
 
         # Resample to 16kHz (NORESQA only works with 16kHz)
         if fs != self.TARGET_FS:
-            gt_x = librosa.resample(gt_x, orig_sr=fs, target_sr=self.TARGET_FS)
-            pred_x = librosa.resample(pred_x, orig_sr=fs, target_sr=self.TARGET_FS)
+            gt_x = resample_audio(gt_x, fs, self.TARGET_FS)
+            pred_x = resample_audio(pred_x, fs, self.TARGET_FS)
 
         nmr_feat, test_feat = feats_loading(
             pred_x, gt_x, noresqa_or_noresqaMOS=self.metric_type
@@ -273,5 +273,9 @@ def register_noresqa_metric(registry):
         registry.register(
             NoresqaMetric,
             metric_metadata,
-            aliases=[f"Noresqa{metric_type}", metric_name],
+            aliases=[
+                f"Noresqa{metric_type}",
+                "noresqa" if metric_type == 1 else f"noresqa_type_{metric_type}",
+                metric_name,
+            ],
         )

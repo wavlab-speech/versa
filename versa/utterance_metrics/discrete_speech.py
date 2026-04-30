@@ -8,7 +8,6 @@
 import logging
 from typing import Dict, Any, Optional, Union
 
-import librosa
 import numpy as np
 
 logger = logging.getLogger(__name__)
@@ -28,6 +27,7 @@ except ImportError:
     SpeechTokenDistance = None
     DISCRETE_SPEECH_AVAILABLE = False
 
+from versa.audio_utils import resample_audio
 from versa.definition import BaseMetric, MetricMetadata, MetricCategory, MetricType
 
 
@@ -126,8 +126,8 @@ class DiscreteSpeechMetric(BaseMetric):
         scores = {}
 
         if fs != self.sample_rate:
-            gt_x = librosa.resample(gt_x, orig_sr=fs, target_sr=self.sample_rate)
-            pred_x = librosa.resample(pred_x, orig_sr=fs, target_sr=self.sample_rate)
+            gt_x = resample_audio(gt_x, fs, self.sample_rate)
+            pred_x = resample_audio(pred_x, fs, self.sample_rate)
 
         # Calculate SpeechBERT score
         try:

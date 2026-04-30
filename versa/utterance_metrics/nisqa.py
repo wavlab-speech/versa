@@ -9,15 +9,37 @@ import logging
 import warnings
 from typing import Dict, Any, Optional, Union
 
-import librosa
 import numpy as np
 import torch
 
-import versa.utterance_metrics.nisqa_utils.nisqa_lib as NL
+from versa.audio_utils import resample_audio
+from versa.definition import BaseMetric, MetricMetadata, MetricCategory, MetricType
+
+try:
+    import versa.utterance_metrics.nisqa_utils.nisqa_lib as NL
+
+    NISQA_LIB_AVAILABLE = True
+except ImportError:
+    from types import SimpleNamespace
+
+    NL = SimpleNamespace(
+        NISQA=None,
+        NISQA_DIM=None,
+        NISQA_DE=None,
+        versa_eval_mos=None,
+    )
+    NISQA_LIB_AVAILABLE = False
 
 logger = logging.getLogger(__name__)
 
-from versa.definition import BaseMetric, MetricMetadata, MetricCategory, MetricType
+
+def _nisqa_lib():
+    if not NISQA_LIB_AVAILABLE and NL.NISQA is None and NL.versa_eval_mos is None:
+        raise ImportError(
+            "NISQA dependencies are not available. Please run tools/setup_nisqa.sh "
+            "and install optional dependencies such as matplotlib."
+        )
+    return NL
 
 
 class NisqaMetric(BaseMetric):
@@ -36,10 +58,12 @@ class NisqaMetric(BaseMetric):
         try:
             self.model = self._setup_model()
         except Exception as e:
-            raise RuntimeError(f"Failed to initialize NISQA model: {str(e)}") from e
+            self.model = None
+            self._setup_error = e
 
     def _setup_model(self):
         """Setup the NISQA model."""
+        nisqa_lib = _nisqa_lib()
         # Check if GPU is available
         if self.use_gpu and not torch.cuda.is_available():
             raise RuntimeError("GPU is not available. Please set use_gpu=False.")
@@ -125,11 +149,11 @@ class NisqaMetric(BaseMetric):
             )
 
         if args["model"] == "NISQA":
-            model = NL.NISQA(**model_args)
+            model = nisqa_lib.NISQA(**model_args)
         elif args["model"] == "NISQA_DIM":
-            model = NL.NISQA_DIM(**model_args)
+            model = nisqa_lib.NISQA_DIM(**model_args)
         elif args["model"] == "NISQA_DE":
-            model = NL.NISQA_DE(**model_args)
+            model = nisqa_lib.NISQA_DE(**model_args)
         else:
             raise NotImplementedError("Model not available")
 
@@ -166,16 +190,22 @@ class NisqaMetric(BaseMetric):
         if pred_x is None:
             raise ValueError("Predicted signal must be provided")
 
+        if self.model is None:
+            try:
+                self.model = self._setup_model()
+            except Exception as e:
+                raise RuntimeError(f"Failed to initialize NISQA model: {str(e)}") from e
+
         pred_x = np.asarray(pred_x)
 
         # Resample if necessary
         if fs != self.TARGET_FS:
-            pred_x = librosa.resample(pred_x, orig_sr=fs, target_sr=self.TARGET_FS)
+            pred_x = resample_audio(pred_x, fs, self.TARGET_FS)
             fs = self.TARGET_FS
 
         # Evaluate the NISQA score
         with torch.no_grad():
-            metrics = NL.versa_eval_mos(
+            metrics = _nisqa_lib().versa_eval_mos(
                 [pred_x], self.model, 1, self.model.device, num_workers=0
             )
 
@@ -223,6 +253,19 @@ def register_nisqa_metric(registry):
         metric_metadata,
         aliases=["Nisqa", "nisqa"],
     )
+
+
+def nisqa_model_setup(nisqa_model_path, use_gpu=False):
+    """Legacy function API for setting up NISQA."""
+    return NisqaMetric({"nisqa_model_path": nisqa_model_path, "use_gpu": use_gpu}).model
+
+
+def nisqa_metric(model, pred_x, fs):
+    """Legacy function API for computing NISQA."""
+    metric = object.__new__(NisqaMetric)
+    metric.config = {}
+    metric.model = model
+    return NisqaMetric.compute(metric, pred_x, metadata={"sample_rate": fs})
 
 
 if __name__ == "__main__":

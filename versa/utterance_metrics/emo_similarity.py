@@ -10,7 +10,6 @@ import os
 from pathlib import Path
 from typing import Dict, Any, Optional, Union
 
-import librosa
 import numpy as np
 
 logger = logging.getLogger(__name__)
@@ -29,6 +28,7 @@ except ImportError:
     EMO2VEC = None
     EMO2VEC_AVAILABLE = False
 
+from versa.audio_utils import resample_audio
 from versa.definition import BaseMetric, MetricMetadata, MetricCategory, MetricType
 
 
@@ -116,8 +116,8 @@ class Emo2vecMetric(BaseMetric):
 
         # NOTE(jiatong): only work for 16000 Hz
         if fs != 16000:
-            gt_x = librosa.resample(gt_x, orig_sr=fs, target_sr=16000)
-            pred_x = librosa.resample(pred_x, orig_sr=fs, target_sr=16000)
+            gt_x = resample_audio(gt_x, fs, 16000)
+            pred_x = resample_audio(pred_x, fs, 16000)
 
         embedding_gen = self.model.extract_feature(pred_x, fs=16000)
         embedding_gt = self.model.extract_feature(gt_x, fs=16000)
@@ -162,7 +162,14 @@ def register_emo2vec_metric(registry):
     registry.register(
         Emo2vecMetric,
         metric_metadata,
-        aliases=["Emotion", "emotion", "emo2vec_similarity"],
+        aliases=[
+            "Emotion",
+            "emotion",
+            "emo2vec",
+            "emo2vec_similarity",
+            "emo_similarity",
+            "emotion_similarity",
+        ],
     )
 
 
