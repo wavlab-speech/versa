@@ -96,6 +96,9 @@ class NoresqaMetric(BaseMetric):
         self.metric_type = self.config.get(
             "metric_type", 1
         )  # 0: NORESQA-score, 1: NORESQA-MOS
+        if self.metric_type not in (0, 1):
+            raise RuntimeError(f"Invalid metric_type: {self.metric_type}")
+
         self.cache_dir = self.config.get("cache_dir", "versa_cache/noresqa_model")
         self.use_gpu = self.config.get("use_gpu", False)
 
@@ -111,7 +114,7 @@ class NoresqaMetric(BaseMetric):
         if self.model_tag == "default":
             if not os.path.isdir(self.cache_dir):
                 logger.info("Creating checkpoints directory")
-                os.makedirs(self.cache_dir)
+                os.makedirs(self.cache_dir, exist_ok=True)
 
             url_w2v = "https://dl.fbaipublicfiles.com/fairseq/wav2vec/wav2vec_small.pt"
             w2v_path = os.path.join(self.cache_dir, "wav2vec_small.pt")

@@ -78,7 +78,21 @@ class AudioBoxAestheticsMetric(BaseMetric):
 
         if self.model_path is None:
             if self.use_huggingface:
-                model_path = audiobox_aesthetics.utils.load_model(self.model_path)
+                try:
+                    import huggingface_hub
+                except ImportError as e:
+                    raise ImportError(
+                        "Please install huggingface_hub or set use_huggingface=False "
+                        "to download the AudioBox Aesthetics checkpoint directly."
+                    ) from e
+
+                os.makedirs(self.cache_dir, exist_ok=True)
+                model_path = huggingface_hub.hf_hub_download(
+                    audiobox_aesthetics.utils.DEFAULT_HF_REPO,
+                    audiobox_aesthetics.utils.DEFAULT_CKPT_FNAME,
+                    cache_dir=self.cache_dir,
+                )
+                logger.info("Load AudioBox Aesthetics checkpoint from %s", model_path)
             else:
                 os.makedirs(self.cache_dir, exist_ok=True)
                 model_path = os.path.join(

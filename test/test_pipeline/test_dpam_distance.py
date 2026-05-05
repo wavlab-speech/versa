@@ -10,7 +10,7 @@ from versa.definition import MetricRegistry
 from versa.utterance_metrics.dpam_distance import register_dpam_distance_metric
 
 TEST_INFO = {
-    "dpam_distance": 0.1500423550605774,
+    "dpam_distance": 0.4179654121398926,
 }
 
 

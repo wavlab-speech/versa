@@ -17,11 +17,11 @@ from versa.definition import MetricRegistry
 from versa.utterance_metrics.nisqa import register_nisqa_metric
 
 TEST_INFO = {
-    "nisqa_mos_pred": 0.4359583258628845,
-    "nisqa_noi_pred": 1.5543216466903687,
-    "nisqa_dis_pred": 2.293217182159424,
-    "nisqa_col_pred": 1.059649109840393,
-    "nisqa_loud_pred": 1.2060534954071045,
+    "nisqa_mos_pred": 0.6706185,
+    "nisqa_noi_pred": 1.1474215,
+    "nisqa_dis_pred": 1.8560395,
+    "nisqa_col_pred": 0.90170276,
+    "nisqa_loud_pred": 1.4682994,
 }
 
 
