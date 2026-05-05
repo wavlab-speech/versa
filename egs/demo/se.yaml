@@ -90,4 +90,4 @@
 #  --nisqa_loud_pred: NISQA loudness prediction
 # NOTE(jiatong): pretrain model can be downloaded with `./tools/setup_nisqa.sh`
 - name: nisqa
-  nisqa_model_path: ./tools/NISQA/weights/nisqa.tar
+  nisqa_model_path: versa_cache/nisqa/nisqa.tar

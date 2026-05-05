@@ -273,7 +273,7 @@ if __name__ == "__main__":
     fs = 16000
     try:
         nisqa_model = nisqa_model_setup(
-            nisqa_model_path="/home/jiatong/projects/espnet/tools/versa/tools/NISQA/weights/nisqa.tar",
+            nisqa_model_path="versa_cache/nisqa/nisqa.tar",
             use_gpu=True,
         )
         score = nisqa_metric(nisqa_model, a, fs)

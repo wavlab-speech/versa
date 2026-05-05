@@ -7,7 +7,6 @@
 
 import logging
 import os
-import sys
 import warnings
 from typing import Dict, Any, Union
 
@@ -32,15 +31,9 @@ except ImportError:
     fairseq = None
     FAIRSEQ_AVAILABLE = False
 
-# Setup NORESQA path
-base_path = os.path.abspath(
-    os.path.join(os.path.dirname(__file__), "../../tools/Noresqa")
-)
-sys.path.insert(0, base_path)
-
 try:
-    from noresqa_model import NORESQA
-    from noresqa_utils import (
+    from versa.utterance_metrics.noresqa_utils.noresqa_model import NORESQA
+    from versa.utterance_metrics.noresqa_utils.noresqa_utils import (
         feats_loading,
         model_prediction_noresqa,
         model_prediction_noresqa_mos,
@@ -49,7 +42,8 @@ try:
     NORESQA_AVAILABLE = True
 except ImportError:
     logger.warning(
-        "noresqa is not installed. Please use `tools/install_noresqa.sh` to install"
+        "NORESQA dependencies are not available. "
+        "Please use `tools/install_noresqa.sh` to install model checkpoints"
     )
     NORESQA = None
     feats_loading = None
@@ -78,13 +72,14 @@ class NoresqaMetric(BaseMetric):
     """NORESQA speech quality assessment metric."""
 
     TARGET_FS = 16000  # NORESQA model's expected sampling rate
+    DEFAULT_CACHE_DIR = "versa_cache/noresqa_model"
 
     def _setup(self):
         """Initialize NORESQA-specific components."""
         if not NORESQA_AVAILABLE:
             raise ImportError(
-                "noresqa is not installed. "
-                "Please use `tools/install_noresqa.sh` to install"
+                "NORESQA dependencies are not available. "
+                "Please use `tools/install_noresqa.sh` to install model checkpoints"
             )
         if not FAIRSEQ_AVAILABLE:
             raise ImportError(
@@ -99,7 +94,7 @@ class NoresqaMetric(BaseMetric):
         if self.metric_type not in (0, 1):
             raise RuntimeError(f"Invalid metric_type: {self.metric_type}")
 
-        self.cache_dir = self.config.get("cache_dir", "versa_cache/noresqa_model")
+        self.cache_dir = self.config.get("cache_dir", self.DEFAULT_CACHE_DIR)
         self.use_gpu = self.config.get("use_gpu", False)
 
         try:
@@ -117,8 +112,10 @@ class NoresqaMetric(BaseMetric):
                 os.makedirs(self.cache_dir, exist_ok=True)
 
             url_w2v = "https://dl.fbaipublicfiles.com/fairseq/wav2vec/wav2vec_small.pt"
-            w2v_path = os.path.join(self.cache_dir, "wav2vec_small.pt")
-            if not os.path.isfile(w2v_path):
+            try:
+                w2v_path = self._checkpoint_path("wav2vec_small.pt")
+            except FileNotFoundError:
+                w2v_path = os.path.join(self.cache_dir, "wav2vec_small.pt")
                 logger.info("Downloading wav2vec 2.0 started")
                 urlretrieve(url_w2v, w2v_path)
                 logger.info("wav2vec 2.0 download completed")
@@ -131,7 +128,7 @@ class NoresqaMetric(BaseMetric):
             )
 
             if self.metric_type == 0:
-                model_checkpoint_path = "{}/models/model_noresqa.pth".format(base_path)
+                model_checkpoint_path = self._checkpoint_path("model_noresqa.pth")
                 # Suppress PyTorch config registration warnings during model loading
                 with warnings.catch_warnings():
                     warnings.filterwarnings(
@@ -141,9 +138,7 @@ class NoresqaMetric(BaseMetric):
                         "state_base"
                     ]
             elif self.metric_type == 1:
-                model_checkpoint_path = "{}/models/model_noresqa_mos.pth".format(
-                    base_path
-                )
+                model_checkpoint_path = self._checkpoint_path("model_noresqa_mos.pth")
                 # Suppress PyTorch config registration warnings during model loading
                 with warnings.catch_warnings():
                     warnings.filterwarnings(
@@ -174,6 +169,19 @@ class NoresqaMetric(BaseMetric):
             raise NotImplementedError(f"Model tag '{self.model_tag}' not implemented")
 
         return model
+
+    def _checkpoint_path(self, filename):
+        candidates = [
+            os.path.join(self.cache_dir, filename),
+            os.path.join(self.DEFAULT_CACHE_DIR, filename),
+        ]
+        for path in candidates:
+            if os.path.isfile(path):
+                return path
+        raise FileNotFoundError(
+            f"Missing NORESQA model file '{filename}'. "
+            "Please run `tools/install_noresqa.sh` first."
+        )
 
     def compute(
         self, predictions: Any, references: Any, metadata: Dict[str, Any] = None
