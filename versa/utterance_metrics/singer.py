@@ -11,7 +11,12 @@ from versa.definition import BaseMetric, MetricCategory, MetricMetadata, MetricT
 
 
 def singer_model_setup(
-    model_name="byol", model_path=None, use_gpu=False, input_sr=44100, torchscript=False
+    model_name="byol",
+    model_path=None,
+    use_gpu=False,
+    input_sr=44100,
+    torchscript=False,
+    cache_dir="versa_cache/singer_identity",
 ):
     """
     Setup singer identity model
@@ -23,6 +28,7 @@ def singer_model_setup(
         use_gpu (bool): Whether to use GPU
         input_sr (int): Input sample rate (will be upsampled to 44.1kHz if different)
         torchscript (bool): Whether to load torchscript version
+        cache_dir (str): Directory for downloaded pretrained model files
 
     Returns:
         model: Loaded singer identity model
@@ -40,11 +46,20 @@ def singer_model_setup(
     if model_path is not None:
         # Load from local path
         model = load_model(
-            model_path, source=model_path, input_sr=input_sr, torchscript=torchscript
+            model_path,
+            source=model_path,
+            input_sr=input_sr,
+            torchscript=torchscript,
+            savedir=cache_dir,
         )
     else:
         # Load from HuggingFace Hub
-        model = load_model(model_name, input_sr=input_sr, torchscript=torchscript)
+        model = load_model(
+            model_name,
+            input_sr=input_sr,
+            torchscript=torchscript,
+            savedir=cache_dir,
+        )
 
     model = model.to(device)
     model.eval()
@@ -156,12 +171,14 @@ class SingerMetric(BaseMetric):
         self.input_sr = self.config.get("input_sr", 44100)
         self.torchscript = self.config.get("torchscript", False)
         self.target_sr = self.config.get("target_sr", 44100)
+        self.cache_dir = self.config.get("cache_dir", "versa_cache/singer_identity")
         self.model = singer_model_setup(
             model_name=self.model_name,
             model_path=self.model_path,
             use_gpu=self.use_gpu,
             input_sr=self.input_sr,
             torchscript=self.torchscript,
+            cache_dir=self.cache_dir,
         )
 
     def compute(self, predictions, references=None, metadata=None):

@@ -8,20 +8,15 @@ if ! command -v "$PYTHON_BIN" >/dev/null 2>&1; then
 fi
 
 
-# # NOTE(jiatong): a versa-specialized implementation for singer identity
-if [ -d "ssl-singer-identity/.git" ]; then
-    git -C ssl-singer-identity fetch origin
-    git -C ssl-singer-identity checkout main
-    git -C ssl-singer-identity pull --ff-only origin main
-elif [ -d "ssl-singer-identity" ]; then
-    echo "ERROR: ssl-singer-identity exists but is not a git checkout. Move it aside and retry."
-    exit 1
-else
-    git clone https://github.com/ftshijt/ssl-singer-identity.git
-fi
-cd ssl-singer-identity
-perl -0pi -e 's/use_auth_token=use_auth_token/token=use_auth_token or None/g' singer_identity/utils/fetch_pretrained.py
-perl -0pi -e 's/except ValueError:\\n        if pymodule_file == "custom\\.py":/except Exception:\\n        if pymodule_file == "custom.py":/g' singer_identity/utils/fetch_pretrained.py
-"$PYTHON_BIN" -m pip install -e .
+cd "$(dirname "$0")"
+
+tmpdir="$(mktemp -d)"
+trap 'rm -rf "$tmpdir"' EXIT
+
+# NOTE(jiatong): a versa-specialized implementation for singer identity.
+git clone --depth 1 https://github.com/ftshijt/ssl-singer-identity.git "$tmpdir/ssl-singer-identity"
+cd "$tmpdir/ssl-singer-identity"
+"$PYTHON_BIN" -c "from pathlib import Path; p=Path('singer_identity/utils/fetch_pretrained.py'); s=p.read_text(); old='''repo_id=source,\n                filename=filename,\n                use_auth_token=use_auth_token,'''; new='''repo_id=source,\n                filename=filename,\n                token=use_auth_token or None,'''; p.write_text(s.replace(old, new))"
+"$PYTHON_BIN" -c "from pathlib import Path; p=Path('singer_identity/utils/fetch_pretrained.py'); s=p.read_text(); old='''except ValueError:\n        if pymodule_file == \"custom.py\":'''; new='''except Exception:\n        if pymodule_file == \"custom.py\":'''; p.write_text(s.replace(old, new))"
+"$PYTHON_BIN" -m pip install .
 "$PYTHON_BIN" -m pip install nnAudio torchvision
-cd ..
