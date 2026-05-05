@@ -209,3 +209,13 @@ _optional_metric_import(
     "versa.sequence_metrics.signal_metric",
     ("SignalMetric", "register_signal_metric"),
 )
+_optional_metric_import(
+    "versa.utterance_metrics.sigmos",
+    ("SigmosMetric", "register_sigmos_metric"),
+    "Please install SigMOS dependencies and retry",
+)
+_optional_metric_import(
+    "versa.utterance_metrics.wvmos",
+    ("WvmosMetric", "register_wvmos_metric"),
+    "Please install WVMOS following tools/install_wvmos.sh",
+)
