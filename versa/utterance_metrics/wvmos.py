@@ -10,20 +10,14 @@ import librosa
 import torch
 from versa.definition import BaseMetric, MetricCategory, MetricMetadata, MetricType
 
-try:
-    from wvmos import get_wvmos
-except ImportError:
-    logger.info(
-        "WVMOS is not installed. Please use `tools/install_wvmos.sh` to install"
-    )
-    get_wvmos = None
-
 
 def wvmos_setup(use_gpu=False):
-    if get_wvmos is None:
+    try:
+        from wvmos import get_wvmos
+    except ImportError as e:
         raise ModuleNotFoundError(
             "WVMOS is not installed. Please use `tools/install_wvmos.sh` to install"
-        )
+        ) from e
 
     model = get_wvmos(cuda=use_gpu)
 
@@ -78,7 +72,7 @@ def _wvmos_metadata():
         requires_text=False,
         gpu_compatible=True,
         auto_install=False,
-        dependencies=["wvmos", "librosa", "torch"],
+        dependencies=["librosa", "torch", "transformers"],
         description="WV-MOS score prediction using a fine-tuned wav2vec2 model",
         paper_reference="https://arxiv.org/abs/2203.13086",
         implementation_source="https://github.com/AndreevP/wvmos",
