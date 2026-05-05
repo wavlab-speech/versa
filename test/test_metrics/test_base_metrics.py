@@ -161,8 +161,6 @@ def test_warpq_missing_dependency(monkeypatch):
 
 
 def test_warpq_resamples_with_keyword_sample_rates(monkeypatch):
-    from types import SimpleNamespace
-
     import versa.sequence_metrics.warpq as warpq_module
 
     calls = []
@@ -174,14 +172,14 @@ def test_warpq_resamples_with_keyword_sample_rates(monkeypatch):
             calls.append(("evaluate", gt_x.shape[0], pred_x.shape[0]))
             return 2.5
 
-    def dummy_resample(audio, *, orig_sr, target_sr):
+    def dummy_resample(audio, orig_sr, target_sr):
         calls.append(("resample", orig_sr, target_sr))
         return audio[:2]
 
     monkeypatch.setattr(
         warpq_module,
-        "librosa",
-        SimpleNamespace(resample=dummy_resample),
+        "resample_audio",
+        dummy_resample,
     )
 
     scores = warpq_module.warpq(DummyWarpqModel(), np.arange(4), np.arange(4), fs=16000)
@@ -197,9 +195,13 @@ def test_warpq_resamples_with_keyword_sample_rates(monkeypatch):
 def test_espnet_wer_metric_class_uses_reference_text(monkeypatch):
     calls = {}
 
+    def dummy_setup(**kwargs):
+        calls["setup"] = kwargs
+        return {"model": "dummy", "beam_size": kwargs["beam_size"]}
+
     monkeypatch.setattr(
         "versa.corpus_metrics.espnet_wer.espnet_wer_setup",
-        lambda **kwargs: {"model": "dummy", "beam_size": kwargs["beam_size"]},
+        dummy_setup,
     )
 
     def dummy_metric(wer_utils, pred_x, ref_text, fs=16000):
@@ -218,6 +220,7 @@ def test_espnet_wer_metric_class_uses_reference_text(monkeypatch):
     scores = metric.compute(pred, metadata={"sample_rate": 22050, "text": "hello"})
 
     assert scores == {"espnet_hyp_text": "hello", "espnet_wer_equal": 1}
+    assert calls["setup"]["cache_dir"] == "versa_cache/espnet_model_zoo"
     assert calls["wer_utils"]["beam_size"] == 7
     assert calls["ref_text"] == "hello"
     assert calls["fs"] == 22050
@@ -226,9 +229,13 @@ def test_espnet_wer_metric_class_uses_reference_text(monkeypatch):
 def test_owsm_wer_metric_class_uses_reference_text(monkeypatch):
     calls = {}
 
+    def dummy_setup(**kwargs):
+        calls["setup"] = kwargs
+        return {"model": "dummy", "beam_size": kwargs["beam_size"]}
+
     monkeypatch.setattr(
         "versa.corpus_metrics.owsm_wer.owsm_wer_setup",
-        lambda **kwargs: {"model": "dummy", "beam_size": kwargs["beam_size"]},
+        dummy_setup,
     )
 
     def dummy_metric(wer_utils, pred_x, ref_text, fs=16000):
@@ -246,6 +253,7 @@ def test_owsm_wer_metric_class_uses_reference_text(monkeypatch):
     scores = metric.compute(pred, references="hello", metadata={"sample_rate": 16000})
 
     assert scores == {"owsm_hyp_text": "hello", "owsm_wer_equal": 1}
+    assert calls["setup"]["cache_dir"] == "versa_cache/espnet_model_zoo"
     assert calls["ref_text"] == "hello"
     assert calls["fs"] == 16000
 
@@ -350,6 +358,7 @@ def test_se_snr_metric_class_returns_existing_keys(monkeypatch):
         "se_si_snr": 3.0,
         "se_ci_sdr": 4.0,
     }
+    assert calls["setup"]["cache_dir"] == "versa_cache/espnet_model_zoo"
     assert calls["setup"]["model_tag"] == "test-tag"
     assert calls["setup"]["use_gpu"] is True
     assert calls["fs"] == 22050
@@ -399,6 +408,7 @@ def test_speaker_metric_class_returns_existing_key(monkeypatch):
     scores = metric.compute(pred, ref, metadata={"sample_rate": 22050})
 
     assert scores == {"spk_similarity": 0.75}
+    assert calls["setup"]["cache_dir"] == "versa_cache/espnet_model_zoo"
     assert calls["setup"]["model_tag"] == "test-speaker"
     assert calls["setup"]["use_gpu"] is True
     assert calls["fs"] == 22050

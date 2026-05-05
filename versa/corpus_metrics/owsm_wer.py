@@ -26,20 +26,42 @@ CHUNK_SIZE = 30  # seconds
 
 
 def owsm_wer_setup(
-    model_tag="default", beam_size=5, text_cleaner="whisper_basic", use_gpu=True
+    model_tag="default",
+    beam_size=5,
+    text_cleaner="whisper_basic",
+    use_gpu=True,
+    cache_dir=None,
 ):
     if model_tag == "default":
         model_tag = "espnet/owsm_v3.1_ebf"
     device = "cuda" if use_gpu else "cpu"
     if Speech2Text is None or TextCleaner is None:
         raise ImportError("owsm_wer requires espnet. Please install espnet and retry")
-    model = Speech2Text.from_pretrained(
-        model_tag=model_tag,
-        device=device,
-        task_sym="<asr>",
-        beam_size=beam_size,
-        predict_time=False,
-    )
+    if cache_dir is None:
+        model = Speech2Text.from_pretrained(
+            model_tag=model_tag,
+            device=device,
+            task_sym="<asr>",
+            beam_size=beam_size,
+            predict_time=False,
+        )
+    else:
+        try:
+            from espnet_model_zoo.downloader import ModelDownloader
+        except ImportError:
+            raise ImportError(
+                "owsm_wer requires espnet_model_zoo. Please install it and retry"
+            )
+        model_kwargs = ModelDownloader(cachedir=cache_dir).download_and_unpack(
+            model_tag
+        )
+        model = Speech2Text(
+            device=device,
+            task_sym="<asr>",
+            beam_size=beam_size,
+            predict_time=False,
+            **model_kwargs,
+        )
     textcleaner = TextCleaner(text_cleaner)
     if "whisper" in text_cleaner:
         if importlib.util.find_spec("whisper") is None:
@@ -226,11 +248,13 @@ class OwsmWerMetric(BaseMetric):
         self.beam_size = self.config.get("beam_size", 5)
         self.text_cleaner = self.config.get("text_cleaner", "whisper_basic")
         self.use_gpu = self.config.get("use_gpu", True)
+        self.cache_dir = self.config.get("cache_dir", "versa_cache/espnet_model_zoo")
         self.wer_utils = owsm_wer_setup(
             model_tag=self.model_tag,
             beam_size=self.beam_size,
             text_cleaner=self.text_cleaner,
             use_gpu=self.use_gpu,
+            cache_dir=self.cache_dir,
         )
 
     def compute(self, predictions, references=None, metadata=None):

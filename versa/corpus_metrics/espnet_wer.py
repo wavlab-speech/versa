@@ -196,7 +196,7 @@ class EspnetWerMetric(BaseMetric):
         self.beam_size = self.config.get("beam_size", 5)
         self.text_cleaner = self.config.get("text_cleaner", "whisper_basic")
         self.use_gpu = self.config.get("use_gpu", True)
-        self.cache_dir = self.config.get("cache_dir")
+        self.cache_dir = self.config.get("cache_dir", "versa_cache/espnet_model_zoo")
         self.wer_utils = espnet_wer_setup(
             model_tag=self.model_tag,
             beam_size=self.beam_size,

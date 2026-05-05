@@ -15,7 +15,11 @@ from versa.sequence_metrics.signal_metric import signal_metric
 
 
 def se_snr_setup(
-    model_tag="default", model_path=None, model_config=None, use_gpu=False
+    model_tag="default",
+    model_path=None,
+    model_config=None,
+    use_gpu=False,
+    cache_dir=None,
 ):
     if SeparateSpeech is None:
         raise ImportError("se_snr requires espnet. Please install espnet and retry")
@@ -34,9 +38,23 @@ def se_snr_setup(
     else:
         if model_tag == "default":
             model_tag = "wyz/tfgridnet_for_urgent24"
-        model = SeparateSpeech.from_pretrained(
-            model_tag=model_tag, normalize_output_wav=True, device=device
-        )
+        if cache_dir is None:
+            model = SeparateSpeech.from_pretrained(
+                model_tag=model_tag, normalize_output_wav=True, device=device
+            )
+        else:
+            try:
+                from espnet_model_zoo.downloader import ModelDownloader
+            except ImportError:
+                raise ImportError(
+                    "se_snr requires espnet_model_zoo. Please install it and retry"
+                )
+            model_kwargs = ModelDownloader(cachedir=cache_dir).download_and_unpack(
+                model_tag
+            )
+            model = SeparateSpeech(
+                normalize_output_wav=True, device=device, **model_kwargs
+            )
     return model
 
 
@@ -56,11 +74,13 @@ class SeSnrMetric(BaseMetric):
         self.model_path = self.config.get("model_path")
         self.model_config = self.config.get("model_config")
         self.use_gpu = self.config.get("use_gpu", False)
+        self.cache_dir = self.config.get("cache_dir", "versa_cache/espnet_model_zoo")
         self.model = se_snr_setup(
             model_tag=self.model_tag,
             model_path=self.model_path,
             model_config=self.model_config,
             use_gpu=self.use_gpu,
+            cache_dir=self.cache_dir,
         )
 
     def compute(self, predictions, references=None, metadata=None):
