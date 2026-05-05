@@ -11,13 +11,13 @@ import filelock
 from pathlib import Path
 from typing import Dict, Any, Optional, Union
 
-import librosa
 import numpy as np
 import torch
 import torch.nn as nn
 
 logger = logging.getLogger(__name__)
 
+from versa.audio_utils import resample_audio
 from versa.definition import BaseMetric, MetricMetadata, MetricCategory, MetricType
 
 
@@ -160,8 +160,8 @@ class DpamDistanceMetric(BaseMetric):
         gt_x = np.asarray(gt_x)
 
         if fs != self.TARGET_FS:
-            pred_x = librosa.resample(pred_x, orig_sr=fs, target_sr=self.TARGET_FS)
-            gt_x = librosa.resample(gt_x, orig_sr=fs, target_sr=self.TARGET_FS)
+            pred_x = resample_audio(pred_x, fs, self.TARGET_FS)
+            gt_x = resample_audio(gt_x, fs, self.TARGET_FS)
 
         pred_x = torch.from_numpy(pred_x).unsqueeze(0).float()
         gt_x = torch.from_numpy(gt_x).unsqueeze(0).float()

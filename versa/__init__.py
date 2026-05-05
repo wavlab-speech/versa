@@ -1,9 +1,15 @@
 import importlib
 import logging
+import os
+from pathlib import Path
 
 __version__ = "0.0.1"  # noqa: F401
 
 logger = logging.getLogger(__name__)
+
+os.environ.setdefault(
+    "NUMBA_CACHE_DIR", str(Path.cwd() / "versa_cache" / "numba_cache")
+)
 
 
 def _optional_metric_import(module_name, names, install_hint=None):
@@ -48,10 +54,11 @@ _optional_metric_import(
     ("PseudoMosMetric", "register_pseudo_mos_metric"),
 )
 
-# try:
-#     from versa.utterance_metrics.pesq_score import PesqMetric, register_pesq_metric
-# except ImportError:
-#     logging.info("Please install pesq with `pip install pesq` and retry")
+_optional_metric_import(
+    "versa.utterance_metrics.pesq_score",
+    ("PesqMetric", "register_pesq_metric"),
+    "Please install pesq with `pip install pesq` and retry",
+)
 
 # try:
 #     from versa.utterance_metrics.stoi import StoiMetric, register_stoi_metric

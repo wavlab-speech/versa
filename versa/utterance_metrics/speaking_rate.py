@@ -5,10 +5,10 @@
 
 import logging
 
-import librosa
 import numpy as np
 import torch
 
+from versa.audio_utils import resample_audio
 from versa.definition import BaseMetric, MetricCategory, MetricMetadata, MetricType
 
 logger = logging.getLogger(__name__)
@@ -71,7 +71,7 @@ def speaking_rate_metric(wer_utils, pred_x, cache_text=None, fs=16000, use_char=
         inf_text = cache_text
     else:
         if fs != TARGET_FS:
-            pred_x = librosa.resample(pred_x, orig_sr=fs, target_sr=TARGET_FS)
+            pred_x = resample_audio(pred_x, fs, TARGET_FS)
             fs = TARGET_FS
         with torch.no_grad():
             inf_text = wer_utils["model"].transcribe(

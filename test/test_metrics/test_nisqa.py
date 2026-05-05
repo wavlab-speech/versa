@@ -175,7 +175,7 @@ class TestNisqaMetric:
         mock_nisqa_class.return_value = mock_model
 
         config = {
-            "nisqa_model_path": "./tools/NISQA/weights/nisqa.tar",
+            "nisqa_model_path": "versa_cache/nisqa/nisqa.tar",
             "use_gpu": False,
         }
 
@@ -186,7 +186,7 @@ class TestNisqaMetric:
     def test_compute_with_none_predictions(self):
         """Test that compute raises error with None predictions."""
         config = {
-            "nisqa_model_path": "./tools/NISQA/weights/nisqa.tar",
+            "nisqa_model_path": "versa_cache/nisqa/nisqa.tar",
             "use_gpu": False,
         }
         metric = NisqaMetric(config)
@@ -207,7 +207,7 @@ class TestNisqaMetric:
         }
 
         config = {
-            "nisqa_model_path": "./tools/NISQA/weights/nisqa.tar",
+            "nisqa_model_path": "versa_cache/nisqa/nisqa.tar",
             "use_gpu": False,
         }
         metric = NisqaMetric(config)
@@ -228,7 +228,7 @@ class TestNisqaMetric:
     def test_get_metadata(self):
         """Test that get_metadata returns correct metadata."""
         config = {
-            "nisqa_model_path": "./tools/NISQA/weights/nisqa.tar",
+            "nisqa_model_path": "versa_cache/nisqa/nisqa.tar",
             "use_gpu": False,
         }
         metric = NisqaMetric(config)

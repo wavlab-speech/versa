@@ -8,7 +8,6 @@
 import logging
 from typing import Dict, Any, Optional, Union
 
-import librosa
 import numpy as np
 
 logger = logging.getLogger(__name__)
@@ -25,6 +24,7 @@ except ImportError:
     Speech2Language = None
     ESPNET2_AVAILABLE = False
 
+from versa.audio_utils import resample_audio
 from versa.definition import BaseMetric, MetricMetadata, MetricCategory, MetricType
 
 
@@ -59,6 +59,7 @@ class OwsmLidMetric(BaseMetric):
         self.model_tag = self.config.get("model_tag", "default")
         self.nbest = self.config.get("nbest", 3)
         self.use_gpu = self.config.get("use_gpu", False)
+        self.cache_dir = self.config.get("cache_dir", "versa_cache/espnet_model_zoo")
 
         try:
             self.model = self._setup_model()
@@ -74,11 +75,16 @@ class OwsmLidMetric(BaseMetric):
         else:
             model_tag = self.model_tag
 
-        model = Speech2Language.from_pretrained(
-            model_tag=model_tag,
-            device=device,
-            nbest=self.nbest,
+        try:
+            from espnet_model_zoo.downloader import ModelDownloader
+        except ImportError:
+            raise ImportError(
+                "owsm_lid requires espnet_model_zoo. Please install it and retry"
+            )
+        model_kwargs = ModelDownloader(cachedir=self.cache_dir).download_and_unpack(
+            model_tag
         )
+        model = Speech2Language(device=device, nbest=self.nbest, **model_kwargs)
 
         return model
 
@@ -106,7 +112,7 @@ class OwsmLidMetric(BaseMetric):
 
         # Resample if necessary (OWSM only works with 16kHz)
         if fs != self.TARGET_FS:
-            pred_x = librosa.resample(pred_x, orig_sr=fs, target_sr=self.TARGET_FS)
+            pred_x = resample_audio(pred_x, fs, self.TARGET_FS)
 
         result = self.model(pred_x)
         return {"language": result}
@@ -146,7 +152,7 @@ def register_owsm_lid_metric(registry):
     registry.register(
         OwsmLidMetric,
         metric_metadata,
-        aliases=["OwsmLid", "lid", "language_id"],
+        aliases=["OwsmLid", "owsm_lid", "lid", "language_id"],
     )
 
 

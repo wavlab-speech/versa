@@ -5,9 +5,9 @@
 
 import os
 
-import librosa
 import numpy as np
 
+from versa.audio_utils import resample_audio
 from versa.definition import BaseMetric, MetricCategory, MetricMetadata, MetricType
 
 try:
@@ -61,8 +61,8 @@ def visqol_setup(model):
 
 def visqol_metric(api, api_fs, pred_x, gt_x, fs):
     if api_fs != fs:
-        gt_x = librosa.resample(gt_x, orig_sr=fs, target_sr=api_fs)
-        pred_x = librosa.resample(pred_x, orig_sr=fs, target_sr=api_fs)
+        gt_x = resample_audio(gt_x, fs, api_fs)
+        pred_x = resample_audio(pred_x, fs, api_fs)
 
     similarity_result = api.Measure(gt_x, pred_x)
 

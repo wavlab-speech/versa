@@ -3,8 +3,9 @@
 # Copyright 2024 Jiatong Shi
 #  Apache 2.0  (http://www.apache.org/licenses/LICENSE-2.0)
 
-import librosa
 import numpy as np
+
+from versa.audio_utils import resample_audio
 
 try:
     from espnet2.bin.spk_inference import Speech2Embedding
@@ -15,7 +16,11 @@ from versa.definition import BaseMetric, MetricCategory, MetricMetadata, MetricT
 
 
 def speaker_model_setup(
-    model_tag="default", model_path=None, model_config=None, use_gpu=False
+    model_tag="default",
+    model_path=None,
+    model_config=None,
+    use_gpu=False,
+    cache_dir=None,
 ):
     if Speech2Embedding is None:
         raise ImportError("speaker requires espnet. Please install espnet and retry")
@@ -31,15 +36,27 @@ def speaker_model_setup(
     else:
         if model_tag == "default":
             model_tag = "espnet/voxcelebs12_rawnet3"
-        model = Speech2Embedding.from_pretrained(model_tag=model_tag, device=device)
+        if cache_dir is None:
+            model = Speech2Embedding.from_pretrained(model_tag=model_tag, device=device)
+        else:
+            try:
+                from espnet_model_zoo.downloader import ModelDownloader
+            except ImportError:
+                raise ImportError(
+                    "speaker requires espnet_model_zoo. Please install it and retry"
+                )
+            model_kwargs = ModelDownloader(cachedir=cache_dir).download_and_unpack(
+                model_tag
+            )
+            model = Speech2Embedding(device=device, **model_kwargs)
     return model
 
 
 def speaker_metric(model, pred_x, gt_x, fs):
     # NOTE(jiatong): only work for 16000 Hz
     if fs != 16000:
-        gt_x = librosa.resample(gt_x, orig_sr=fs, target_sr=16000)
-        pred_x = librosa.resample(pred_x, orig_sr=fs, target_sr=16000)
+        gt_x = resample_audio(gt_x, fs, 16000)
+        pred_x = resample_audio(pred_x, fs, 16000)
 
     embedding_gen = model(pred_x).squeeze(0).cpu().numpy()
     embedding_gt = model(gt_x).squeeze(0).cpu().numpy()
@@ -57,11 +74,13 @@ class SpeakerMetric(BaseMetric):
         self.model_path = self.config.get("model_path")
         self.model_config = self.config.get("model_config")
         self.use_gpu = self.config.get("use_gpu", False)
+        self.cache_dir = self.config.get("cache_dir", "versa_cache/espnet_model_zoo")
         self.model = speaker_model_setup(
             model_tag=self.model_tag,
             model_path=self.model_path,
             model_config=self.model_config,
             use_gpu=self.use_gpu,
+            cache_dir=self.cache_dir,
         )
 
     def compute(self, predictions, references=None, metadata=None):

@@ -8,7 +8,6 @@
 import logging
 from typing import Dict, Any, Optional, Union
 
-import librosa
 import numpy as np
 
 logger = logging.getLogger(__name__)
@@ -25,6 +24,7 @@ except ImportError:
     pesq = None
     PESQ_AVAILABLE = False
 
+from versa.audio_utils import resample_audio
 from versa.definition import BaseMetric, MetricMetadata, MetricCategory, MetricType
 
 
@@ -85,15 +85,15 @@ class PesqMetric(BaseMetric):
                 pesq_value = pesq(8000, gt_x, pred_x, "nb")
             elif fs < 16000:
                 logger.info("not support fs {}, resample to 8khz".format(fs))
-                new_gt_x = librosa.resample(gt_x, orig_sr=fs, target_sr=8000)
-                new_pred_x = librosa.resample(pred_x, orig_sr=fs, target_sr=8000)
+                new_gt_x = resample_audio(gt_x, fs, 8000)
+                new_pred_x = resample_audio(pred_x, fs, 8000)
                 pesq_value = pesq(8000, new_gt_x, new_pred_x, "nb")
             elif fs == 16000:
                 pesq_value = pesq(16000, gt_x, pred_x, "wb")
             else:
                 logger.info("not support fs {}, resample to 16khz".format(fs))
-                new_gt_x = librosa.resample(gt_x, orig_sr=fs, target_sr=16000)
-                new_pred_x = librosa.resample(pred_x, orig_sr=fs, target_sr=16000)
+                new_gt_x = resample_audio(gt_x, fs, 16000)
+                new_pred_x = resample_audio(pred_x, fs, 16000)
                 pesq_value = pesq(16000, new_gt_x, new_pred_x, "wb")
         except BaseException:
             logger.warning(

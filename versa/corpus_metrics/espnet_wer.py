@@ -11,6 +11,7 @@ import numpy as np
 import torch
 from Levenshtein import opcodes
 
+from versa.audio_utils import resample_audio
 from versa.definition import BaseMetric, MetricCategory, MetricMetadata, MetricType
 
 
@@ -123,7 +124,7 @@ def espnet_levenshtein_metric(wer_utils, pred_x, ref_text, fs=16000):
         ret (dict): ditionary containing occurrences of edit operations
     """
     if fs != TARGET_FS:
-        pred_x = librosa.resample(pred_x, orig_sr=fs, target_sr=TARGET_FS)
+        pred_x = resample_audio(pred_x, fs, TARGET_FS)
         fs = TARGET_FS
     with torch.no_grad():
         inf_txt = espnet_predict(
@@ -195,7 +196,7 @@ class EspnetWerMetric(BaseMetric):
         self.beam_size = self.config.get("beam_size", 5)
         self.text_cleaner = self.config.get("text_cleaner", "whisper_basic")
         self.use_gpu = self.config.get("use_gpu", True)
-        self.cache_dir = self.config.get("cache_dir")
+        self.cache_dir = self.config.get("cache_dir", "versa_cache/espnet_model_zoo")
         self.wer_utils = espnet_wer_setup(
             model_tag=self.model_tag,
             beam_size=self.beam_size,

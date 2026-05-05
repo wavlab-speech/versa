@@ -10,7 +10,6 @@ import os
 from pathlib import Path
 from typing import Dict, Any, Optional, Union
 
-import librosa
 import numpy as np
 import torch
 import torch.nn as nn
@@ -36,6 +35,7 @@ except ImportError:
     Wav2Vec2PreTrainedModel = None
     TRANSFORMERS_AVAILABLE = False
 
+from versa.audio_utils import resample_audio
 from versa.definition import BaseMetric, MetricMetadata, MetricCategory, MetricType
 
 
@@ -86,6 +86,7 @@ class EmotionModel(Wav2Vec2PreTrainedModel):
         super().__init__(config)
 
         self.config = config
+        self.all_tied_weights_keys = {}
         self.wav2vec2 = Wav2Vec2Model(config)
         self.classifier = RegressionHead(config)
         self.init_weights()
@@ -117,6 +118,8 @@ class EmoVadMetric(BaseMetric):
         self.model_tag = self.config.get("model_tag", "default")
         self.model_path = self.config.get("model_path", None)
         self.model_config = self.config.get("model_config", None)
+        self.processor_path = self.config.get("processor_path", None)
+        self.cache_dir = self.config.get("cache_dir", "versa_cache/huggingface")
         self.use_gpu = self.config.get("use_gpu", False)
 
         self.device = "cuda" if self.use_gpu and torch.cuda.is_available() else "cpu"
@@ -130,17 +133,26 @@ class EmoVadMetric(BaseMetric):
         """Setup the EmoVad model."""
         if self.model_path is not None and self.model_config is not None:
             model = EmotionModel.from_pretrained(
-                pretrained_model_name_or_path=self.model_path, config=self.model_config
+                pretrained_model_name_or_path=self.model_path,
+                config=self.model_config,
+                cache_dir=self.cache_dir,
             ).to(self.device)
         else:
             if self.model_tag == "default":
                 model_tag = "audeering/wav2vec2-large-robust-12-ft-emotion-msp-dim"
             else:
                 model_tag = self.model_tag
-            model = EmotionModel.from_pretrained(model_tag).to(self.device)
+            model = EmotionModel.from_pretrained(
+                model_tag, cache_dir=self.cache_dir
+            ).to(self.device)
 
+        processor_path = (
+            self.processor_path
+            or self.model_path
+            or "audeering/wav2vec2-large-robust-12-ft-emotion-msp-dim"
+        )
         processor = Wav2Vec2Processor.from_pretrained(
-            "audeering/wav2vec2-large-robust-12-ft-emotion-msp-dim"
+            processor_path, cache_dir=self.cache_dir
         )
 
         return model, processor
@@ -169,7 +181,7 @@ class EmoVadMetric(BaseMetric):
 
         # NOTE(jiatong): only work for 16000 Hz
         if fs != 16000:
-            pred_x = librosa.resample(pred_x, orig_sr=fs, target_sr=16000)
+            pred_x = resample_audio(pred_x, fs, 16000)
 
         pred_x = self.processor(pred_x, sampling_rate=16000)
         pred_x = pred_x["input_values"][0]

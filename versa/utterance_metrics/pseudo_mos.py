@@ -15,6 +15,7 @@ import requests
 from pathlib import Path
 from typing import Optional
 
+from versa.audio_utils import resample_audio
 from versa.definition import BaseMetric, MetricCategory, MetricMetadata, MetricType
 
 logger = logging.getLogger(__name__)
@@ -124,9 +125,7 @@ def pseudo_mos_metric(pred, fs, predictor_dict, predictor_fs, use_gpu=False):
     for predictor in predictor_dict.keys():
         if predictor == "utmos":
             if fs != predictor_fs["utmos"]:
-                pred_utmos = librosa.resample(
-                    pred, orig_sr=fs, target_sr=predictor_fs["utmos"]
-                )
+                pred_utmos = resample_audio(pred, fs, predictor_fs["utmos"])
             else:
                 pred_utmos = pred
             pred_tensor = torch.from_numpy(pred_utmos).unsqueeze(0)
@@ -139,9 +138,7 @@ def pseudo_mos_metric(pred, fs, predictor_dict, predictor_fs, use_gpu=False):
 
         elif predictor == "utmosv2":
             if fs != predictor_fs["utmosv2"]:
-                pred_utmosv2 = librosa.resample(
-                    pred, orig_sr=fs, target_sr=predictor_fs["utmosv2"]
-                )
+                pred_utmosv2 = resample_audio(pred, fs, predictor_fs["utmosv2"])
             else:
                 pred_utmosv2 = pred
 
@@ -182,9 +179,7 @@ def pseudo_mos_metric(pred, fs, predictor_dict, predictor_fs, use_gpu=False):
 
         elif predictor == "dnsmos":
             if fs != predictor_fs["dnsmos"]:
-                pred_dnsmos = librosa.resample(
-                    pred, orig_sr=fs, target_sr=predictor_fs["dnsmos"]
-                )
+                pred_dnsmos = resample_audio(pred, fs, predictor_fs["dnsmos"])
                 fs = predictor_fs["dnsmos"]
             else:
                 pred_dnsmos = pred
@@ -195,9 +190,7 @@ def pseudo_mos_metric(pred, fs, predictor_dict, predictor_fs, use_gpu=False):
             scores.update(dns_overall=score["ovrl_mos"], dns_p808=score["p808_mos"])
         elif predictor == "plcmos":
             if fs != predictor_fs["plcmos"]:
-                pred_plcmos = librosa.resample(
-                    pred, orig_sr=fs, target_sr=predictor_fs["plcmos"]
-                )
+                pred_plcmos = resample_audio(pred, fs, predictor_fs["plcmos"])
                 fs = predictor_fs["plcmos"]
             else:
                 pred_plcmos = pred
@@ -207,9 +200,7 @@ def pseudo_mos_metric(pred, fs, predictor_dict, predictor_fs, use_gpu=False):
             scores.update(plcmos=score["plcmos"])
         elif predictor == "singmos":
             if fs != predictor_fs["singmos"]:
-                pred_singmos = librosa.resample(
-                    pred, orig_sr=fs, target_sr=predictor_fs["singmos"]
-                )
+                pred_singmos = resample_audio(pred, fs, predictor_fs["singmos"])
             else:
                 pred_singmos = pred
             pred_tensor = torch.from_numpy(pred_singmos).unsqueeze(0)
@@ -223,9 +214,7 @@ def pseudo_mos_metric(pred, fs, predictor_dict, predictor_fs, use_gpu=False):
             scores.update(singmos=score)
         elif predictor.startswith("dnsmos_pro_"):
             if fs != predictor_fs[predictor]:
-                pred_dnsmos_pro = librosa.resample(
-                    pred, orig_sr=fs, target_sr=predictor_fs[predictor]
-                )
+                pred_dnsmos_pro = resample_audio(pred, fs, predictor_fs[predictor])
             else:
                 pred_dnsmos_pro = pred
 

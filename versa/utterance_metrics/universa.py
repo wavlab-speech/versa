@@ -6,8 +6,9 @@
 
 import numpy as np
 import torch
-import librosa
 import soundfile
+
+from versa.audio_utils import resample_audio
 
 
 def _ensure_torchaudio_legacy_backend_api():
@@ -107,7 +108,7 @@ def audio_preprocess(audio_data, original_sr=None, target_sr=16000):
 
     # Resample if needed
     if sr != target_sr:
-        audio = librosa.resample(audio, orig_sr=sr, target_sr=target_sr)
+        audio = resample_audio(audio, sr, target_sr)
 
     # Convert to float32 and create tensor
     audio = audio.astype(np.float32)

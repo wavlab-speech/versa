@@ -7,6 +7,7 @@ import librosa
 import numpy as np
 import torch
 
+from versa.audio_utils import resample_audio
 from versa.definition import BaseMetric, MetricCategory, MetricMetadata, MetricType
 
 
@@ -45,10 +46,10 @@ def vad_metric(model_info, pred_x, fs):
     get_speech_ts = model_info["util"]
     # NOTE(jiatong): only work for 16000 Hz
     if fs > 16000:
-        pred_x = librosa.resample(pred_x, orig_sr=fs, target_sr=16000)
+        pred_x = resample_audio(pred_x, fs, 16000)
         fs = 16000
     elif fs < 16000:
-        pred_x = librosa.resample(pred_x, orig_sr=fs, target_sr=8000)
+        pred_x = resample_audio(pred_x, fs, 8000)
         fs = 8000
 
     speech_timestamps = get_speech_ts(

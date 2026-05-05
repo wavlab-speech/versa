@@ -5,9 +5,9 @@
 
 import logging
 
-import librosa
 import numpy as np
 
+from versa.audio_utils import resample_audio
 from versa.definition import BaseMetric, MetricCategory, MetricMetadata, MetricType
 
 logger = logging.getLogger(__name__)
@@ -58,8 +58,8 @@ def warpq(model, pred_x, gt_x, fs=8000):
     """
     target_fs = model.args["sr"]
     if target_fs != fs:
-        gt_x = librosa.resample(gt_x, orig_sr=fs, target_sr=target_fs)
-        pred_x = librosa.resample(pred_x, orig_sr=fs, target_sr=target_fs)
+        gt_x = resample_audio(gt_x, fs, target_fs)
+        pred_x = resample_audio(pred_x, fs, target_fs)
 
     score = model.evaluate_versa(gt_x, pred_x)
     return {"warpq": score}

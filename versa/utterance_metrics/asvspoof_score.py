@@ -16,9 +16,9 @@ import json
 import logging
 import os
 import sys
+from pathlib import Path
 from typing import Dict, Any, Optional, Union
 
-import librosa
 import numpy as np
 import torch
 
@@ -26,7 +26,10 @@ logger = logging.getLogger(__name__)
 
 # Handle optional AASIST dependency
 try:
-    sys.path.append("./tools/checkpoints/aasist")
+    aasist_path = (
+        Path(__file__).resolve().parents[2] / "tools" / "checkpoints" / "aasist"
+    )
+    sys.path.append(str(aasist_path))
     from models.AASIST import Model as AASIST  # noqa: E402
 
     AASIST_AVAILABLE = True
@@ -38,6 +41,7 @@ except ImportError:
     AASIST = None
     AASIST_AVAILABLE = False
 
+from versa.audio_utils import resample_audio
 from versa.definition import BaseMetric, MetricMetadata, MetricCategory, MetricType
 
 
@@ -132,7 +136,7 @@ class ASVSpoofMetric(BaseMetric):
 
         # NOTE(jiatong): only work for 16000 Hz
         if fs != 16000:
-            pred_x = librosa.resample(pred_x, orig_sr=fs, target_sr=16000)
+            pred_x = resample_audio(pred_x, fs, 16000)
 
         pred_x = torch.from_numpy(pred_x).unsqueeze(0).float().to(self.device)
         self.model.eval()

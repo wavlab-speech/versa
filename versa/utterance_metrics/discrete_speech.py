@@ -5,29 +5,61 @@
 
 """Module for discrete speech metrics evaluation."""
 
+import importlib.util
 import logging
+import os
+from pathlib import Path
 from typing import Dict, Any, Optional, Union
 
-import librosa
 import numpy as np
 
 logger = logging.getLogger(__name__)
 
-# Handle optional discrete_speech_metrics dependency
-try:
-    from discrete_speech_metrics import SpeechBERTScore, SpeechBLEU, SpeechTokenDistance
-
-    DISCRETE_SPEECH_AVAILABLE = True
-except ImportError:
+DISCRETE_SPEECH_AVAILABLE = (
+    importlib.util.find_spec("discrete_speech_metrics") is not None
+)
+if not DISCRETE_SPEECH_AVAILABLE:
     logger.warning(
         "discrete_speech_metrics is not properly installed. "
         "Please install discrete_speech_metrics and retry"
     )
-    SpeechBERTScore = None
-    SpeechBLEU = None
-    SpeechTokenDistance = None
-    DISCRETE_SPEECH_AVAILABLE = False
 
+SpeechBERTScore = None
+SpeechBLEU = None
+SpeechTokenDistance = None
+
+
+def _configure_huggingface_cache(cache_dir):
+    cache_path = Path(cache_dir).resolve()
+    cache_path.mkdir(parents=True, exist_ok=True)
+    os.environ.setdefault("HF_HOME", str(cache_path))
+    os.environ.setdefault("HF_HUB_CACHE", str(cache_path / "hub"))
+    os.environ.setdefault("TRANSFORMERS_CACHE", str(cache_path / "transformers"))
+
+
+def _load_discrete_speech_classes(cache_dir):
+    global SpeechBERTScore, SpeechBLEU, SpeechTokenDistance
+
+    if not DISCRETE_SPEECH_AVAILABLE:
+        raise ImportError(
+            "discrete_speech_metrics is not properly installed. "
+            "Please install discrete_speech_metrics and retry"
+        )
+    _configure_huggingface_cache(cache_dir)
+    if SpeechBERTScore is None or SpeechBLEU is None or SpeechTokenDistance is None:
+        from discrete_speech_metrics import (
+            SpeechBERTScore as _SpeechBERTScore,
+            SpeechBLEU as _SpeechBLEU,
+            SpeechTokenDistance as _SpeechTokenDistance,
+        )
+
+        SpeechBERTScore = _SpeechBERTScore
+        SpeechBLEU = _SpeechBLEU
+        SpeechTokenDistance = _SpeechTokenDistance
+    return SpeechBERTScore, SpeechBLEU, SpeechTokenDistance
+
+
+from versa.audio_utils import resample_audio
 from versa.definition import BaseMetric, MetricMetadata, MetricCategory, MetricType
 
 
@@ -60,19 +92,23 @@ class DiscreteSpeechMetric(BaseMetric):
 
         self.use_gpu = self.config.get("use_gpu", False)
         self.sample_rate = self.config.get("sample_rate", 16000)
+        self.cache_dir = self.config.get("cache_dir", "versa_cache/huggingface")
+        speech_bert_cls, speech_bleu_cls, speech_token_distance_cls = (
+            _load_discrete_speech_classes(self.cache_dir)
+        )
 
         # NOTE(jiatong) existing discrete speech metrics only works for 16khz
         # We keep the paper best setting. To use other settings, please conduct the
         # test on your own.
 
         try:
-            self.speech_bert = SpeechBERTScore(
+            self.speech_bert = speech_bert_cls(
                 sr=self.sample_rate,
                 model_type="wavlm-large",
                 layer=14,
                 use_gpu=self.use_gpu,
             )
-            self.speech_bleu = SpeechBLEU(
+            self.speech_bleu = speech_bleu_cls(
                 sr=self.sample_rate,
                 model_type="hubert-base",
                 vocab=200,
@@ -81,7 +117,7 @@ class DiscreteSpeechMetric(BaseMetric):
                 remove_repetition=True,
                 use_gpu=self.use_gpu,
             )
-            self.speech_token_distance = SpeechTokenDistance(
+            self.speech_token_distance = speech_token_distance_cls(
                 sr=self.sample_rate,
                 model_type="hubert-base",
                 vocab=200,
@@ -126,8 +162,8 @@ class DiscreteSpeechMetric(BaseMetric):
         scores = {}
 
         if fs != self.sample_rate:
-            gt_x = librosa.resample(gt_x, orig_sr=fs, target_sr=self.sample_rate)
-            pred_x = librosa.resample(pred_x, orig_sr=fs, target_sr=self.sample_rate)
+            gt_x = resample_audio(gt_x, fs, self.sample_rate)
+            pred_x = resample_audio(pred_x, fs, self.sample_rate)
 
         # Calculate SpeechBERT score
         try:

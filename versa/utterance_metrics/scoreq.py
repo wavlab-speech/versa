@@ -7,10 +7,10 @@ import logging
 import sys
 import ast
 
-import librosa
 import numpy as np
 from omegaconf import OmegaConf
 
+from versa.audio_utils import resample_audio
 from versa.definition import BaseMetric, MetricCategory, MetricMetadata, MetricType
 
 logger = logging.getLogger(__name__)
@@ -117,7 +117,7 @@ def scoreq_ref_setup(
 def scoreq_nr(model, pred_x, fs):
     # NOTE(jiatong): current model only have 16k options
     if fs != 16000:
-        pred_x = librosa.resample(pred_x, orig_sr=fs, target_sr=16000)
+        pred_x = resample_audio(pred_x, fs, 16000)
 
     return {"scoreq_nr": model.predict(test_path=pred_x, ref_path=None)}
 
@@ -125,8 +125,8 @@ def scoreq_nr(model, pred_x, fs):
 def scoreq_ref(model, pred_x, gt_x, fs):
     # NOTE(jiatong): current model only have 16k options
     if fs != 16000:
-        gt_x = librosa.resample(gt_x, orig_sr=fs, target_sr=16000)
-        pred_x = librosa.resample(pred_x, orig_sr=fs, target_sr=16000)
+        gt_x = resample_audio(gt_x, fs, 16000)
+        pred_x = resample_audio(pred_x, fs, 16000)
 
     return {"scoreq_ref": model.predict(test_path=pred_x, ref_path=gt_x)}
 

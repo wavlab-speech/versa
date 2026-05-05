@@ -63,8 +63,9 @@ import copy
 import logging
 from typing import Dict, Optional, Any
 
-import librosa
 import numpy as np
+
+from versa.audio_utils import resample_audio
 
 from versa.definition import BaseMetric, MetricCategory, MetricMetadata, MetricType
 
@@ -84,7 +85,7 @@ DEFAULT_PROMPTS = {
 Provide your answer as a single number between 1-10.
 Examples:
 - For a monologue: 1
-- For an interview with host and guest: 2 
+- For an interview with host and guest: 2
 - For a panel discussion with a moderator and three panelists: 4""",
     "speaker_gender": """Identify the perceived gender of the speaker(s).
 If multiple speakers, list each speaker with their perceived gender.
@@ -115,7 +116,7 @@ Choose exactly one category:
     "voice_pitch": """Analyze the voice pitch/tone of the speaker.
 Choose exactly one category from the following:
 - Very high: significantly higher than average for their perceived gender
-- High: noticeably above average pitch 
+- High: noticeably above average pitch
 - Medium: average pitch range
 - Low: noticeably below average pitch
 - Very low: significantly lower than average for their perceived gender""",
@@ -190,7 +191,7 @@ Choose exactly one label from the following categories:
 - Neutral: even-toned, matter-of-fact delivery with minimal emotional expression
 - Happy: upbeat, positive, enthusiastic tone
 - Sad: downcast, melancholic, somber tone
-- Angry: irritated, frustrated, hostile tone  
+- Angry: irritated, frustrated, hostile tone
 - Fearful: anxious, worried, frightened tone
 - Surprised: astonished, shocked tone
 - Disgusted: repulsed, revolted tone
@@ -355,11 +356,7 @@ def qwen2_base_metric(
     text = processor.apply_chat_template(
         conversation, add_generation_prompt=True, tokenize=False
     )
-    audio = [
-        librosa.resample(
-            pred_x, orig_sr=fs, target_sr=processor.feature_extractor.sampling_rate
-        )
-    ]
+    audio = [resample_audio(pred_x, fs, processor.feature_extractor.sampling_rate)]
 
     inputs = processor(text=text, audios=audio, return_tensors="pt", padding=True)
     for key in inputs.keys():
