@@ -261,9 +261,13 @@ def test_owsm_wer_metric_class_uses_reference_text(monkeypatch):
 def test_whisper_wer_metric_class_uses_cached_text(monkeypatch):
     calls = {}
 
+    def dummy_setup(**kwargs):
+        calls["setup"] = kwargs
+        return {"model": "dummy", "beam_size": kwargs["beam_size"]}
+
     monkeypatch.setattr(
         "versa.corpus_metrics.whisper_wer.whisper_wer_setup",
-        lambda **kwargs: {"model": "dummy", "beam_size": kwargs["beam_size"]},
+        dummy_setup,
     )
 
     def dummy_metric(wer_utils, pred_x, ref_text, fs=16000, cache_pred_text=None):
@@ -288,6 +292,7 @@ def test_whisper_wer_metric_class_uses_cached_text(monkeypatch):
     )
 
     assert scores == {"whisper_hyp_text": "cached hello", "whisper_wer_equal": 1}
+    assert calls["setup"]["cache_dir"] == "versa_cache/whisper"
     assert calls["ref_text"] == "hello"
     assert calls["cache_pred_text"] == "cached hello"
 

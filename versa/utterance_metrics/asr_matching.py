@@ -25,7 +25,10 @@ except ImportError:
     whisper = None
     WHISPER_AVAILABLE = False
 
-from espnet2.text.cleaner import TextCleaner
+try:
+    from espnet2.text.cleaner import TextCleaner
+except ImportError:
+    TextCleaner = None
 from versa.audio_utils import resample_audio
 from versa.definition import BaseMetric, MetricMetadata, MetricCategory, MetricType
 
@@ -58,11 +61,13 @@ class ASRMatchMetric(BaseMetric):
         self.beam_size = self.config.get("beam_size", 5)
         self.text_cleaner = self.config.get("text_cleaner", "whisper_basic")
         self.use_gpu = self.config.get("use_gpu", True)
+        self.cache_dir = self.config.get("cache_dir", "versa_cache/whisper")
         self.wer_utils = asr_match_setup(
             self.model_tag,
             self.beam_size,
             self.text_cleaner,
             use_gpu=self.use_gpu,
+            cache_dir=self.cache_dir,
         )
 
     def compute(
@@ -119,18 +124,24 @@ def register_asr_match_metric(registry):
 
 
 def asr_match_setup(
-    model_tag="default", beam_size=5, text_cleaner="whisper_basic", use_gpu=True
+    model_tag="default",
+    beam_size=5,
+    text_cleaner="whisper_basic",
+    use_gpu=True,
+    cache_dir="versa_cache/whisper",
 ):
     """Legacy function API for setting up ASR-Match."""
     if not WHISPER_AVAILABLE:
         raise ImportError(
             "Whisper is not properly installed. Please install following https://github.com/openai/whisper"
         )
+    if TextCleaner is None:
+        raise ImportError("asr_match requires espnet TextCleaner. Install espnet")
     if model_tag == "default":
         model_tag = "large"
     device = "cuda" if use_gpu and torch.cuda.is_available() else "cpu"
     try:
-        model = whisper.load_model(model_tag, device=device)
+        model = whisper.load_model(model_tag, device=device, download_root=cache_dir)
         cleaner = TextCleaner(text_cleaner)
     except Exception as e:
         raise RuntimeError(f"Failed to initialize Whisper model: {str(e)}") from e

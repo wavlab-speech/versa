@@ -16,6 +16,7 @@ import json
 import logging
 import os
 import sys
+from pathlib import Path
 from typing import Dict, Any, Optional, Union
 
 import numpy as np
@@ -25,7 +26,10 @@ logger = logging.getLogger(__name__)
 
 # Handle optional AASIST dependency
 try:
-    sys.path.append("./tools/checkpoints/aasist")
+    aasist_path = (
+        Path(__file__).resolve().parents[2] / "tools" / "checkpoints" / "aasist"
+    )
+    sys.path.append(str(aasist_path))
     from models.AASIST import Model as AASIST  # noqa: E402
 
     AASIST_AVAILABLE = True
