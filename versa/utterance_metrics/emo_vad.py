@@ -118,6 +118,8 @@ class EmoVadMetric(BaseMetric):
         self.model_tag = self.config.get("model_tag", "default")
         self.model_path = self.config.get("model_path", None)
         self.model_config = self.config.get("model_config", None)
+        self.processor_path = self.config.get("processor_path", None)
+        self.cache_dir = self.config.get("cache_dir", "versa_cache/huggingface")
         self.use_gpu = self.config.get("use_gpu", False)
 
         self.device = "cuda" if self.use_gpu and torch.cuda.is_available() else "cpu"
@@ -131,17 +133,26 @@ class EmoVadMetric(BaseMetric):
         """Setup the EmoVad model."""
         if self.model_path is not None and self.model_config is not None:
             model = EmotionModel.from_pretrained(
-                pretrained_model_name_or_path=self.model_path, config=self.model_config
+                pretrained_model_name_or_path=self.model_path,
+                config=self.model_config,
+                cache_dir=self.cache_dir,
             ).to(self.device)
         else:
             if self.model_tag == "default":
                 model_tag = "audeering/wav2vec2-large-robust-12-ft-emotion-msp-dim"
             else:
                 model_tag = self.model_tag
-            model = EmotionModel.from_pretrained(model_tag).to(self.device)
+            model = EmotionModel.from_pretrained(
+                model_tag, cache_dir=self.cache_dir
+            ).to(self.device)
 
+        processor_path = (
+            self.processor_path
+            or self.model_path
+            or "audeering/wav2vec2-large-robust-12-ft-emotion-msp-dim"
+        )
         processor = Wav2Vec2Processor.from_pretrained(
-            "audeering/wav2vec2-large-robust-12-ft-emotion-msp-dim"
+            processor_path, cache_dir=self.cache_dir
         )
 
         return model, processor
