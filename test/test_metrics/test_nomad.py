@@ -180,15 +180,16 @@ class TestNomadMetric:
             with pytest.raises(ValueError, match="Reference signal must be provided"):
                 metric.compute(np.random.random(16000), None)
 
-    @patch("versa.utterance_metrics.nomad.librosa.resample")
+    @patch("versa.utterance_metrics.nomad.resample_audio")
     def test_compute_success(self, mock_resample, mock_nomad_model):
         """Test successful computation of NOMAD score."""
         # Mock the resample function
         mock_resample.side_effect = lambda x, orig_sr, target_sr: x
 
         config = {"use_gpu": False, "model_cache": "test_cache"}
-        metric = NomadMetric(config)
-        metric.model = mock_nomad_model
+        with patch("versa.utterance_metrics.nomad.Nomad") as mock_nomad_class:
+            mock_nomad_class.return_value = mock_nomad_model
+            metric = NomadMetric(config)
 
         audio = np.random.random(16000)
         gt_audio = np.random.random(16000)
@@ -200,15 +201,16 @@ class TestNomadMetric:
         assert result["nomad"] == 0.5
         mock_nomad_model.predict.assert_called_once()
 
-    @patch("versa.utterance_metrics.nomad.librosa.resample")
+    @patch("versa.utterance_metrics.nomad.resample_audio")
     def test_compute_with_resampling(self, mock_resample, mock_nomad_model):
         """Test computation with resampling."""
         # Mock the resample function
         mock_resample.side_effect = lambda x, orig_sr, target_sr: x
 
         config = {"use_gpu": False, "model_cache": "test_cache"}
-        metric = NomadMetric(config)
-        metric.model = mock_nomad_model
+        with patch("versa.utterance_metrics.nomad.Nomad") as mock_nomad_class:
+            mock_nomad_class.return_value = mock_nomad_model
+            metric = NomadMetric(config)
 
         audio = np.random.random(8000)  # Different sample rate
         gt_audio = np.random.random(8000)

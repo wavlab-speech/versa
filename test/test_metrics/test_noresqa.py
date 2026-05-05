@@ -292,7 +292,7 @@ def test_noresqa_metric_not_available():
         "cache_dir": "test_cache/noresqa_model",
     }
 
-    with pytest.raises(ImportError, match="noresqa is not installed"):
+    with pytest.raises(ImportError, match="NORESQA dependencies are not available"):
         NoresqaMetric(config)
 
 

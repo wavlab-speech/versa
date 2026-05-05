@@ -8,6 +8,7 @@ from typing import Dict, Optional, Union, List, Any
 
 warnings.filterwarnings("ignore")
 import argparse
+import logging as py_logging
 import os
 import re
 import sys
@@ -20,8 +21,7 @@ import yaml
 from huggingface_hub.file_download import hf_hub_download
 from transformers import AutoTokenizer, logging
 
-from versa.utterance_metrics.pam_utils.clap import CLAP
-
+logger = py_logging.getLogger(__name__)
 logging.set_verbosity_error()
 import collections
 
@@ -180,11 +180,12 @@ class PAM:
             if "gpt" in self.args.text_model:
                 text = text + " <|endoftext|>"
 
-            tok = self.tokenizer.encode_plus(
-                text=text,
+            tok = self.tokenizer(
+                text,
                 add_special_tokens=True,
                 max_length=self.args.text_len,
                 padding="max_length",
+                truncation=True,
                 return_tensors="pt",
             )
 
