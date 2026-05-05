@@ -3,10 +3,10 @@
 # Adapted from speaker similarity code for singer identity
 # Uses SSL singer identity models from SonyCSLParis/ssl-singer-identity
 
-import librosa
 import numpy as np
 import torch
 
+from versa.audio_utils import resample_audio
 from versa.definition import BaseMetric, MetricCategory, MetricMetadata, MetricType
 
 
@@ -67,8 +67,8 @@ def singer_metric(model, pred_x, gt_x, fs, target_sr=44100):
     """
     # Resample to target sample rate if needed (singer models expect 44.1kHz)
     if fs != target_sr:
-        gt_x = librosa.resample(gt_x, orig_sr=fs, target_sr=target_sr)
-        pred_x = librosa.resample(pred_x, orig_sr=fs, target_sr=target_sr)
+        gt_x = resample_audio(gt_x, fs, target_sr)
+        pred_x = resample_audio(pred_x, fs, target_sr)
 
     # Convert to torch tensors and add batch dimension
     device = next(model.parameters()).device
@@ -112,9 +112,7 @@ def singer_metric_batch(model, audio_batch, fs, target_sr=44100):
     if fs != target_sr:
         resampled_batch = []
         for i in range(audio_batch.shape[0]):
-            resampled = librosa.resample(
-                audio_batch[i], orig_sr=fs, target_sr=target_sr
-            )
+            resampled = resample_audio(audio_batch[i], fs, target_sr)
             resampled_batch.append(resampled)
         audio_batch = np.array(resampled_batch)
 

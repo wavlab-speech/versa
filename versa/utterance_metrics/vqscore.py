@@ -8,10 +8,10 @@ from pathlib import Path
 import sys
 import yaml
 
-import librosa
 import numpy as np
 import torch
 
+from versa.audio_utils import resample_audio
 from versa.definition import BaseMetric, MetricCategory, MetricMetadata, MetricType
 
 logger = logging.getLogger(__name__)
@@ -115,7 +115,7 @@ def cos_similarity(SP_noisy, SP_y_noisy, eps=1e-5):
 def vqscore_metric(model, pred_x, fs):
     # NOTE(wangyou): current model only have 16k options
     if fs != 16000:
-        pred_x = librosa.resample(pred_x, orig_sr=fs, target_sr=16000)
+        pred_x = resample_audio(pred_x, fs, 16000)
 
     with torch.no_grad():
         audio = torch.as_tensor(

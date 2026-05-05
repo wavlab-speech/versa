@@ -63,9 +63,10 @@ import copy
 import logging
 from typing import Dict, Optional, Any
 
-import librosa
 import numpy as np
 import torch
+
+from versa.audio_utils import resample_audio
 
 try:
     from transformers import Qwen2_5OmniForConditionalGeneration, Qwen2_5OmniProcessor
@@ -161,11 +162,7 @@ def qwen_omni_base_metric(
     text = processor.apply_chat_template(
         conversation, add_generation_prompt=True, tokenize=False
     )
-    audio = [
-        librosa.resample(
-            pred_x, orig_sr=fs, target_sr=processor.feature_extractor.sampling_rate
-        )
-    ]
+    audio = [resample_audio(pred_x, fs, processor.feature_extractor.sampling_rate)]
 
     inputs = processor(text=text, audio=audio, return_tensors="pt", padding=True)
     inputs = inputs.to(model.device).to(model.dtype)

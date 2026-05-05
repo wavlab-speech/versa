@@ -3,8 +3,9 @@
 # Copyright 2024 Jiatong Shi
 #  Apache 2.0  (http://www.apache.org/licenses/LICENSE-2.0)
 
-import librosa
 import numpy as np
+
+from versa.audio_utils import resample_audio
 
 try:
     from espnet2.bin.spk_inference import Speech2Embedding
@@ -38,8 +39,8 @@ def speaker_model_setup(
 def speaker_metric(model, pred_x, gt_x, fs):
     # NOTE(jiatong): only work for 16000 Hz
     if fs != 16000:
-        gt_x = librosa.resample(gt_x, orig_sr=fs, target_sr=16000)
-        pred_x = librosa.resample(pred_x, orig_sr=fs, target_sr=16000)
+        gt_x = resample_audio(gt_x, fs, 16000)
+        pred_x = resample_audio(pred_x, fs, 16000)
 
     embedding_gen = model(pred_x).squeeze(0).cpu().numpy()
     embedding_gt = model(gt_x).squeeze(0).cpu().numpy()

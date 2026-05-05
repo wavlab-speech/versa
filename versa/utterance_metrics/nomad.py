@@ -8,7 +8,6 @@
 import logging
 from typing import Dict, Any, Optional, Union
 
-import librosa
 import numpy as np
 import torch
 
@@ -26,6 +25,7 @@ except ImportError:
     Nomad = None
     NOMAD_AVAILABLE = False
 
+from versa.audio_utils import resample_audio
 from versa.definition import BaseMetric, MetricMetadata, MetricCategory, MetricType
 
 
@@ -52,7 +52,7 @@ class NomadMetric(BaseMetric):
 
     def _setup(self):
         """Initialize NOMAD-specific components."""
-        if not NOMAD_AVAILABLE:
+        if not NOMAD_AVAILABLE and Nomad is None:
             raise ImportError(
                 "nomad is not installed. Please use `tools/install_nomad.sh` to install"
             )
@@ -104,8 +104,8 @@ class NomadMetric(BaseMetric):
 
         # Resample if necessary (NOMAD only supports 16kHz)
         if fs != self.TARGET_FS:
-            gt_x = librosa.resample(gt_x, orig_sr=fs, target_sr=self.TARGET_FS)
-            pred_x = librosa.resample(pred_x, orig_sr=fs, target_sr=self.TARGET_FS)
+            gt_x = resample_audio(gt_x, fs, self.TARGET_FS)
+            pred_x = resample_audio(pred_x, fs, self.TARGET_FS)
 
         return {
             "nomad": self.model.predict(nmr=gt_x, deg=pred_x),

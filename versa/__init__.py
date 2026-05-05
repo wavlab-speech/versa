@@ -54,10 +54,11 @@ _optional_metric_import(
     ("PseudoMosMetric", "register_pseudo_mos_metric"),
 )
 
-# try:
-#     from versa.utterance_metrics.pesq_score import PesqMetric, register_pesq_metric
-# except ImportError:
-#     logging.info("Please install pesq with `pip install pesq` and retry")
+_optional_metric_import(
+    "versa.utterance_metrics.pesq_score",
+    ("PesqMetric", "register_pesq_metric"),
+    "Please install pesq with `pip install pesq` and retry",
+)
 
 # try:
 #     from versa.utterance_metrics.stoi import StoiMetric, register_stoi_metric

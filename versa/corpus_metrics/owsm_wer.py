@@ -11,6 +11,7 @@ import numpy as np
 import torch
 from Levenshtein import opcodes
 
+from versa.audio_utils import resample_audio
 from versa.definition import BaseMetric, MetricCategory, MetricMetadata, MetricType
 
 try:
@@ -159,7 +160,7 @@ def owsm_levenshtein_metric(wer_utils, pred_x, ref_text, fs=16000):
         ret (dict): ditionary containing occurrences of edit operations
     """
     if fs != TARGET_FS:
-        pred_x = librosa.resample(pred_x, orig_sr=fs, target_sr=TARGET_FS)
+        pred_x = resample_audio(pred_x, fs, TARGET_FS)
         fs = TARGET_FS
     with torch.no_grad():
         inf_txt = owsm_predict(

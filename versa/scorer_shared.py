@@ -6,12 +6,12 @@
 import logging
 import json
 import kaldiio
-import librosa
 import soundfile as sf
 import yaml
 from typing import Dict, List, Optional, Any, Union
 from tqdm import tqdm
 
+from versa.audio_utils import resample_audio
 from versa.definition import (
     BaseMetric,
     GPUMetric,
@@ -50,6 +50,149 @@ def audio_loader_setup(audio, io):
                     )
                 audio_files[key] = value
     return audio_files
+
+
+def _create_populated_registry() -> MetricRegistry:
+    """Create a registry populated with all importable package metrics."""
+    import versa as versa_package
+
+    registry = MetricRegistry()
+    for name in dir(versa_package):
+        if not name.startswith("register_") or not name.endswith("_metric"):
+            continue
+        register_fn = getattr(versa_package, name)
+        if not callable(register_fn):
+            continue
+        try:
+            register_fn(registry)
+        except Exception as e:
+            logging.getLogger(__name__).warning(
+                "Failed to register metric via %s: %s", name, e
+            )
+    return registry
+
+
+def load_score_modules(
+    score_config: List[Dict[str, Any]],
+    use_gt: bool = True,
+    use_gt_text: bool = False,
+    use_gpu: bool = False,
+) -> MetricSuite:
+    """Legacy wrapper for loading utterance-level scoring modules."""
+    assert score_config, "no scoring function is provided"
+    scorer = VersaScorer(_create_populated_registry())
+    return scorer.load_metrics(
+        score_config,
+        use_gt=use_gt,
+        use_gt_text=use_gt_text,
+        use_gpu=use_gpu,
+    )
+
+
+def list_scoring(
+    gen_files: Dict[str, str],
+    score_modules: MetricSuite,
+    gt_files: Optional[Dict[str, str]] = None,
+    text_info: Optional[Dict[str, str]] = None,
+    output_file: Optional[str] = None,
+    io: str = "kaldi",
+    batch_size: int = 1,
+) -> List[Dict[str, Any]]:
+    """Legacy wrapper for scoring a list of utterances."""
+    scorer = VersaScorer(_create_populated_registry())
+    return scorer.score_utterances(
+        gen_files,
+        score_modules,
+        gt_files=gt_files,
+        text_info=text_info,
+        output_file=output_file,
+        io=io,
+        batch_size=batch_size,
+    )
+
+
+def load_summary(score_info: List[Dict[str, Any]]) -> Dict[str, Any]:
+    """Legacy alias for summary computation."""
+    return compute_summary(score_info)
+
+
+def load_corpus_modules(
+    score_config: List[Dict[str, Any]],
+    use_gpu: bool = False,
+    cache_folder: Optional[str] = None,
+    io: str = "kaldi",
+) -> Dict[str, Any]:
+    """Legacy wrapper for loading corpus-level scoring modules."""
+    assert score_config, "no scoring function is provided"
+    score_modules = {}
+    logger = logging.getLogger(__name__)
+
+    for config in score_config:
+        metric_name = config["name"]
+        try:
+            if metric_name == "fad":
+                from versa.corpus_metrics.fad import fad_setup
+
+                cache_dir = config.get(
+                    "cache_dir",
+                    f"{cache_folder}/fad" if cache_folder else "versa_cache/fad",
+                )
+                score_modules["fad"] = fad_setup(
+                    baseline=None,
+                    fad_embedding=config.get("fad_embedding", "default"),
+                    cache_dir=cache_dir,
+                    use_inf=config.get("use_inf", True),
+                    io=config.get("io", io),
+                )
+            elif metric_name == "kid":
+                from versa.corpus_metrics.kid import kid_setup
+
+                cache_dir = config.get(
+                    "cache_dir",
+                    f"{cache_folder}/kid" if cache_folder else "versa_cache/kid",
+                )
+                score_modules["kid"] = kid_setup(
+                    baseline=None,
+                    kid_embedding=config.get(
+                        "kid_embedding", config.get("fad_embedding", "default")
+                    ),
+                    cache_dir=cache_dir,
+                    use_inf=config.get("use_inf", True),
+                    io=config.get("io", io),
+                )
+        except Exception as e:
+            logger.error("Failed to load corpus metric %s: %s", metric_name, e)
+
+    return score_modules
+
+
+def corpus_scoring(
+    pred_x: str,
+    score_modules: Dict[str, Any],
+    baseline: Optional[str] = None,
+    output_file: Optional[str] = None,
+) -> Dict[str, Any]:
+    """Legacy wrapper for scoring corpus-level metrics."""
+    score_info = {}
+
+    for metric_name, module_info in score_modules.items():
+        if baseline is not None:
+            module_info["baseline"] = baseline
+
+        if metric_name == "fad":
+            from versa.corpus_metrics.fad import fad_scoring
+
+            score_info.update(fad_scoring(pred_x, module_info, key_info="fad"))
+        elif metric_name == "kid":
+            from versa.corpus_metrics.kid import kid_scoring
+
+            score_info.update(kid_scoring(pred_x, module_info, key_info="kid"))
+
+    if output_file:
+        with open(output_file, "w") as f:
+            yaml.dump(score_info, f)
+
+    return score_info
 
 
 class ScoreProcessor:
@@ -122,10 +265,7 @@ class VersaScorer:
 
     def _create_default_registry(self) -> MetricRegistry:
         """Create and populate the default metric registry."""
-        registry = MetricRegistry()
-        # This would be populated by importing all metric modules
-        # and having them auto-register themselves
-        return registry
+        return _create_populated_registry()
 
     def load_metrics(
         self,
@@ -301,13 +441,13 @@ class VersaScorer:
 
         if gen_sr > gt_sr:
             self.logger.warning("Resampling generated audio to match ground truth")
-            gen_wav = librosa.resample(gen_wav, orig_sr=gen_sr, target_sr=gt_sr)
+            gen_wav = resample_audio(gen_wav, gen_sr, gt_sr)
             gen_sr = gt_sr
         elif gen_sr < gt_sr:
             self.logger.warning(
                 "Resampling ground truth audio to match generated audio"
             )
-            gt_wav = librosa.resample(gt_wav, orig_sr=gt_sr, target_sr=gen_sr)
+            gt_wav = resample_audio(gt_wav, gt_sr, gen_sr)
 
         return gen_wav, gt_wav, gen_sr
 

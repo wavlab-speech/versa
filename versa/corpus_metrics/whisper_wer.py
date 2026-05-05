@@ -5,11 +5,11 @@
 
 import logging
 
-import librosa
 import numpy as np
 import torch
 from Levenshtein import opcodes
 
+from versa.audio_utils import resample_audio
 from versa.definition import BaseMetric, MetricCategory, MetricMetadata, MetricType
 
 try:
@@ -68,7 +68,7 @@ def whisper_levenshtein_metric(
         inf_text = cache_pred_text
     else:
         if fs != TARGET_FS:
-            pred_x = librosa.resample(pred_x, orig_sr=fs, target_sr=TARGET_FS)
+            pred_x = resample_audio(pred_x, fs, TARGET_FS)
             fs = TARGET_FS
         with torch.no_grad():
             inf_text = wer_utils["model"].transcribe(

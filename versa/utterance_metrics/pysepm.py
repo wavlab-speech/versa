@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 #  Apache 2.0  (http://www.apache.org/licenses/LICENSE-2.0)
 
-import librosa
 import logging
 
 import numpy as np
 
+from versa.audio_utils import resample_audio
 from versa.definition import BaseMetric, MetricCategory, MetricMetadata, MetricType
 
 logger = logging.getLogger(__name__)
@@ -189,8 +189,8 @@ def pysepm_metric(pred_x, gt_x, fs, frame_len=0.03, overlap=0.75):
         ncm_score = ncm(pred_x, gt_x, 8000)
     elif fs < 16000:
         logging.info("not support fs {}, resample to 8khz".format(fs))
-        new_gt_x = librosa.resample(gt_x, orig_sr=fs, target_sr=8000)
-        new_pred_x = librosa.resample(pred_x, orig_sr=fs, target_sr=8000)
+        new_gt_x = resample_audio(gt_x, fs, 8000)
+        new_pred_x = resample_audio(pred_x, fs, 8000)
         composite_score = composite(new_pred_x, new_gt_x, 8000)
         ncm_score = ncm(new_pred_x, new_gt_x, 8000)
     elif fs == 16000:
@@ -198,8 +198,8 @@ def pysepm_metric(pred_x, gt_x, fs, frame_len=0.03, overlap=0.75):
         ncm_score = ncm(pred_x, gt_x, 16000)
     else:
         logging.info("not support fs {}, resample to 16khz".format(fs))
-        new_gt_x = librosa.resample(gt_x, orig_sr=fs, target_sr=16000)
-        new_pred_x = librosa.resample(pred_x, orig_sr=fs, target_sr=16000)
+        new_gt_x = resample_audio(gt_x, fs, 16000)
+        new_pred_x = resample_audio(pred_x, fs, 16000)
         composite_score = composite(new_pred_x, new_gt_x, 16000)
         ncm_score = ncm(new_pred_x, new_gt_x, 16000)
 
