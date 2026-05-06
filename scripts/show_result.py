@@ -110,8 +110,8 @@ def discover_metrics(info: List[Dict]) -> Dict[str, Any]:
     metric_category_mapping = {
         # Audio Quality Metrics
         "audio_quality": [
-            "dnsmos_overall",
-            "dnsmos_p808",
+            "dns_overall",
+            "dns_p808",
             "nisqa",
             "utmos",
             "plcmos",
@@ -191,7 +191,7 @@ def discover_metrics(info: List[Dict]) -> Dict[str, Any]:
         # Semantic/Content Metrics
         "semantic": [
             "speech_bert",
-            "speech_belu",
+            "speech_bleu",
             "speech_token_distance",
             "clap_score",
         ],

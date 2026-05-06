@@ -312,7 +312,11 @@ class UniversaMetric(BaseMetric):
     """Uni-VERSA speech assessment metric."""
 
     def _setup(self):
-        self.model_type = self.config.get("model_type", "auto")
+        self.model_type = self.config.get(
+            "model_type", self.config.get("model_tag", "auto")
+        )
+        if self.model_type == "default":
+            self.model_type = "noref"
         self.cache_dir = self.config.get("cache_dir")
 
     def compute(self, predictions, references=None, metadata=None):
@@ -396,7 +400,14 @@ def register_universa_metric(registry):
     registry.register(
         UniversaMetric,
         _universa_metadata(),
-        aliases=["uni_versa", "universal_speech_assessment"],
+        aliases=[
+            "uni_versa",
+            "universal_speech_assessment",
+            "universa_noref",
+            "universa_audioref",
+            "universa_textref",
+            "universa_fullref",
+        ],
     )
 
 

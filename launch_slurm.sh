@@ -298,6 +298,6 @@ else
 fi
 
 echo -e "${YELLOW}To create a dependent job that processes all ${job_type} results after completion, use:${NC}"
-echo -e "sbatch --dependency=afterok:${all_jobs} ./merge_results.sh ${SCORE_DIR}/result ${SCORE_DIR}/final_results.txt"
+echo -e "sbatch --dependency=afterok:${all_jobs} ./scripts/show_result.sh ${SCORE_DIR}/result ${SCORE_DIR}/final_results.txt"
 
 echo -e "${GREEN}Done! Monitor jobs with 'squeue -u $(whoami)'${NC}"

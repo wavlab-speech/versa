@@ -100,6 +100,20 @@ def pseudo_mos_setup(
             ).to(device)
             predictor_dict["singmos"] = singmos
             predictor_fs["singmos"] = 16000
+        elif predictor == "singmos_v1":
+            torch.hub.set_dir(cache_dir)
+            singmos = torch.hub.load(
+                "South-Twilight/SingMOS:v1.1.1", "singmos_v1", trust_repo=True
+            ).to(device)
+            predictor_dict["singmos_v1"] = singmos
+            predictor_fs["singmos_v1"] = 16000
+        elif predictor == "singmos_pro":
+            torch.hub.set_dir(cache_dir)
+            singmos = torch.hub.load(
+                "South-Twilight/SingMOS:v1.1.1", "singmos_pro", trust_repo=True
+            ).to(device)
+            predictor_dict["singmos_pro"] = singmos
+            predictor_fs["singmos_pro"] = 16000
         elif predictor.startswith("dnsmos_pro_"):
             variant = predictor[len("dnsmos_pro_") :]
             model_path = Path(cache_dir) / f"dnsmos_pro_{variant}.pt"
@@ -198,9 +212,9 @@ def pseudo_mos_metric(pred, fs, predictor_dict, predictor_fs, use_gpu=False):
             max_val = np.max(np.abs(pred_plcmos))
             score = predictor_dict["plcmos"].run(pred_plcmos / max_val, sr=fs)
             scores.update(plcmos=score["plcmos"])
-        elif predictor == "singmos":
-            if fs != predictor_fs["singmos"]:
-                pred_singmos = resample_audio(pred, fs, predictor_fs["singmos"])
+        elif predictor in ("singmos", "singmos_v1", "singmos_pro"):
+            if fs != predictor_fs[predictor]:
+                pred_singmos = resample_audio(pred, fs, predictor_fs[predictor])
             else:
                 pred_singmos = pred
             pred_tensor = torch.from_numpy(pred_singmos).unsqueeze(0)
@@ -208,10 +222,10 @@ def pseudo_mos_metric(pred, fs, predictor_dict, predictor_fs, use_gpu=False):
             if use_gpu:
                 pred_tensor = pred_tensor.to("cuda")
                 length_tensor = length_tensor.to("cuda")
-            score = predictor_dict["singmos"](pred_tensor.float(), length_tensor)[
+            score = predictor_dict[predictor](pred_tensor.float(), length_tensor)[
                 0
             ].item()
-            scores.update(singmos=score)
+            scores[predictor] = score
         elif predictor.startswith("dnsmos_pro_"):
             if fs != predictor_fs[predictor]:
                 pred_dnsmos_pro = resample_audio(pred, fs, predictor_fs[predictor])
@@ -326,6 +340,8 @@ def register_pseudo_mos_metric(registry):
             "dnsmos",
             "plcmos",
             "singmos",
+            "singmos_v1",
+            "singmos_pro",
             "utmosv2",
             "dnsmos_pro",
         ],

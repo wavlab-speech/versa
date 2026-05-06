@@ -1,0 +1,4 @@
+
+# ARECHO evaluation for echo cancellation and codec quality
+- name: arecho
+  model_tag: base_v0

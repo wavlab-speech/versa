@@ -133,6 +133,10 @@ _optional_metric_import(
     "versa.utterance_metrics.universa",
     ("UniversaMetric", "register_universa_metric"),
 )
+_optional_metric_import(
+    "versa.utterance_metrics.arecho",
+    ("ArechoMetric", "register_arecho_metric"),
+)
 
 # from versa.utterance_metrics.pysepm import PysepmMetric, register_pysepm_metric
 _optional_metric_import(
