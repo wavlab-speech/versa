@@ -5,16 +5,20 @@
 # Copyright 2025 Jionghao Han
 #  Apache 2.0  (http://www.apache.org/licenses/LICENSE-2.0)
 
+# flake8: noqa: E501
+
 import logging
-
-logger = logging.getLogger(__name__)
-
 import librosa
 import numpy as np
 import torch
 import requests
 from pathlib import Path
 from typing import Optional
+
+from versa.audio_utils import resample_audio
+from versa.definition import BaseMetric, MetricCategory, MetricMetadata, MetricType
+
+logger = logging.getLogger(__name__)
 
 try:
     import utmosv2
@@ -41,7 +45,9 @@ def pseudo_mos_setup(
     # first import utmos to resolve cross-import from the same model
     if "utmos" in predictor_types:
         torch.hub.set_dir(cache_dir)
-        utmos = torch.hub.load("ftshijt/SpeechMOS:main", "utmos22_strong").to(device)
+        utmos = torch.hub.load(
+            "ftshijt/SpeechMOS:main", "utmos22_strong", trust_repo=True
+        ).to(device)
         predictor_dict["utmos"] = utmos.float()
         predictor_fs["utmos"] = 16000
     if "utmosv2" in predictor_types:
@@ -67,7 +73,7 @@ def pseudo_mos_setup(
         or "plcmos" in predictor_types
     ):
         try:
-            import onnxruntime  # NOTE(jiatong): a requirement of aecmos but not in requirements
+            import onnxruntime as _onnxruntime  # noqa: F401
             from speechmos import dnsmos, plcmos
         except ImportError:
             raise ImportError(
@@ -89,6 +95,13 @@ def pseudo_mos_setup(
                 predictor_fs["plcmos"] = predictor_args["plcmos"]["fs"]
         elif predictor == "utmos" or predictor == "utmosv2":
             continue  # already initialized
+        elif predictor == "singmos":
+            torch.hub.set_dir(cache_dir)
+            singmos = torch.hub.load(
+                "South-Twilight/SingMOS:v0.2.0", "singing_ssl_mos", trust_repo=True
+            ).to(device)
+            predictor_dict["singmos"] = singmos
+            predictor_fs["singmos"] = 16000
         elif predictor == "singmos_v1":
             torch.hub.set_dir(cache_dir)
             singmos = torch.hub.load(
@@ -128,9 +141,7 @@ def pseudo_mos_metric(pred, fs, predictor_dict, predictor_fs, use_gpu=False):
     for predictor in predictor_dict.keys():
         if predictor == "utmos":
             if fs != predictor_fs["utmos"]:
-                pred_utmos = librosa.resample(
-                    pred, orig_sr=fs, target_sr=predictor_fs["utmos"]
-                )
+                pred_utmos = resample_audio(pred, fs, predictor_fs["utmos"])
             else:
                 pred_utmos = pred
             pred_tensor = torch.from_numpy(pred_utmos).unsqueeze(0)
@@ -143,9 +154,7 @@ def pseudo_mos_metric(pred, fs, predictor_dict, predictor_fs, use_gpu=False):
 
         elif predictor == "utmosv2":
             if fs != predictor_fs["utmosv2"]:
-                pred_utmosv2 = librosa.resample(
-                    pred, orig_sr=fs, target_sr=predictor_fs["utmosv2"]
-                )
+                pred_utmosv2 = resample_audio(pred, fs, predictor_fs["utmosv2"])
             else:
                 pred_utmosv2 = pred
 
@@ -186,9 +195,7 @@ def pseudo_mos_metric(pred, fs, predictor_dict, predictor_fs, use_gpu=False):
 
         elif predictor == "dnsmos":
             if fs != predictor_fs["dnsmos"]:
-                pred_dnsmos = librosa.resample(
-                    pred, orig_sr=fs, target_sr=predictor_fs["dnsmos"]
-                )
+                pred_dnsmos = resample_audio(pred, fs, predictor_fs["dnsmos"])
                 fs = predictor_fs["dnsmos"]
             else:
                 pred_dnsmos = pred
@@ -199,9 +206,7 @@ def pseudo_mos_metric(pred, fs, predictor_dict, predictor_fs, use_gpu=False):
             scores.update(dns_overall=score["ovrl_mos"], dns_p808=score["p808_mos"])
         elif predictor == "plcmos":
             if fs != predictor_fs["plcmos"]:
-                pred_plcmos = librosa.resample(
-                    pred, orig_sr=fs, target_sr=predictor_fs["plcmos"]
-                )
+                pred_plcmos = resample_audio(pred, fs, predictor_fs["plcmos"])
                 fs = predictor_fs["plcmos"]
             else:
                 pred_plcmos = pred
@@ -209,11 +214,9 @@ def pseudo_mos_metric(pred, fs, predictor_dict, predictor_fs, use_gpu=False):
             max_val = np.max(np.abs(pred_plcmos))
             score = predictor_dict["plcmos"].run(pred_plcmos / max_val, sr=fs)
             scores.update(plcmos=score["plcmos"])
-        elif predictor == "singmos_v1":
-            if fs != predictor_fs["singmos_v1"]:
-                pred_singmos = librosa.resample(
-                    pred, orig_sr=fs, target_sr=predictor_fs["singmos_v1"]
-                )
+        elif predictor in ("singmos", "singmos_v1", "singmos_pro"):
+            if fs != predictor_fs[predictor]:
+                pred_singmos = resample_audio(pred, fs, predictor_fs[predictor])
             else:
                 pred_singmos = pred
             pred_tensor = torch.from_numpy(pred_singmos).unsqueeze(0)
@@ -221,31 +224,13 @@ def pseudo_mos_metric(pred, fs, predictor_dict, predictor_fs, use_gpu=False):
             if use_gpu:
                 pred_tensor = pred_tensor.to("cuda")
                 length_tensor = length_tensor.to("cuda")
-            score = predictor_dict["singmos_v1"](pred_tensor.float(), length_tensor)[
+            score = predictor_dict[predictor](pred_tensor.float(), length_tensor)[
                 0
             ].item()
-            scores.update(singmos_v1=score)
-        elif predictor == "singmos_pro":
-            if fs != predictor_fs["singmos_pro"]:
-                pred_singmos = librosa.resample(
-                    pred, orig_sr=fs, target_sr=predictor_fs["singmos_pro"]
-                )
-            else:
-                pred_singmos = pred
-            pred_tensor = torch.from_numpy(pred_singmos).unsqueeze(0)
-            length_tensor = torch.tensor([pred_tensor.size(1)]).int()
-            if use_gpu:
-                pred_tensor = pred_tensor.to("cuda")
-                length_tensor = length_tensor.to("cuda")
-            score = predictor_dict["singmos_pro"](pred_tensor.float(), length_tensor)[
-                0
-            ].item()
-            scores.update(singmos_pro=score)
+            scores[predictor] = score
         elif predictor.startswith("dnsmos_pro_"):
             if fs != predictor_fs[predictor]:
-                pred_dnsmos_pro = librosa.resample(
-                    pred, orig_sr=fs, target_sr=predictor_fs[predictor]
-                )
+                pred_dnsmos_pro = resample_audio(pred, fs, predictor_fs[predictor])
             else:
                 pred_dnsmos_pro = pred
 
@@ -286,8 +271,6 @@ def pseudo_mos_metric(pred, fs, predictor_dict, predictor_fs, use_gpu=False):
                 return spec
 
             spec = torch.FloatTensor(stft(pred_dnsmos_pro))
-            if use_gpu:
-                spec = spec.to("cuda")
             with torch.no_grad():
                 prediction = predictor_dict[predictor](spec[None, None, ...])
             scores[predictor] = prediction[0, 0].item()
@@ -295,6 +278,76 @@ def pseudo_mos_metric(pred, fs, predictor_dict, predictor_fs, use_gpu=False):
             raise NotImplementedError("Not supported {}".format(predictor))
 
     return scores
+
+
+class PseudoMosMetric(BaseMetric):
+    """Pseudo-subjective MOS predictors."""
+
+    def _setup(self):
+        self.predictor_types = self.config.get(
+            "predictor_types", ["utmos", "dnsmos", "plcmos"]
+        )
+        self.predictor_args = self.config.get("predictor_args", {})
+        self.cache_dir = self.config.get("cache_dir", "versa_cache")
+        self.use_gpu = self.config.get("use_gpu", False)
+        self.predictor_dict, self.predictor_fs = pseudo_mos_setup(
+            self.predictor_types,
+            self.predictor_args,
+            cache_dir=self.cache_dir,
+            use_gpu=self.use_gpu,
+        )
+
+    def compute(self, predictions, references=None, metadata=None):
+        if predictions is None:
+            raise ValueError("Predicted signal must be provided")
+
+        fs = metadata.get("sample_rate", 16000) if metadata else 16000
+        return pseudo_mos_metric(
+            np.asarray(predictions),
+            fs=fs,
+            predictor_dict=self.predictor_dict,
+            predictor_fs=self.predictor_fs,
+            use_gpu=self.use_gpu,
+        )
+
+    def get_metadata(self):
+        return _pseudo_mos_metadata()
+
+
+def _pseudo_mos_metadata():
+    return MetricMetadata(
+        name="pseudo_mos",
+        category=MetricCategory.INDEPENDENT,
+        metric_type=MetricType.DICT,
+        requires_reference=False,
+        requires_text=False,
+        gpu_compatible=True,
+        auto_install=False,
+        dependencies=["torch", "librosa", "numpy", "requests"],
+        description=(
+            "Pseudo-subjective MOS predictors including UTMOS, DNSMOS, "
+            "PLCMOS, SingMOS, and DNSMOS Pro"
+        ),
+        implementation_source="https://github.com/tarepan/SpeechMOS",
+    )
+
+
+def register_pseudo_mos_metric(registry):
+    """Register pseudo MOS metric suite with the registry."""
+    registry.register(
+        PseudoMosMetric,
+        _pseudo_mos_metadata(),
+        aliases=[
+            "utmos",
+            "dnsmos",
+            "plcmos",
+            "singmos",
+            "singmos_v1",
+            "singmos_pro",
+            "utmosv2",
+            "dnsmos_pro",
+        ],
+    )
 
 
 if __name__ == "__main__":
@@ -305,8 +358,7 @@ if __name__ == "__main__":
             "utmos",
             "dnsmos",
             "plcmos",
-            "singmos_v1",
-            "singmos_pro",
+            "singmos",
             "dnsmos_pro_bvcc",
             "dnsmos_pro_nisqa",
             "dnsmos_pro_vcc2018",

@@ -8,6 +8,8 @@ import torch
 import librosa
 import soundfile as sf
 
+from versa.definition import BaseMetric, MetricCategory, MetricMetadata, MetricType
+
 
 def arecho_model_setup(model_tag="default", use_gpu=False):
     """
@@ -142,6 +144,57 @@ def arecho_noref_metric(model, pred_x, fs):
         dict: Dictionary containing ARECHO metric scores
     """
     return arecho_metric(model, pred_x, fs)
+
+
+class ArechoMetric(BaseMetric):
+    """ARECHO no-reference speech quality metric."""
+
+    def _setup(self):
+        self.model_tag = self.config.get("model_tag", "default")
+        self.use_gpu = self.config.get("use_gpu", False)
+        self.model = arecho_model_setup(
+            model_tag=self.model_tag,
+            use_gpu=self.use_gpu,
+        )
+
+    def compute(self, predictions, references=None, metadata=None):
+        if predictions is None:
+            raise ValueError("Predicted signal must be provided")
+        metadata = metadata or {}
+        fs = metadata.get("sample_rate", 16000)
+        pred_x = np.asarray(predictions)
+        return arecho_noref_metric(self.model, pred_x, fs)
+
+    def get_metadata(self):
+        return _arecho_metadata()
+
+
+def _arecho_metadata():
+    return MetricMetadata(
+        name="arecho",
+        category=MetricCategory.INDEPENDENT,
+        metric_type=MetricType.DICT,
+        requires_reference=False,
+        requires_text=False,
+        gpu_compatible=True,
+        auto_install=False,
+        dependencies=["espnet2", "torch", "librosa", "numpy"],
+        description=(
+            "ARECHO no-reference audio reference echo cancellation and codec "
+            "quality assessment"
+        ),
+        paper_reference="https://arxiv.org/abs/2505.20741",
+        implementation_source="https://huggingface.co/espnet/arecho_base_v0",
+    )
+
+
+def register_arecho_metric(registry):
+    """Register ARECHO with the metric registry."""
+    registry.register(
+        ArechoMetric,
+        _arecho_metadata(),
+        aliases=["arecho_noref"],
+    )
 
 
 if __name__ == "__main__":

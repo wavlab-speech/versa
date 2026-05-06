@@ -1,14 +1,20 @@
 import os
-import scipy
-import librosa
+import logging
+from enum import Enum
 
+import librosa
 import numpy as np
 import onnxruntime as ort
-from enum import Enum
-import logging
-
+import scipy
+from versa.definition import BaseMetric, MetricCategory, MetricMetadata, MetricType
 
 __all__ = ["SigMOS", "Version"]
+
+SIGMOS_MODEL_FILENAME = "model-sigmos_1697718653_41d092e8-epo-200.onnx"
+SIGMOS_MODEL_URL = (
+    "https://github.com/microsoft/SIG-Challenge/raw/refs/heads/main/"
+    "ICASSP2024/sigmos/model-sigmos_1697718653_41d092e8-epo-200.onnx"
+)
 
 
 class Version(Enum):
@@ -26,9 +32,7 @@ class SigMOS:
         assert model_version in [v for v in Version]
 
         model_path_history = {
-            Version.V1: os.path.join(
-                model_dir, "model-sigmos_1697718653_41d092e8-epo-200.onnx"
-            )
+            Version.V1: os.path.join(model_dir, SIGMOS_MODEL_FILENAME)
         }
 
         self.sampling_rate = 48_000
@@ -113,8 +117,6 @@ def sigmos_setup(model_dir=None):
         # Get the absolute path to the current file (this script)
         script_dir = os.path.dirname(os.path.abspath(__file__))
         model_dir = os.path.join(script_dir, "..", "..", "versa_cache", "sigmos_model")
-    # Permalink to the onnx file:
-    # https://github.com/microsoft/SIG-Challenge/raw/refs/heads/main/ICASSP2024/sigmos/model-sigmos_1697718653_41d092e8-epo-200.onnx
 
     # Check if the model directory exists
     if not os.path.exists(model_dir):
@@ -123,26 +125,22 @@ def sigmos_setup(model_dir=None):
 
     # Check if the model file already exists
     # If it does not exist, download it
-    if not os.path.exists(
-        os.path.join(model_dir, "model-sigmos_1697718653_41d092e8-epo-200.onnx")
-    ):
+    if not os.path.exists(os.path.join(model_dir, SIGMOS_MODEL_FILENAME)):
         logging.info(
             f"Model file not found in {model_dir}. Downloading the model file..."
         )
         # Download the model file from the web url
         import requests
 
-        model_url = "https://github.com/microsoft/SIG-Challenge/raw/refs/heads/main/ICASSP2024/sigmos/model-sigmos_1697718653_41d092e8-epo-200.onnx"
-        model_file = os.path.join(
-            model_dir, "model-sigmos_1697718653_41d092e8-epo-200.onnx"
-        )
-        response = requests.get(model_url)
+        model_file = os.path.join(model_dir, SIGMOS_MODEL_FILENAME)
+        response = requests.get(SIGMOS_MODEL_URL)
         if response.status_code == 200:
             with open(model_file, "wb") as f:
                 f.write(response.content)
         else:
             raise RuntimeError(
-                f"Failed to download the model file from {model_url}. Status code: {response.status_code}"
+                "Failed to download the model file from "
+                f"{SIGMOS_MODEL_URL}. Status code: {response.status_code}"
             )
 
     sigmos_estimator = SigMOS(model_dir=model_dir)
@@ -161,13 +159,56 @@ def sigmos_calculate(model, pred_x, gen_sr):
     return result
 
 
+class SigmosMetric(BaseMetric):
+    """SIG-MOS metric using the ICASSP 2024 SIG Challenge ONNX model."""
+
+    def _setup(self):
+        model_dir = self.config.get("model_dir", self.config.get("cache_dir"))
+        self.model = sigmos_setup(model_dir=model_dir)
+
+    def compute(self, predictions, references=None, metadata=None):
+        metadata = metadata or {}
+        sample_rate = metadata.get("sample_rate", 48000)
+        return sigmos_calculate(self.model, predictions, sample_rate)
+
+    def get_metadata(self):
+        return _sigmos_metadata()
+
+
+def _sigmos_metadata():
+    return MetricMetadata(
+        name="sigmos",
+        category=MetricCategory.INDEPENDENT,
+        metric_type=MetricType.FLOAT,
+        requires_reference=False,
+        requires_text=False,
+        gpu_compatible=False,
+        auto_install=False,
+        dependencies=["onnxruntime", "librosa", "scipy", "numpy"],
+        description="SIG-MOS P.804 speech quality estimator",
+        paper_reference="https://arxiv.org/pdf/2309.07385",
+        implementation_source=(
+            "https://github.com/microsoft/SIG-Challenge/tree/main/" "ICASSP2024/sigmos"
+        ),
+    )
+
+
+def register_sigmos_metric(registry):
+    """Register SIG-MOS with the metric registry."""
+    registry.register(
+        SigmosMetric,
+        _sigmos_metadata(),
+        aliases=["Sigmos", "sigmos", "sig_mos"],
+    )
+
+
 if __name__ == "__main__":
     """
     Sample code to run the SigMOS estimator.
     V1 (current model) is an alpha version and should be used in accordance.
     """
     # model_dir = r"."
-    sigmos_estimator = SigMOS()
+    sigmos_estimator = sigmos_setup()
 
     # input data must have sr=48kHz, otherwise please specify the sr (it will be resampled to 48kHz internally)
     sampling_rate = 48_000

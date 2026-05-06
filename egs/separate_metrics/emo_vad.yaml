@@ -1,0 +1,7 @@
+# EmoVad related metrics
+# Dimensional emotion prediction (arousal, valence, dominance) using w2v2-how-to
+# More info in https://github.com/audeering/w2v2-how-to
+# -- arousal_emo_vad: the dimensional emotion prediction with w2v2
+# -- valence_emo_vad: the dimensional emotion prediction with w2v2
+# -- dominance_emo_vad: the dimensional emotion prediction with w2v2
+- name: emo_vad 

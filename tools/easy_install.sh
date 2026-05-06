@@ -8,6 +8,8 @@ set -eou pipefail
 . ./install_utmosv2.sh || echo "error in utmosv2"
 # . ./install_warpq.sh
 . ./install_scoreq.sh || echo "error in scoreq"
+. ./install_log_wmse.sh || echo "error in log_wmse"
+. ./install_vqscore.sh || echo "error in vqscore"
 . ./install_nomad.sh || echo "error in nomad"
 . ./install_asvspoof.sh || echo "error in asvspoof"
 . ./install_pysepm.sh || echo "error in pysepm"

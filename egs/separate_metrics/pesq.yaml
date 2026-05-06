@@ -1,0 +1,11 @@
+# PESQ: Perceptual Evaluation of Speech Quality
+# https://www.itu.int/rec/T-REC-P.862
+# 
+# PESQ is a reference-based metric that measures speech quality
+# by comparing a degraded signal to a reference signal.
+# 
+# Supported sample rates:
+# - 8kHz: narrowband (nb) mode
+# - 16kHz: wideband (wb) mode
+# - Other rates: automatically resampled to nearest supported rate
+- name: pesq 

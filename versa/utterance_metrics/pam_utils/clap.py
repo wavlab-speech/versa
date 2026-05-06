@@ -57,7 +57,7 @@ def interpolate(x, ratio):
     Returns:
       upsampled: (batch_size, time_steps * ratio, classes_num)
     """
-    (batch_size, time_steps, classes_num) = x.shape
+    batch_size, time_steps, classes_num = x.shape
     upsampled = x[:, :, None, :].repeat(1, 1, ratio, 1)
     upsampled = upsampled.reshape(batch_size, time_steps * ratio, classes_num)
     return upsampled

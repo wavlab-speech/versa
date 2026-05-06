@@ -7,11 +7,33 @@
 import logging
 
 import numpy as np
-import pysptk
-import pyworld as pw
-import scipy
-from fastdtw import fastdtw
-from scipy.signal import firwin, lfilter
+
+from versa.definition import BaseMetric, MetricCategory, MetricMetadata, MetricType
+
+try:
+    import pysptk
+    import pyworld as pw
+    import scipy
+    from fastdtw import fastdtw
+    from scipy.signal import firwin, lfilter
+except ImportError:
+    pysptk = None
+    pw = None
+    scipy = None
+    fastdtw = None
+    firwin = None
+    lfilter = None
+
+
+def _ensure_mcd_f0_dependencies():
+    if any(
+        dependency is None
+        for dependency in (pysptk, pw, scipy, fastdtw, firwin, lfilter)
+    ):
+        raise ImportError(
+            "mcd_f0 requires pysptk, pyworld, scipy, and fastdtw. "
+            "Please install these dependencies and retry"
+        )
 
 
 def low_cut_filter(x, fs, cutoff=70):
@@ -26,6 +48,7 @@ def low_cut_filter(x, fs, cutoff=70):
         (ndarray): Low cut filtered waveform sequence
     """
 
+    _ensure_mcd_f0_dependencies()
     nyquist = fs // 2
     norm_cutoff = cutoff / nyquist
 
@@ -131,6 +154,7 @@ def world_extract(
     mcep_alpha=0.466,
     filter_cutoff=70,
 ):
+    _ensure_mcd_f0_dependencies()
     # scale from [-1, 1] to [-32768, 32767]
     x = x * np.iinfo(np.int16).max
 
@@ -175,6 +199,7 @@ def mcd_f0(
     power_threshold=-20,
     dtw=False,
 ):
+    _ensure_mcd_f0_dependencies()
 
     pred_feats = world_extract(
         pred_x, fs, f0min, f0max, mcep_shift, mcep_fftl, mcep_dim, mcep_alpha
@@ -224,8 +249,9 @@ def mcd_f0(
             f0corr = scipy.stats.pearsonr(pred_f0_dtw, gt_f0_dtw)[0]
         except ValueError:
             logging.warning(
-                "No nonzero f0 is found. Skip f0rmse f0corr computation and set them to NaN. "
-                "This might due to unconverge training. Please tune the training time and hypers."
+                "No nonzero f0 is found. Skip f0rmse f0corr computation and "
+                "set them to NaN. This might due to unconverge training. "
+                "Please tune the training time and hypers."
             )
             f0rmse = np.nan
             f0corr = np.nan
@@ -235,10 +261,12 @@ def mcd_f0(
         pred_seq_len = len(pred_feats["f0"])
         gt_seq_len = len(gt_feats["f0"])
         min_len = min(pred_seq_len, gt_seq_len)
-        assert (pred_seq_len + gt_seq_len - 2 * min_len) / (
+        mismatch_ratio = (pred_seq_len + gt_seq_len - 2 * min_len) / (
             pred_seq_len + gt_seq_len
-        ) < seq_mismatch_tolerance, "two input sequence mismatch ratio over threshold {}".format(
-            seq_mismatch_tolerance
+        )
+        assert mismatch_ratio < seq_mismatch_tolerance, (
+            "two input sequence mismatch ratio over threshold "
+            f"{seq_mismatch_tolerance}"
         )
         diff2sum = np.sum(
             (pred_feats["mcep"][:min_len] - gt_feats["mcep"][:min_len]) ** 2, 1
@@ -258,9 +286,78 @@ def mcd_f0(
     }
 
 
+class McdF0Metric(BaseMetric):
+    """Mel cepstral distortion and F0 metrics."""
+
+    def _setup(self):
+        _ensure_mcd_f0_dependencies()
+        self.f0min = self.config.get("f0min", 40)
+        self.f0max = self.config.get("f0max", 800)
+        self.mcep_shift = self.config.get("mcep_shift", 5)
+        self.mcep_fftl = self.config.get("mcep_fftl", 1024)
+        self.mcep_dim = self.config.get("mcep_dim", 39)
+        self.mcep_alpha = self.config.get("mcep_alpha", 0.466)
+        self.seq_mismatch_tolerance = self.config.get("seq_mismatch_tolerance", 0.1)
+        self.power_threshold = self.config.get("power_threshold", -20)
+        self.dtw = self.config.get("dtw", False)
+
+    def compute(self, predictions, references=None, metadata=None):
+        if predictions is None:
+            raise ValueError("Predicted signal must be provided")
+        if references is None:
+            raise ValueError("Reference signal must be provided")
+
+        fs = metadata.get("sample_rate", 16000) if metadata else 16000
+        return mcd_f0(
+            np.asarray(predictions),
+            np.asarray(references),
+            fs,
+            self.f0min,
+            self.f0max,
+            mcep_shift=self.mcep_shift,
+            mcep_fftl=self.mcep_fftl,
+            mcep_dim=self.mcep_dim,
+            mcep_alpha=self.mcep_alpha,
+            seq_mismatch_tolerance=self.seq_mismatch_tolerance,
+            power_threshold=self.power_threshold,
+            dtw=self.dtw,
+        )
+
+    def get_metadata(self):
+        return _mcd_f0_metadata()
+
+
+def _mcd_f0_metadata():
+    return MetricMetadata(
+        name="mcd_f0",
+        category=MetricCategory.DEPENDENT,
+        metric_type=MetricType.DICT,
+        requires_reference=True,
+        requires_text=False,
+        gpu_compatible=False,
+        auto_install=False,
+        dependencies=["pysptk", "pyworld", "scipy", "fastdtw", "numpy"],
+        description="Mel cepstral distortion, F0 RMSE, and F0 correlation",
+        paper_reference="https://ieeexplore.ieee.org/document/407206",
+        implementation_source=(
+            "https://github.com/espnet/espnet and "
+            "https://github.com/unilight/s3prl-vc"
+        ),
+    )
+
+
+def register_mcd_f0_metric(registry):
+    """Register MCD/F0 metrics with the registry."""
+    registry.register(
+        McdF0Metric,
+        _mcd_f0_metadata(),
+        aliases=["mcd", "mcd_f0_metric"],
+    )
+
+
 # debug code
 if __name__ == "__main__":
     a = np.random.random(16000)
     b = np.random.random(16000)
-    print(a, b)
-    print("metrics: {}".format(mcd_f0(a, b, 16000, 1, 8000, dtw=True)))
+    metric = McdF0Metric({"dtw": True, "f0min": 1, "f0max": 8000})
+    print("metrics: {}".format(metric.compute(a, b, metadata={"sample_rate": 16000})))
