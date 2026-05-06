@@ -1,11 +1,18 @@
 #!/bin/bash
+set -euo pipefail
+
+PYTHON_BIN="${PYTHON:-python}"
+if ! command -v "$PYTHON_BIN" >/dev/null 2>&1; then
+    echo "ERROR: Python executable '$PYTHON_BIN' not found. Activate your environment or set PYTHON=/path/to/python."
+    exit 1
+fi
 
 # Repository information
 REPO_OWNER="ftshijt"
 REPO_NAME="fairseq"
 REPO_PATH="$REPO_OWNER/$REPO_NAME"
 BRANCH="versa"
-EXPECTED_COMMIT_ID="612be207e0afe60859ec393608ef89bba0e5246c"
+EXPECTED_COMMIT_ID="7c814e9580e24f69bd6198b400ec12bc3f90fd51"
 # Old version: EXPECTED_COMMIT_ID="0e35caead74528f04e741986b78ff0b4b543dbe6"
 
 # Function to check if repository exists
@@ -122,6 +129,26 @@ check_local_commit() {
     return 0
 }
 
+ensure_legacy_config_stubs() {
+    mkdir -p fairseq/config/criterion fairseq/config/task fairseq/config/optimizer fairseq/config/lr_scheduler
+
+    if [ ! -f fairseq/config/criterion/cross_entropy.yaml ]; then
+        printf '# @package _group_\n\n_name: cross_entropy\n' > fairseq/config/criterion/cross_entropy.yaml
+    fi
+    if [ ! -f fairseq/config/task/audio_pretraining.yaml ]; then
+        printf '# @package _group_\n\n_name: audio_pretraining\n' > fairseq/config/task/audio_pretraining.yaml
+    fi
+    if [ ! -f fairseq/config/optimizer/adam.yaml ]; then
+        printf '# @package _group_\n\n_name: adam\n' > fairseq/config/optimizer/adam.yaml
+    fi
+    if [ ! -f fairseq/config/lr_scheduler/polynomial_decay.yaml ]; then
+        printf '# @package _group_\n\n_name: polynomial_decay\n' > fairseq/config/lr_scheduler/polynomial_decay.yaml
+    fi
+    if [ ! -f fairseq/config/lr_scheduler/fixed.yaml ]; then
+        printf '# @package _group_\n\n_name: fixed\n' > fairseq/config/lr_scheduler/fixed.yaml
+    fi
+}
+
 # Function to validate the specific commit after cloning (if a specific commit is required)
 validate_cloned_commit() {
     local expected_commit=$1
@@ -159,29 +186,30 @@ fi
 # Check if we already have the correct version installed
 if [ -n "$EXPECTED_COMMIT_ID" ] && check_local_commit "$EXPECTED_COMMIT_ID"; then
     echo "Local repository is already at the expected commit: $EXPECTED_COMMIT_ID"
-    echo "Skipping reinstallation."
-    exit 0
+    cd fairseq
+else
+    # Clean up existing directory if it exists
+    if [ -d "fairseq" ]; then
+        echo "Removing existing fairseq directory..."
+        rm -rf fairseq
+    fi
+
+    # Clone the repository
+    echo "Cloning repository: $REPO_PATH (branch: $BRANCH)..."
+    git clone -b "$BRANCH" "https://github.com/$REPO_PATH.git"
+    cd fairseq
+
+    # Validate the commit if specified
+    if [ -n "$EXPECTED_COMMIT_ID" ]; then
+        validate_cloned_commit "$EXPECTED_COMMIT_ID"
+    fi
 fi
 
-# Clean up existing directory if it exists
-if [ -d "fairseq" ]; then
-    echo "Removing existing fairseq directory..."
-    rm -rf fairseq
-fi
-
-# Clone the repository
-echo "Cloning repository: $REPO_PATH (branch: $BRANCH)..."
-git clone -b "$BRANCH" "https://github.com/$REPO_PATH.git"
-cd fairseq
-
-# Validate the commit if specified
-if [ -n "$EXPECTED_COMMIT_ID" ]; then
-    validate_cloned_commit "$EXPECTED_COMMIT_ID"
-fi
+ensure_legacy_config_stubs
 
 # Install the package
 echo "Installing fairseq package..."
-pip install -e .
+"$PYTHON_BIN" -m pip install -e .
 cd ..
 
 echo "=== fairseq installation completed successfully ==="

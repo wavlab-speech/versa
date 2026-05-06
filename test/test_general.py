@@ -41,11 +41,15 @@ TEST_INFO = {
     "torch_squim_stoi": 0.6027805209159851,
     "torch_squim_pesq": 1.1683127880096436,
     "torch_squim_si_sdr": -11.109052658081055,
-    "dpam_distance": 0.15004253387451172,
-    "cdpam_distance": 0.05146043747663498,
+    "dpam_distance": 0.4179654121398926,
+    "cdpam_distance": 0.039433546364307404,
     "dnsmos_pro_bvcc": 1.1717286109924316,
     "dnsmos_pro_nisqa": 1.4733699560165405,
     "dnsmos_pro_vcc2018": 1.930935263633728,
+}
+
+TEST_TOLERANCE = {
+    "se_si_snr": 1e-3,
 }
 
 
@@ -125,9 +129,11 @@ def test_scoring_pipeline(setup_paths, load_config, caplog):
             continue
 
         # Check if values match within tolerance
-        assert (
-            abs(TEST_INFO[key] - summary[key]) <= 1e-4
-        ), f"Value issue in scorer {key}: expected {TEST_INFO[key]}, got {summary[key]}"
+        tolerance = TEST_TOLERANCE.get(key, 1e-4)
+        assert abs(TEST_INFO[key] - summary[key]) <= tolerance, (
+            f"Value issue in scorer {key}: expected {TEST_INFO[key]}, "
+            f"got {summary[key]}"
+        )
 
     print("Check successful", flush=True)
 

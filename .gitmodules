@@ -1,3 +1,6 @@
 [submodule "speech_evaluation/utterance_metrics/visqol"]
 	path = speech_evaluation/utterance_metrics/visqol
 	url = https://github.com/google/visqol.git
+[submodule "versa/utterance_metrics/VQscore"]
+	path = versa/utterance_metrics/VQscore
+	url = https://github.com/JasonSWFu/VQscore

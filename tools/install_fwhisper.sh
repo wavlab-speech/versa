@@ -5,13 +5,18 @@ set -e
 pip install faster-whisper
 
 if ! command -v nvcc &>/dev/null; then
-  echo "Error: nvcc not found. Please install the CUDA Toolkit first." >&2
-  exit 1
+  echo "nvcc not found; installed faster-whisper without CUDA-specific runtime packages."
+  exit 0
 fi
 
 cuda_ver=$(nvcc --version | sed -nE 's/.*release ([0-9]+\.[0-9]+).*/\1/p')
 cuda_major=${cuda_ver%%.*}
 echo "Detected CUDA version:$cuda_ver"
+
+if ! command -v conda &>/dev/null; then
+  echo "conda not found; skipping CUDA runtime package installation."
+  exit 0
+fi
 
 if [ "$cuda_major" -ge 12 ]; then
   conda install -c conda-forge "cudnn=9.*" "numpy<2.3"

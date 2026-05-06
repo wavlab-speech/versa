@@ -1,0 +1,4 @@
+
+# Uni-VERSA audio-reference evaluation
+- name: universa_audioref
+  model_tag: audioref

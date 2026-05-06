@@ -3,6 +3,8 @@
 # Copyright 2025 Jiatong Shi
 #  Apache 2.0  (http://www.apache.org/licenses/LICENSE-2.0)
 
+# flake8: noqa: E501
+
 """
 Speech Properties for Metadata Modeling
 
@@ -59,10 +61,13 @@ model's response.
 
 import copy
 import logging
-from typing import Dict, Optional, Any, Union
+from typing import Dict, Optional, Any
 
-import librosa
 import numpy as np
+
+from versa.audio_utils import resample_audio
+
+from versa.definition import BaseMetric, MetricCategory, MetricMetadata, MetricType
 
 try:
     from transformers import AutoProcessor, Qwen2AudioForConditionalGeneration
@@ -80,7 +85,7 @@ DEFAULT_PROMPTS = {
 Provide your answer as a single number between 1-10.
 Examples:
 - For a monologue: 1
-- For an interview with host and guest: 2 
+- For an interview with host and guest: 2
 - For a panel discussion with a moderator and three panelists: 4""",
     "speaker_gender": """Identify the perceived gender of the speaker(s).
 If multiple speakers, list each speaker with their perceived gender.
@@ -111,7 +116,7 @@ Choose exactly one category:
     "voice_pitch": """Analyze the voice pitch/tone of the speaker.
 Choose exactly one category from the following:
 - Very high: significantly higher than average for their perceived gender
-- High: noticeably above average pitch 
+- High: noticeably above average pitch
 - Medium: average pitch range
 - Low: noticeably below average pitch
 - Very low: significantly lower than average for their perceived gender""",
@@ -186,7 +191,7 @@ Choose exactly one label from the following categories:
 - Neutral: even-toned, matter-of-fact delivery with minimal emotional expression
 - Happy: upbeat, positive, enthusiastic tone
 - Sad: downcast, melancholic, somber tone
-- Angry: irritated, frustrated, hostile tone  
+- Angry: irritated, frustrated, hostile tone
 - Fearful: anxious, worried, frightened tone
 - Surprised: astonished, shocked tone
 - Disgusted: repulsed, revolted tone
@@ -351,11 +356,7 @@ def qwen2_base_metric(
     text = processor.apply_chat_template(
         conversation, add_generation_prompt=True, tokenize=False
     )
-    audio = [
-        librosa.resample(
-            pred_x, orig_sr=fs, target_sr=processor.feature_extractor.sampling_rate
-        )
-    ]
+    audio = [resample_audio(pred_x, fs, processor.feature_extractor.sampling_rate)]
 
     inputs = processor(text=text, audios=audio, return_tensors="pt", padding=True)
     for key in inputs.keys():
@@ -444,6 +445,100 @@ qwen2_recording_quality_metric = create_metric_fn("recording_quality")
 qwen2_channel_type_metric = create_metric_fn("channel_type")
 
 qwen2_singing_technique_metric = create_metric_fn("singing_technique")
+
+
+class Qwen2AudioMetric(BaseMetric):
+    """Speech property extraction with Qwen2-Audio."""
+
+    metric_name = None
+
+    def _setup(self):
+        self.model_tag = self.config.get("model_tag", "default")
+        self.start_prompt = self.config.get(
+            "start_prompt",
+            (
+                "The following is a conversation with an AI assistant. "
+                "The assistant is helpful, honest, and harmless."
+            ),
+        )
+        self.metric_name = self.config.get("metric_name", self.metric_name)
+        if self.metric_name is None:
+            raise ValueError("metric_name must be provided")
+        self.prompt = self.config.get("prompt")
+        self.max_length = self.config.get("max_length", 1000)
+        self.qwen_utils = qwen2_model_setup(
+            model_tag=self.model_tag,
+            start_prompt=self.start_prompt,
+        )
+
+    def compute(self, predictions, references=None, metadata=None):
+        if predictions is None:
+            raise ValueError("Predicted signal must be provided")
+
+        fs = metadata.get("sample_rate", 16000) if metadata else 16000
+        prompt = self.prompt or DEFAULT_PROMPTS.get(self.metric_name)
+        response = qwen2_base_metric(
+            self.qwen_utils,
+            np.asarray(predictions),
+            fs=fs,
+            custom_prompt=prompt,
+            max_length=self.max_length,
+        )
+        return {f"qwen_{self.metric_name}": response}
+
+    def get_metadata(self):
+        return _qwen2_audio_metadata(self.registry_name())
+
+    @classmethod
+    def registry_name(cls):
+        return f"qwen2_audio_{cls.metric_name}" if cls.metric_name else "qwen2_audio"
+
+
+def _qwen2_audio_metadata(name):
+    return MetricMetadata(
+        name=name,
+        category=MetricCategory.INDEPENDENT,
+        metric_type=MetricType.STRING,
+        requires_reference=False,
+        requires_text=False,
+        gpu_compatible=True,
+        auto_install=False,
+        dependencies=["transformers", "librosa", "numpy"],
+        description="Speech property extraction with Qwen2-Audio",
+        paper_reference="https://arxiv.org/abs/2407.10759",
+        implementation_source="https://github.com/QwenLM/Qwen2-Audio",
+    )
+
+
+def _make_qwen2_metric_class(metric_name):
+    class _SpecificQwen2AudioMetric(Qwen2AudioMetric):
+        pass
+
+    _SpecificQwen2AudioMetric.metric_name = metric_name
+    class_name = "".join(part.title() for part in metric_name.split("_"))
+    _SpecificQwen2AudioMetric.__name__ = f"Qwen2Audio{class_name}Metric"
+    return _SpecificQwen2AudioMetric
+
+
+QWEN2_AUDIO_METRIC_CLASSES = {
+    metric_name: _make_qwen2_metric_class(metric_name)
+    for metric_name in DEFAULT_PROMPTS.keys()
+}
+
+
+def register_qwen2_audio_metric(registry):
+    """Register Qwen2-Audio speech property metrics with the registry."""
+    for metric_name, metric_class in QWEN2_AUDIO_METRIC_CLASSES.items():
+        registry_name = f"qwen2_audio_{metric_name}"
+        registry.register(
+            metric_class,
+            _qwen2_audio_metadata(registry_name),
+            aliases=[
+                f"qwen2_{metric_name}_metric",
+                f"qwen_{metric_name}",
+            ],
+        )
+
 
 if __name__ == "__main__":
     a = np.random.random(16000)

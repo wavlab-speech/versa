@@ -4,11 +4,7 @@ from collections import defaultdict
 import statistics
 import os
 import glob
-import matplotlib.pyplot as plt
-import seaborn as sns
-import pandas as pd
 import numpy as np
-from pathlib import Path
 from typing import Dict, List, Any, Optional
 
 
@@ -110,8 +106,8 @@ def discover_metrics(info: List[Dict]) -> Dict[str, Any]:
     metric_category_mapping = {
         # Audio Quality Metrics
         "audio_quality": [
-            "dnsmos_overall",
-            "dnsmos_p808",
+            "dns_overall",
+            "dns_p808",
             "nisqa",
             "utmos",
             "plcmos",
@@ -191,7 +187,7 @@ def discover_metrics(info: List[Dict]) -> Dict[str, Any]:
         # Semantic/Content Metrics
         "semantic": [
             "speech_bert",
-            "speech_belu",
+            "speech_bleu",
             "speech_token_distance",
             "clap_score",
         ],
@@ -449,6 +445,10 @@ def estimate_metric_quality(metric_name: str, values: List[float]) -> Dict[str, 
 
 def create_visualizations(metrics_stats: Dict, discovery: Dict, output_dir: str = None):
     """Create visualizations organized by metric categories"""
+    import matplotlib.pyplot as plt
+    import pandas as pd
+    import seaborn as sns
+
     if output_dir and not os.path.exists(output_dir):
         os.makedirs(output_dir)
 
@@ -647,6 +647,8 @@ def print_metric_analysis(metrics_stats: Dict, discovery: Dict):
 
 def export_results_to_csv(metrics_stats: Dict, discovery: Dict, output_file: str):
     """Export comprehensive results to CSV files"""
+    import pandas as pd
+
     # Main results file
     results_data = []
 

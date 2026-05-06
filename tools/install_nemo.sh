@@ -1,4 +1,6 @@
-#/bin/bash
+#!/bin/bash
+
+set -e
 
 # NOTE(Haoran): Toolkit for nemo_wer
 

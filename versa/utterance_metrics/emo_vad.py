@@ -8,19 +8,51 @@
 import logging
 import os
 from pathlib import Path
+from typing import Dict, Any, Optional, Union
 
-import librosa
 import numpy as np
+import torch
+import torch.nn as nn
 
 logger = logging.getLogger(__name__)
 
-import torch
-import torch.nn as nn
-from transformers import Wav2Vec2Processor
-from transformers.models.wav2vec2.modeling_wav2vec2 import (
-    Wav2Vec2Model,
-    Wav2Vec2PreTrainedModel,
-)
+# Handle optional transformers dependency
+try:
+    from transformers import Wav2Vec2Processor
+    from transformers.models.wav2vec2.modeling_wav2vec2 import (
+        Wav2Vec2Model,
+        Wav2Vec2PreTrainedModel,
+    )
+
+    TRANSFORMERS_AVAILABLE = True
+except ImportError:
+    logger.warning(
+        "transformers is not properly installed. "
+        "Please install transformers and retry"
+    )
+    Wav2Vec2Processor = None
+    Wav2Vec2Model = None
+    Wav2Vec2PreTrainedModel = None
+    TRANSFORMERS_AVAILABLE = False
+
+from versa.audio_utils import resample_audio
+from versa.definition import BaseMetric, MetricMetadata, MetricCategory, MetricType
+
+
+class TransformersNotAvailableError(RuntimeError):
+    """Exception raised when transformers is required but not available."""
+
+    pass
+
+
+def is_transformers_available():
+    """
+    Check if the transformers package is available.
+
+    Returns:
+        bool: True if transformers is available, False otherwise.
+    """
+    return TRANSFORMERS_AVAILABLE
 
 
 class RegressionHead(nn.Module):
@@ -54,6 +86,7 @@ class EmotionModel(Wav2Vec2PreTrainedModel):
         super().__init__(config)
 
         self.config = config
+        self.all_tied_weights_keys = {}
         self.wav2vec2 = Wav2Vec2Model(config)
         self.classifier = RegressionHead(config)
         self.init_weights()
@@ -71,53 +104,145 @@ class EmotionModel(Wav2Vec2PreTrainedModel):
         return hidden_states, logits
 
 
-def w2v2_emo_dim_setup(
-    model_tag="default", model_path=None, model_config=None, use_gpu=False
-):
-    if use_gpu:
-        device = "cuda"
-    else:
-        device = "cpu"
-    if model_path is not None and model_config is not None:
-        model = EmotionModel.from_pretrained(
-            pretrained_model_name_or_path=model_path, config=model_config
-        ).to(device)
-    else:
-        if model_tag == "default":
-            model_tag = "audeering/wav2vec2-large-robust-12-ft-emotion-msp-dim"
-        model = EmotionModel.from_pretrained(model_tag).to(device)
-    processor = Wav2Vec2Processor.from_pretrained(
-        "audeering/wav2vec2-large-robust-12-ft-emotion-msp-dim"
+class EmoVadMetric(BaseMetric):
+    """Dimensional emotion prediction metric using w2v2-how-to."""
+
+    def _setup(self):
+        """Initialize EmoVad-specific components."""
+        if not TRANSFORMERS_AVAILABLE:
+            raise ImportError(
+                "transformers is not properly installed. "
+                "Please install transformers and retry"
+            )
+
+        self.model_tag = self.config.get("model_tag", "default")
+        self.model_path = self.config.get("model_path", None)
+        self.model_config = self.config.get("model_config", None)
+        self.processor_path = self.config.get("processor_path", None)
+        self.cache_dir = self.config.get("cache_dir", "versa_cache/huggingface")
+        self.use_gpu = self.config.get("use_gpu", False)
+
+        self.device = "cuda" if self.use_gpu and torch.cuda.is_available() else "cpu"
+
+        try:
+            self.model, self.processor = self._setup_model()
+        except Exception as e:
+            raise RuntimeError(f"Failed to initialize EmoVad model: {str(e)}") from e
+
+    def _setup_model(self):
+        """Setup the EmoVad model."""
+        if self.model_path is not None and self.model_config is not None:
+            model = EmotionModel.from_pretrained(
+                pretrained_model_name_or_path=self.model_path,
+                config=self.model_config,
+                cache_dir=self.cache_dir,
+            ).to(self.device)
+        else:
+            if self.model_tag == "default":
+                model_tag = "audeering/wav2vec2-large-robust-12-ft-emotion-msp-dim"
+            else:
+                model_tag = self.model_tag
+            model = EmotionModel.from_pretrained(
+                model_tag, cache_dir=self.cache_dir
+            ).to(self.device)
+
+        processor_path = (
+            self.processor_path
+            or self.model_path
+            or "audeering/wav2vec2-large-robust-12-ft-emotion-msp-dim"
+        )
+        processor = Wav2Vec2Processor.from_pretrained(
+            processor_path, cache_dir=self.cache_dir
+        )
+
+        return model, processor
+
+    def compute(
+        self, predictions: Any, references: Any = None, metadata: Dict[str, Any] = None
+    ) -> Dict[str, Union[float, str]]:
+        """Calculate dimensional emotion (arousal, dominance, valence) of input audio samples.
+
+        Args:
+            predictions: Audio signal to evaluate.
+            references: Not used for this metric.
+            metadata: Optional metadata containing sample_rate.
+
+        Returns:
+            dict: Dictionary containing the dimensional emotion predictions.
+        """
+        pred_x = predictions
+        fs = metadata.get("sample_rate", 16000) if metadata else 16000
+
+        # Validate input
+        if pred_x is None:
+            raise ValueError("Predicted signal must be provided")
+
+        pred_x = np.asarray(pred_x)
+
+        # NOTE(jiatong): only work for 16000 Hz
+        if fs != 16000:
+            pred_x = resample_audio(pred_x, fs, 16000)
+
+        pred_x = self.processor(pred_x, sampling_rate=16000)
+        pred_x = pred_x["input_values"][0]
+        pred_x = pred_x.reshape(1, -1)
+        pred_x = torch.from_numpy(pred_x).to(self.device)
+
+        with torch.no_grad():
+            avd_emo = self.model(pred_x)[1].squeeze(0).cpu().numpy()
+
+        arousal, dominance, valence = avd_emo
+        arousal = arousal.item()
+        dominance = dominance.item()
+        valence = valence.item()
+
+        return {
+            "arousal_emo_vad": arousal,
+            "valence_emo_vad": valence,
+            "dominance_emo_vad": dominance,
+        }
+
+    def get_metadata(self) -> MetricMetadata:
+        """Return EmoVad metric metadata."""
+        return MetricMetadata(
+            name="emo_vad",
+            category=MetricCategory.INDEPENDENT,
+            metric_type=MetricType.FLOAT,
+            requires_reference=False,
+            requires_text=False,
+            gpu_compatible=True,
+            auto_install=False,
+            dependencies=["transformers", "torch", "librosa", "numpy"],
+            description="Dimensional emotion prediction (arousal, valence, dominance) using w2v2-how-to",
+            paper_reference="https://github.com/audeering/w2v2-how-to",
+            implementation_source="https://github.com/audeering/w2v2-how-to",
+        )
+
+
+def register_emo_vad_metric(registry):
+    """Register EmoVad metric with the registry."""
+    metric_metadata = MetricMetadata(
+        name="emo_vad",
+        category=MetricCategory.INDEPENDENT,
+        metric_type=MetricType.FLOAT,
+        requires_reference=False,
+        requires_text=False,
+        gpu_compatible=True,
+        auto_install=False,
+        dependencies=["transformers", "torch", "librosa", "numpy"],
+        description="Dimensional emotion prediction (arousal, valence, dominance) using w2v2-how-to",
+        paper_reference="https://github.com/audeering/w2v2-how-to",
+        implementation_source="https://github.com/audeering/w2v2-how-to",
     )
-    emo_utils = {"model": model, "processor": processor, "device": device}
-    return emo_utils
-
-
-def dim_emo_pred(emo_utils, pred_x, fs):
-    """Calculate dimensional emotion (arousal, dominance, valence) of input audio samples.
-
-    Args:
-        model (w2v2-how-to): The loaded EMO2VEC model.
-        pred_x (np.ndarray): Predicted audio signal.
-        fs (int): Sampling rate.
-
-    Returns:
-        dict: Dictionary containing the dimensional emotion predictions.
-    """
-    # NOTE(jiatong): only work for 16000 Hz
-    if fs != 16000:
-        pred_x = librosa.resample(pred_x, orig_sr=fs, target_sr=16000)
-    pred_x = emo_utils["processor"](pred_x, sampling_rate=16000)
-    pred_x = pred_x["input_values"][0]
-    pred_x = pred_x.reshape(1, -1)
-    pred_x = torch.from_numpy(pred_x).to(emo_utils["device"])
-    with torch.no_grad():
-        avd_emo = emo_utils["model"](pred_x)[1].squeeze(0).cpu().numpy()
-
-    return {"aro_val_dom_emo": avd_emo}
+    registry.register(EmoVadMetric, metric_metadata, aliases=["EmoVad", "emo_vad"])
 
 
 if __name__ == "__main__":
     a = np.random.random(16000)
-    emo_utils = w2v2_emo_dim_setup()
-    print(f"metrics: {dim_emo_pred(emo_utils, a, 16000)}")
+
+    # Test the new class-based metric
+    config = {"use_gpu": False}
+    metric = EmoVadMetric(config)
+    metadata = {"sample_rate": 16000}
+    score = metric.compute(a, metadata=metadata)
+    print(f"metrics: {score}")
