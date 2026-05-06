@@ -101,6 +101,20 @@ _optional_metric_import(
     ("WhisperWerMetric", "register_whisper_wer_metric"),
 )
 _optional_metric_import(
+    "versa.corpus_metrics.fwhisper_wer",
+    ("FasterWhisperWerMetric", "register_fwhisper_wer_metric"),
+    "Please install faster-whisper following tools/install_fwhisper.sh",
+)
+_optional_metric_import(
+    "versa.corpus_metrics.nemo_wer",
+    ("NemoWerMetric", "register_nemo_wer_metric"),
+    "Please install NeMo following tools/install_nemo.sh",
+)
+_optional_metric_import(
+    "versa.corpus_metrics.hubert_wer",
+    ("HubertWerMetric", "register_hubert_wer_metric"),
+)
+_optional_metric_import(
     "versa.utterance_metrics.asr_matching",
     ("ASRMatchMetric", "register_asr_match_metric"),
 )

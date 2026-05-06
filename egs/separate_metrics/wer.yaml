@@ -41,7 +41,7 @@
 # More model_tag can be from https://github.com/openai/whisper?tab=readme-ov-file#available-models-and-languages .
 # The default model is `large-v3`.
 # NOTE(jiatong): further aggregation are necessary for corpus-level WER/CER
-# --whisper_hyp_text: the hypothesis from ESPnet ASR decoding
+# --whisper_hyp_text: the hypothesis from Whisper ASR decoding
 # --ref_text: reference text (after cleaner)
 # --whisper_wer_delete: delete errors
 # --whisper_wer_insert: insertion errors
@@ -54,4 +54,61 @@
 - name: whisper_wer
   model_tag: default
   beam_size: 5
+  text_cleaner: whisper_basic
+
+
+# Word error rate with faster-whisper model
+# Please refer to tools/install_fwhisper.sh for installing.
+# More model_tag can be from https://github.com/SYSTRAN/faster-whisper/blob/master/faster_whisper/utils.py .
+# The default model is `large-v3`.
+# --fwhisper_hyp_text: the hypothesis from faster-whisper ASR decoding
+# --ref_text: reference text (after cleaner)
+# --fwhisper_wer_delete: delete errors
+# --fwhisper_wer_insert: insertion errors
+# --fwhisper_wer_replace: replacement errors
+# --fwhisper_wer_equal: correct matching words/character counts
+# --fwhisper_cer_delete: delete errors
+# --fwhisper_cer_insert: insertion errors
+# --fwhisper_cer_replace: replacement errors
+# --fwhisper_cer_equal: correct matching words/character counts
+- name: fwhisper_wer
+  model_tag: default
+  beam_size: 5
+  batch_size: 1
+  compute_type: float32
+  text_cleaner: whisper_basic
+
+
+# Word error rate with NeMo asr model
+# Please refer to tools/install_nemo.sh for installing.
+# The default model is `nvidia/stt_en_conformer_transducer_xlarge`.
+# --nemo_hyp_text: the hypothesis from NeMo ASR decoding
+# --ref_text: reference text (after cleaner)
+# --nemo_wer_delete: delete errors
+# --nemo_wer_insert: insertion errors
+# --nemo_wer_replace: replacement errors
+# --nemo_wer_equal: correct matching words/character counts
+# --nemo_cer_delete: delete errors
+# --nemo_cer_insert: insertion errors
+# --nemo_cer_replace: replacement errors
+# --nemo_cer_equal: correct matching words/character counts
+- name: nemo_wer
+  model_tag: default
+  text_cleaner: whisper_basic
+
+
+# Word error rate with Hubert-Large-Finetuned model
+# The default model is `facebook/hubert-large-ls960-ft`.
+# --hubert_hyp_text: the hypothesis from Hubert ASR decoding
+# --ref_text: reference text (after cleaner)
+# --hubert_wer_delete: delete errors
+# --hubert_wer_insert: insertion errors
+# --hubert_wer_replace: replacement errors
+# --hubert_wer_equal: correct matching words/character counts
+# --hubert_cer_delete: delete errors
+# --hubert_cer_insert: insertion errors
+# --hubert_cer_replace: replacement errors
+# --hubert_cer_equal: correct matching words/character counts
+- name: hubert_wer
+  model_tag: default
   text_cleaner: whisper_basic

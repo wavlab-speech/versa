@@ -6,6 +6,12 @@ from versa.corpus_metrics.espnet_wer import (
     EspnetWerMetric,
     register_espnet_wer_metric,
 )
+from versa.corpus_metrics.fwhisper_wer import (
+    FasterWhisperWerMetric,
+    register_fwhisper_wer_metric,
+)
+from versa.corpus_metrics.hubert_wer import HubertWerMetric, register_hubert_wer_metric
+from versa.corpus_metrics.nemo_wer import NemoWerMetric, register_nemo_wer_metric
 from versa.corpus_metrics.owsm_wer import OwsmWerMetric, register_owsm_wer_metric
 from versa.corpus_metrics.whisper_wer import (
     WhisperWerMetric,
@@ -297,19 +303,92 @@ def test_whisper_wer_metric_class_uses_cached_text(monkeypatch):
     assert calls["cache_pred_text"] == "cached hello"
 
 
+@pytest.mark.parametrize(
+    "module_name,class_name,setup_name,metric_name,hyp_key",
+    [
+        (
+            "versa.corpus_metrics.fwhisper_wer",
+            FasterWhisperWerMetric,
+            "fwhisper_wer_setup",
+            "fwhisper_levenshtein_metric",
+            "fwhisper_hyp_text",
+        ),
+        (
+            "versa.corpus_metrics.nemo_wer",
+            NemoWerMetric,
+            "nemo_wer_setup",
+            "nemo_levenshtein_metric",
+            "nemo_hyp_text",
+        ),
+        (
+            "versa.corpus_metrics.hubert_wer",
+            HubertWerMetric,
+            "hubert_wer_setup",
+            "hubert_levenshtein_metric",
+            "hubert_hyp_text",
+        ),
+    ],
+)
+def test_new_wer_metric_classes_use_cached_text(
+    monkeypatch, module_name, class_name, setup_name, metric_name, hyp_key
+):
+    calls = {}
+
+    def dummy_setup(**kwargs):
+        calls["setup"] = kwargs
+        return {"model": "dummy"}
+
+    monkeypatch.setattr(f"{module_name}.{setup_name}", dummy_setup)
+
+    def dummy_metric(wer_utils, pred_x, ref_text, fs=16000, cache_pred_text=None):
+        calls["ref_text"] = ref_text
+        calls["fs"] = fs
+        calls["cache_pred_text"] = cache_pred_text
+        return {hyp_key: cache_pred_text, hyp_key.replace("_hyp_text", "_wer_equal"): 1}
+
+    monkeypatch.setattr(f"{module_name}.{metric_name}", dummy_metric)
+
+    pred, _ = _audio_pair()
+    metric = class_name({"model_tag": "tiny-test"})
+    scores = metric.compute(
+        pred,
+        metadata={
+            "sample_rate": 22050,
+            "text": "hello",
+            "general_cache": {hyp_key: "cached hello"},
+        },
+    )
+
+    assert scores[hyp_key] == "cached hello"
+    assert calls["setup"]["model_tag"] == "tiny-test"
+    assert calls["ref_text"] == "hello"
+    assert calls["fs"] == 22050
+    assert calls["cache_pred_text"] == "cached hello"
+
+
 def test_register_wer_metrics():
     registry = MetricRegistry()
 
     register_espnet_wer_metric(registry)
     register_owsm_wer_metric(registry)
     register_whisper_wer_metric(registry)
+    register_fwhisper_wer_metric(registry)
+    register_nemo_wer_metric(registry)
+    register_hubert_wer_metric(registry)
 
     assert registry.get_metric("espnet_wer") is EspnetWerMetric
     assert registry.get_metric("owsm_wer") is OwsmWerMetric
     assert registry.get_metric("whisper_wer") is WhisperWerMetric
+    assert registry.get_metric("fwhisper_wer") is FasterWhisperWerMetric
+    assert registry.get_metric("faster_whisper_wer") is FasterWhisperWerMetric
+    assert registry.get_metric("nemo_wer") is NemoWerMetric
+    assert registry.get_metric("hubert_wer") is HubertWerMetric
     assert registry.get_metadata("espnet_wer").requires_text is True
     assert registry.get_metadata("owsm_wer").requires_text is True
     assert registry.get_metadata("whisper_wer").requires_text is True
+    assert registry.get_metadata("fwhisper_wer").requires_text is True
+    assert registry.get_metadata("nemo_wer").requires_text is True
+    assert registry.get_metadata("hubert_wer").requires_text is True
 
 
 def test_whisper_wer_missing_dependency(monkeypatch):
