@@ -104,7 +104,7 @@ We include x mark if the metric is auto-installed in versa.
 | 2 | x | MOS in TorchAudio-Squim  | squim_ref | torch_squim_mos |[torch_squim](https://pytorch.org/audio/main/tutorials/squim_tutorial.html) | [paper](https://arxiv.org/abs/2304.01448) |
 | 3 | x | ESPnet Speech Recognition-based Error Rate | espnet_wer | espnet_wer |[ESPnet](https://github.com/espnet/espnet) | [paper](https://arxiv.org/pdf/1804.00015) |
 | 4 | x | ESPnet-OWSM Speech Recognition-based Error Rate | owsm_wer | owsm_wer |[ESPnet](https://github.com/espnet/espnet) | [paper](https://arxiv.org/abs/2309.13876) |
-| 5 | x | OpenAI-Whisper Speech Recognition-based Error Rate | whisper_wer | whisper_wer |[Whisper](https://github.com/openai/whisper) | [paper](https://arxiv.org/abs/2212.04356) |
+| 5 | x | OpenAI-Whisper Speech Recognition-based Error Rate (WER/CER, optional PER) | whisper_wer | whisper_wer |[Whisper](https://github.com/openai/whisper) | [paper](https://arxiv.org/abs/2212.04356) |
 | 6 |   | Faster-Whisper Speech Recognition-based Error Rate | fwhisper_wer | fwhisper_wer |[Faster-Whisper](https://github.com/systran/faster-whisper) | - |
 | 7 |   | NVIDIA Conformer-Transducer X-Large Speech Recognition-based Error Rate | nemo_wer | nemo_wer |[NeMo](https://github.com/NVIDIA/NeMo) | [paper](https://arxiv.org/abs/2005.08100) |
 | 8 | x | Facebook Hubert-Large-Finetuned Speech Recognition-based Error Rate | hubert_wer | hubert_wer |[HuBERT](https://github.com/facebookresearch/fairseq/tree/main/examples/hubert) | [paper](https://arxiv.org/abs/2106.07447) |

@@ -471,7 +471,7 @@ def compute_summary(score_info: List[Dict[str, Any]]) -> Dict[str, Any]:
             continue
 
         summary[key] = sum(values)
-        if "_wer" not in key and "_cer" not in key:
+        if "_wer" not in key and "_cer" not in key and "_per" not in key:
             summary[key] /= len(values)
 
     return summary

@@ -276,9 +276,17 @@ def test_whisper_wer_metric_class_uses_cached_text(monkeypatch):
         dummy_setup,
     )
 
-    def dummy_metric(wer_utils, pred_x, ref_text, fs=16000, cache_pred_text=None):
+    def dummy_metric(
+        wer_utils,
+        pred_x,
+        ref_text,
+        fs=16000,
+        cache_pred_text=None,
+        cache_pred_language=None,
+    ):
         calls["ref_text"] = ref_text
         calls["cache_pred_text"] = cache_pred_text
+        calls["cache_pred_language"] = cache_pred_language
         return {"whisper_hyp_text": cache_pred_text, "whisper_wer_equal": 1}
 
     monkeypatch.setattr(
@@ -293,14 +301,66 @@ def test_whisper_wer_metric_class_uses_cached_text(monkeypatch):
         metadata={
             "sample_rate": 16000,
             "text": "hello",
-            "general_cache": {"whisper_hyp_text": "cached hello"},
+            "general_cache": {
+                "whisper_hyp_text": "cached hello",
+                "whisper_language": "en",
+            },
         },
     )
 
     assert scores == {"whisper_hyp_text": "cached hello", "whisper_wer_equal": 1}
     assert calls["setup"]["cache_dir"] == "versa_cache/whisper"
+    assert calls["setup"]["calc_per"] is False
     assert calls["ref_text"] == "hello"
     assert calls["cache_pred_text"] == "cached hello"
+    assert calls["cache_pred_language"] == "en"
+
+
+def test_whisper_per_metric_counts_cached_text(monkeypatch):
+    import versa.corpus_metrics.whisper_wer as whisper_wer_module
+
+    class DummyCleaner:
+        def __init__(self, cleaner_name):
+            self.cleaner_name = cleaner_name
+
+        def __call__(self, text):
+            return text
+
+    class DummyTokenizer:
+        def __init__(self, tokenizer_name):
+            self.tokenizer_name = tokenizer_name
+
+        def text2tokens(self, text):
+            return text.split()
+
+    monkeypatch.setattr(whisper_wer_module, "TextCleaner", DummyCleaner)
+    monkeypatch.setattr(whisper_wer_module, "PhonemeTokenizer", DummyTokenizer)
+    monkeypatch.setattr(
+        whisper_wer_module,
+        "whisper",
+        type(
+            "DummyWhisper",
+            (),
+            {"load_model": staticmethod(lambda *args, **kwargs: object())},
+        ),
+    )
+
+    pred, _ = _audio_pair()
+    metric = WhisperWerMetric({"calc_per": True})
+    scores = metric.compute(
+        pred,
+        metadata={
+            "sample_rate": 16000,
+            "text": "HH_AH L_OW",
+            "whisper_hyp_text": "HH_AH L_OW Z",
+            "language": "en",
+        },
+    )
+
+    assert scores["whisper_per_equal"] == 4
+    assert scores["whisper_per_insert"] == 1
+    assert scores["whisper_per_delete"] == 0
+    assert scores["whisper_per_replace"] == 0
 
 
 @pytest.mark.parametrize(

@@ -26,6 +26,11 @@ try:
 except ImportError:
     TextCleaner = None
 
+try:
+    from espnet2.text.phoneme_tokenizer import PhonemeTokenizer
+except ImportError:
+    PhonemeTokenizer = None
+
 TARGET_FS = 16000
 CHUNK_SIZE = 30  # seconds
 
@@ -34,6 +39,7 @@ def whisper_wer_setup(
     model_tag="default",
     beam_size=5,
     text_cleaner="whisper_basic",
+    calc_per=False,
     use_gpu=True,
     cache_dir="versa_cache/whisper",
 ):
@@ -46,14 +52,33 @@ def whisper_wer_setup(
         )
     if TextCleaner is None:
         raise ImportError("whisper_wer requires espnet TextCleaner. Install espnet")
+    if calc_per and PhonemeTokenizer is None:
+        raise ImportError(
+            "whisper_wer PER requires espnet PhonemeTokenizer. Install espnet"
+        )
     model = whisper.load_model(model_tag, device=device, download_root=cache_dir)
     textcleaner = TextCleaner(text_cleaner)
     wer_utils = {"model": model, "cleaner": textcleaner, "beam_size": beam_size}
+    if calc_per:
+        wer_utils["g2p"] = {
+            "zh": PhonemeTokenizer("pypinyin_g2p_phone_without_prosody"),
+            "ja": PhonemeTokenizer("pyopenjtalk"),
+            "en": PhonemeTokenizer("g2p_en"),
+        }
     return wer_utils
 
 
+def _flatten_phonemes(tokens):
+    return [phone for token in tokens for phone in token.strip().split("_") if phone]
+
+
 def whisper_levenshtein_metric(
-    wer_utils, pred_x, ref_text, fs=16000, cache_pred_text=None
+    wer_utils,
+    pred_x,
+    ref_text,
+    fs=16000,
+    cache_pred_text=None,
+    cache_pred_language=None,
 ):
     """Calculate the Levenshtein distance between ref and inf ASR results.
 
@@ -64,20 +89,24 @@ def whisper_levenshtein_metric(
         pred_x (np.ndarray): test signal (time,)
         ref_text (string): reference transcript
         cache_pred_text (string): transcription from cache (previous modules)
+        cache_pred_language (string): language code for cached transcription
         fs (int): sampling rate in Hz
     Returns:
         ret (dict): ditionary containing occurrences of edit operations
     """
     if cache_pred_text is not None:
         inf_text = cache_pred_text
+        lang = cache_pred_language
     else:
         if fs != TARGET_FS:
             pred_x = resample_audio(pred_x, fs, TARGET_FS)
             fs = TARGET_FS
         with torch.no_grad():
-            inf_text = wer_utils["model"].transcribe(
+            results = wer_utils["model"].transcribe(
                 torch.tensor(pred_x).float(), beam_size=wer_utils["beam_size"]
-            )["text"]
+            )
+            inf_text = results["text"]
+            lang = results.get("language")
 
     ref_text = wer_utils["cleaner"](ref_text).strip()
     pred_text = wer_utils["cleaner"](inf_text).strip()
@@ -138,6 +167,37 @@ def whisper_levenshtein_metric(
     )
     assert total == len(pred_words), (total, len(pred_words))
 
+    # process per
+    if "g2p" in wer_utils:
+        if lang not in wer_utils["g2p"]:
+            raise ValueError(f"Unsupported g2p language for whisper PER: {lang}")
+
+        ref_words = _flatten_phonemes(wer_utils["g2p"][lang].text2tokens(ref_text))
+        pred_words = _flatten_phonemes(wer_utils["g2p"][lang].text2tokens(pred_text))
+        ret.update(
+            whisper_per_delete=0,
+            whisper_per_insert=0,
+            whisper_per_replace=0,
+            whisper_per_equal=0,
+        )
+        for op, ref_st, ref_et, inf_st, inf_et in opcodes(ref_words, pred_words):
+            if op == "insert":
+                ret["whisper_per_" + op] = ret["whisper_per_" + op] + inf_et - inf_st
+            else:
+                ret["whisper_per_" + op] = ret["whisper_per_" + op] + ref_et - ref_st
+        total = (
+            ret["whisper_per_delete"]
+            + ret["whisper_per_replace"]
+            + ret["whisper_per_equal"]
+        )
+        assert total == len(ref_words), (total, len(ref_words))
+        total = (
+            ret["whisper_per_insert"]
+            + ret["whisper_per_replace"]
+            + ret["whisper_per_equal"]
+        )
+        assert total == len(pred_words), (total, len(pred_words))
+
     return ret
 
 
@@ -148,12 +208,14 @@ class WhisperWerMetric(BaseMetric):
         self.model_tag = self.config.get("model_tag", "default")
         self.beam_size = self.config.get("beam_size", 5)
         self.text_cleaner = self.config.get("text_cleaner", "whisper_basic")
+        self.calc_per = self.config.get("calc_per", False)
         self.use_gpu = self.config.get("use_gpu", True)
         self.cache_dir = self.config.get("cache_dir", "versa_cache/whisper")
         self.wer_utils = whisper_wer_setup(
             model_tag=self.model_tag,
             beam_size=self.beam_size,
             text_cleaner=self.text_cleaner,
+            calc_per=self.calc_per,
             use_gpu=self.use_gpu,
             cache_dir=self.cache_dir,
         )
@@ -173,6 +235,11 @@ class WhisperWerMetric(BaseMetric):
         general_cache = metadata.get("general_cache")
         if cache_pred_text is None and general_cache:
             cache_pred_text = general_cache.get("whisper_hyp_text")
+        cache_pred_language = metadata.get("whisper_language") or metadata.get(
+            "language"
+        )
+        if cache_pred_language is None and general_cache:
+            cache_pred_language = general_cache.get("whisper_language")
 
         fs = metadata.get("sample_rate", 16000)
         return whisper_levenshtein_metric(
@@ -181,6 +248,7 @@ class WhisperWerMetric(BaseMetric):
             ref_text,
             fs=fs,
             cache_pred_text=cache_pred_text,
+            cache_pred_language=cache_pred_language,
         )
 
     def get_metadata(self):
@@ -196,8 +264,8 @@ def _whisper_wer_metadata():
         requires_text=True,
         gpu_compatible=True,
         auto_install=False,
-        dependencies=["whisper", "espnet2", "Levenshtein", "librosa", "numpy", "torch"],
-        description="Whisper ASR-based WER and CER edit counts",
+        dependencies=["whisper", "espnet2", "Levenshtein", "numpy", "torch"],
+        description="Whisper ASR-based WER, CER, and optional PER edit counts",
         paper_reference="https://arxiv.org/abs/2212.04356",
         implementation_source="https://github.com/openai/whisper",
     )
