@@ -1,0 +1,5 @@
+# CDPAM distance metrics
+# CDPAM distance between audio samples
+# More info in https://github.com/facebookresearch/audiocraft
+# -- cdpam_distance: the CDPAM distance between audio samples
+- name: cdpam_distance 

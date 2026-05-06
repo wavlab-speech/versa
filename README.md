@@ -55,10 +55,10 @@ For metrics marked without "x" in the "Auto-Install" column of our metrics table
 
 ```bash
 # Test core functionality
-python versa/test/test_pipeline/test_general.py
+python -m pytest test/test_general.py
 
 # Test specific metrics that require additional installation
-python versa/test/test_pipeline/test_{metric}.py
+python -m pytest test/test_metrics/test_{metric}.py
 ```
 
 
@@ -69,7 +69,7 @@ python versa/test/test_pipeline/test_{metric}.py
 ```bash
 # Direct usage with file paths
 python versa/bin/scorer.py \
-    --score_config egs/speech.yaml \
+    --score_config egs/speech_cpu.yaml \
     --gt test/test_samples/test1 \
     --pred test/test_samples/test2 \
     --output_file test_result \
@@ -77,7 +77,7 @@ python versa/bin/scorer.py \
 
 # With SCP-style input
 python versa/bin/scorer.py \
-    --score_config egs/speech.yaml \
+    --score_config egs/speech_cpu.yaml \
     --gt test/test_samples/test1.scp \
     --pred test/test_samples/test2.scp \
     --output_file test_result \
@@ -85,7 +85,7 @@ python versa/bin/scorer.py \
 
 # With Kaldi-ARK style input (compatible with ESPnet)
 python versa/bin/scorer.py \
-    --score_config egs/speech.yaml \
+    --score_config egs/speech_cpu.yaml \
     --gt test/test_samples/test1.scp \
     --pred test/test_samples/test2.scp \
     --output_file test_result \
@@ -93,7 +93,7 @@ python versa/bin/scorer.py \
   
 # Including text transcription information
 python versa/bin/scorer.py \
-    --score_config egs/separate_metrics/wer.yaml \
+    --score_config egs/separate_metrics/wer_tiny.yaml \
     --gt test/test_samples/test1.scp \
     --pred test/test_samples/test2.scp \
     --output_file test_result \

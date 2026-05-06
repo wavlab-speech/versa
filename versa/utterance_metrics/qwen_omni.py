@@ -3,6 +3,8 @@
 # Copyright 2025 Jiatong Shi
 #  Apache 2.0  (http://www.apache.org/licenses/LICENSE-2.0)
 
+# flake8: noqa: E501
+
 """
 Speech Properties for Metadata Modeling
 
@@ -59,11 +61,12 @@ model's response.
 
 import copy
 import logging
-import torch
-from typing import Dict, Optional, Any, Union
+from typing import Dict, Optional, Any
 
-import librosa
 import numpy as np
+import torch
+
+from versa.audio_utils import resample_audio
 
 try:
     from transformers import Qwen2_5OmniForConditionalGeneration, Qwen2_5OmniProcessor
@@ -73,12 +76,15 @@ except ImportError:
     )
     Qwen2_5OmniForConditionalGeneration, Qwen2_5OmniProcessor = None, None
 
+from versa.definition import BaseMetric, MetricCategory, MetricMetadata, MetricType
 from versa.utterance_metrics.qwen2_audio import DEFAULT_PROMPTS
 
 
 def qwen_omni_model_setup(
     model_tag: str = "Qwen/Qwen2-Audio-7B-Instruct",
     start_prompt: str = "The following is a conversation with an AI assistant. The assistant is helpful, honest, and harmless.",
+    use_gpu: bool = True,
+    device_map: Optional[str] = None,
 ) -> Dict[str, Any]:
     """Set up the Qwen2-Audio model for speech analysis.
 
@@ -95,14 +101,17 @@ def qwen_omni_model_setup(
         raise RuntimeError(
             "qwen2_5_omni is used for evaluation while transformers is not installed (could be a version issue)."
         )
+    target_device = "cuda" if use_gpu and torch.cuda.is_available() else "cpu"
+    device_map = device_map or target_device
     processor = Qwen2_5OmniProcessor.from_pretrained(model_tag)
     model = Qwen2_5OmniForConditionalGeneration.from_pretrained(
         model_tag,
         torch_dtype="auto",
-        device_map="cuda",
+        device_map=device_map,
         # attn_implementation="flash_attention_2", NOTE(jiatong): to add
     )
-    model.to("cuda")
+    if device_map in {None, "cpu", "cuda"}:
+        model.to(target_device)
     start_conversation = [
         {"role": "system", "content": [{"type": "text", "text": start_prompt}]}
     ]
@@ -153,11 +162,7 @@ def qwen_omni_base_metric(
     text = processor.apply_chat_template(
         conversation, add_generation_prompt=True, tokenize=False
     )
-    audio = [
-        librosa.resample(
-            pred_x, orig_sr=fs, target_sr=processor.feature_extractor.sampling_rate
-        )
-    ]
+    audio = [resample_audio(pred_x, fs, processor.feature_extractor.sampling_rate)]
 
     inputs = processor(text=text, audio=audio, return_tensors="pt", padding=True)
     inputs = inputs.to(model.device).to(model.dtype)
@@ -252,6 +257,101 @@ qwen_omni_channel_type_metric = create_metric_fn("channel_type")
 
 
 qwen_omni_singing_technique_metric = create_metric_fn("singing_technique")
+
+
+class QwenOmniMetric(BaseMetric):
+    """Speech property extraction with Qwen2.5-Omni."""
+
+    metric_name = None
+
+    def _setup(self):
+        self.model_tag = self.config.get("model_tag", "default")
+        self.start_prompt = self.config.get(
+            "start_prompt",
+            (
+                "The following is a conversation with an AI assistant. "
+                "The assistant is helpful, honest, and harmless."
+            ),
+        )
+        self.metric_name = self.config.get("metric_name", self.metric_name)
+        if self.metric_name is None:
+            raise ValueError("metric_name must be provided")
+        self.prompt = self.config.get("prompt")
+        self.max_length = self.config.get("max_length", 500)
+        self.use_gpu = self.config.get("use_gpu", True)
+        self.device_map = self.config.get("device_map")
+        self.qwen_utils = qwen_omni_model_setup(
+            model_tag=self.model_tag,
+            start_prompt=self.start_prompt,
+            use_gpu=self.use_gpu,
+            device_map=self.device_map,
+        )
+
+    def compute(self, predictions, references=None, metadata=None):
+        if predictions is None:
+            raise ValueError("Predicted signal must be provided")
+
+        fs = metadata.get("sample_rate", 16000) if metadata else 16000
+        prompt = self.prompt or DEFAULT_PROMPTS.get(self.metric_name)
+        response = qwen_omni_base_metric(
+            self.qwen_utils,
+            np.asarray(predictions),
+            fs=fs,
+            custom_prompt=prompt,
+            max_length=self.max_length,
+        )
+        return {f"qwen_omni_{self.metric_name}": response}
+
+    def get_metadata(self):
+        return _qwen_omni_metadata(self.registry_name())
+
+    @classmethod
+    def registry_name(cls):
+        return f"qwen_omni_{cls.metric_name}" if cls.metric_name else "qwen_omni"
+
+
+def _qwen_omni_metadata(name):
+    return MetricMetadata(
+        name=name,
+        category=MetricCategory.INDEPENDENT,
+        metric_type=MetricType.STRING,
+        requires_reference=False,
+        requires_text=False,
+        gpu_compatible=True,
+        auto_install=False,
+        dependencies=["transformers", "librosa", "numpy", "torch"],
+        description="Speech property extraction with Qwen2.5-Omni",
+        paper_reference="https://arxiv.org/abs/2503.20215",
+        implementation_source="https://github.com/QwenLM/Qwen2.5-Omni",
+    )
+
+
+def _make_qwen_omni_metric_class(metric_name):
+    class _SpecificQwenOmniMetric(QwenOmniMetric):
+        pass
+
+    _SpecificQwenOmniMetric.metric_name = metric_name
+    class_name = "".join(part.title() for part in metric_name.split("_"))
+    _SpecificQwenOmniMetric.__name__ = f"QwenOmni{class_name}Metric"
+    return _SpecificQwenOmniMetric
+
+
+QWEN_OMNI_METRIC_CLASSES = {
+    metric_name: _make_qwen_omni_metric_class(metric_name)
+    for metric_name in DEFAULT_PROMPTS.keys()
+}
+
+
+def register_qwen_omni_metric(registry):
+    """Register Qwen2.5-Omni speech property metrics with the registry."""
+    for metric_name, metric_class in QWEN_OMNI_METRIC_CLASSES.items():
+        registry_name = f"qwen_omni_{metric_name}"
+        registry.register(
+            metric_class,
+            _qwen_omni_metadata(registry_name),
+            aliases=[f"qwen_omni_{metric_name}_metric"],
+        )
+
 
 if __name__ == "__main__":
     a = np.random.random(16000)
