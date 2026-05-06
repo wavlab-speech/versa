@@ -45,7 +45,9 @@ def pseudo_mos_setup(
     # first import utmos to resolve cross-import from the same model
     if "utmos" in predictor_types:
         torch.hub.set_dir(cache_dir)
-        utmos = torch.hub.load("ftshijt/SpeechMOS:main", "utmos22_strong").to(device)
+        utmos = torch.hub.load(
+            "ftshijt/SpeechMOS:main", "utmos22_strong", trust_repo=True
+        ).to(device)
         predictor_dict["utmos"] = utmos.float()
         predictor_fs["utmos"] = 16000
     if "utmosv2" in predictor_types:
