@@ -1,0 +1,5 @@
+# Lightweight WER/CER example for README smoke tests.
+- name: whisper_wer
+  model_tag: tiny
+  beam_size: 1
+  text_cleaner: whisper_basic

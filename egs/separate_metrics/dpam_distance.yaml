@@ -1,0 +1,5 @@
+# DPAM distance metrics
+# DPAM distance between audio samples
+# More info in https://github.com/adrienchaton/PerceptualAudio_Pytorch
+# -- dpam_distance: the DPAM distance between audio samples
+- name: dpam_distance 

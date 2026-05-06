@@ -1,12 +1,22 @@
-#/bin/bash
+#!/bin/bash
 
-if [ -d "wvmos" ]; then
-    rm -rf wvmos
-fi
+set -euo pipefail
 
-# # Clone and install wvmos
-git clone https://github.com/AndreevP/wvmos.git
-cd wvmos
-pip install -e .
-cd ..
+cd "$(dirname "$0")"
+PYTHON_BIN="${PYTHON:-python}"
 
+tmpdir="$(mktemp -d)"
+trap 'rm -rf "$tmpdir"' EXIT
+
+git clone --depth 1 https://github.com/AndreevP/wvmos.git "$tmpdir/wvmos"
+cd "$tmpdir/wvmos"
+"$PYTHON_BIN" -m pip install .
+
+"$PYTHON_BIN" - <<'PY'
+import wvmos
+from transformers import Wav2Vec2Model, Wav2Vec2Processor
+
+wvmos.get_wvmos(cuda=False)
+Wav2Vec2Model.from_pretrained("facebook/wav2vec2-base")
+Wav2Vec2Processor.from_pretrained("facebook/wav2vec2-base")
+PY

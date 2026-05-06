@@ -169,4 +169,15 @@ fadtk/
 scoreq/
 fairseq/
 UTMOSv2/
+
+# Versa optional metric installer output and model caches
+versa_cache/
+hub/
+tools/NISQA/
+tools/Noresqa/
+tools/SRMRpy/
+tools/audiobox-aesthetics/
+tools/emotion2vec/
+ssl-singer-identity/
+pretrained_models/
 wvmos/
