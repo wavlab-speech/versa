@@ -1,0 +1,8 @@
+# Contrastive Language-Audio Pretraining Score (CLAP Score)
+# --clap_score: cosine similarity between paired text and audio embeddings
+- name: clap_score
+  submodel_name: 630k-audioset
+  cache_dir: versa_cache/clap_score
+  cache_embeddings: false
+  enable_fusion: false
+  batch_size: 10

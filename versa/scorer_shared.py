@@ -320,6 +320,13 @@ class VersaScorer:
     ) -> List[Dict[str, Any]]:
         """Score individual utterances."""
 
+        metric_suite = MetricSuite(
+            {
+                name: metric
+                for name, metric in metric_suite.metrics.items()
+                if metric.get_metadata().category != MetricCategory.DISTRIBUTIONAL
+            }
+        )
         processor = ScoreProcessor(metric_suite, output_file)
         score_info = []
         cache_info = []
@@ -401,7 +408,10 @@ class VersaScorer:
                 score_result = metric.compute(
                     predictions=gen_files, references=base_files, metadata=metadata
                 )
-                score_info.update({name: score_result})
+                if isinstance(score_result, dict):
+                    score_info.update(score_result)
+                else:
+                    score_info.update({name: score_result})
 
             except Exception as e:
                 self.logger.error(f"Error computing corpus metric {name}: {e}")
