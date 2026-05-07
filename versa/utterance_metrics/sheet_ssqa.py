@@ -6,7 +6,9 @@
 #  Apache 2.0  (http://www.apache.org/licenses/LICENSE-2.0)
 
 import numpy as np
+import time
 import torch
+import urllib.error
 
 from versa.audio_utils import resample_audio
 from versa.definition import BaseMetric, MetricCategory, MetricMetadata, MetricType
@@ -32,9 +34,16 @@ def sheet_ssqa_setup(
         if model_tag == "default":
             model_tag = "unilight/sheet:v0.1.0"
         torch.hub.set_dir(cache_dir)
-        model = torch.hub.load(
-            "unilight/sheet:v0.1.0", "default", trust_repo=True, force_reload=False
-        )
+        for attempt in range(3):
+            try:
+                model = torch.hub.load(
+                    model_tag, "default", trust_repo=True, force_reload=False
+                )
+                break
+            except (urllib.error.HTTPError, urllib.error.URLError):
+                if attempt == 2:
+                    raise
+                time.sleep(5 * (attempt + 1))
 
     model.model.to(device)
     return model
