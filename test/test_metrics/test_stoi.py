@@ -1,13 +1,15 @@
 import wave
-from pathlib import Path
 
 import numpy as np
 import pytest
 
-from versa.utterance_metrics.stoi import stoi_metric
-
-# Assume the fixed WAV file fixtures and helper function are defined as in the ASR matching test.
-# For example:
+from versa.definition import MetricRegistry
+from versa.utterance_metrics.stoi import (
+    EstoiMetric,
+    StoiMetric,
+    register_stoi_metric,
+    stoi_metric,
+)
 
 
 def generate_fixed_wav(
@@ -54,7 +56,7 @@ def fixed_audio_wav(tmp_path_factory):
 def fixed_ground_truth_wav(tmp_path_factory):
     tmp_dir = tmp_path_factory.mktemp("audio_data")
     gt_file = tmp_dir / "fixed_ground_truth.wav"
-    # Use a different base frequency for ground truth (e.g. 300 Hz) to simulate a mismatch.
+    # Use a different base frequency to simulate a mismatch.
     generate_fixed_wav(gt_file, duration=1.0, sample_rate=16000, base_freq=300)
     return gt_file
 
@@ -90,3 +92,36 @@ def test_stoi_metric_different(fixed_audio, fixed_ground_truth):
     assert (
         scores["stoi"] < 1.0
     ), f"Expected STOI below 1.0 for different signals, got {scores['stoi']}"
+
+
+def test_stoi_metric_class_matches_legacy_function(fixed_audio, fixed_ground_truth):
+    legacy_scores = stoi_metric(fixed_audio, fixed_ground_truth, 16000)
+    metric = StoiMetric()
+
+    scores = metric.compute(
+        fixed_audio, fixed_ground_truth, metadata={"sample_rate": 16000}
+    )
+
+    assert scores["stoi"] == pytest.approx(legacy_scores["stoi"])
+
+
+def test_estoi_metric_class_uses_extended_mode(fixed_audio, fixed_ground_truth):
+    metric = EstoiMetric()
+
+    scores = metric.compute(
+        fixed_audio, fixed_ground_truth, metadata={"sample_rate": 16000}
+    )
+
+    assert "estoi" in scores
+    assert isinstance(scores["estoi"], float)
+
+
+def test_register_stoi_metric():
+    registry = MetricRegistry()
+
+    register_stoi_metric(registry)
+
+    assert registry.get_metric("stoi") is StoiMetric
+    assert registry.get_metric("estoi") is EstoiMetric
+    assert registry.get_metric("stoi_metric") is StoiMetric
+    assert registry.get_metadata("estoi").requires_reference is True

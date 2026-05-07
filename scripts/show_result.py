@@ -4,11 +4,7 @@ from collections import defaultdict
 import statistics
 import os
 import glob
-import matplotlib.pyplot as plt
-import seaborn as sns
-import pandas as pd
 import numpy as np
-from pathlib import Path
 from typing import Dict, List, Any, Optional
 
 
@@ -449,6 +445,10 @@ def estimate_metric_quality(metric_name: str, values: List[float]) -> Dict[str, 
 
 def create_visualizations(metrics_stats: Dict, discovery: Dict, output_dir: str = None):
     """Create visualizations organized by metric categories"""
+    import matplotlib.pyplot as plt
+    import pandas as pd
+    import seaborn as sns
+
     if output_dir and not os.path.exists(output_dir):
         os.makedirs(output_dir)
 
@@ -647,6 +647,8 @@ def print_metric_analysis(metrics_stats: Dict, discovery: Dict):
 
 def export_results_to_csv(metrics_stats: Dict, discovery: Dict, output_file: str):
     """Export comprehensive results to CSV files"""
+    import pandas as pd
+
     # Main results file
     results_data = []
 

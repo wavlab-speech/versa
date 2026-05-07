@@ -2,3 +2,4 @@
 # -- nomad: nomad reference-based model
 - name: nomad
   model_cache: versa_cache/nomad_pt-models
+  use_gpu: false

@@ -5,3 +5,5 @@ https://github.com/JasonSWFu/VQscore
 https://github.com/soumimaiti/speechlmscore_tool
 Other metrics with pre-trained models
 https://github.com/Ashvala/AQUA-Tk?tab=readme-ov-file
+
+https://github.com/FireRedTeam/FireRedASR/tree/main

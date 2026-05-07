@@ -2,6 +2,7 @@
 """
 @author: Gabriel Mittag, TU-Berlin
 """
+
 import copy
 import math
 import multiprocessing
@@ -383,8 +384,8 @@ class NISQA_DE(nn.Module):
         )
 
     def _split_ref_deg(self, x, n_wins):
-        (x, y) = torch.chunk(x, 2, dim=2)
-        (n_wins_x, n_wins_y) = torch.chunk(n_wins, 2, dim=1)
+        x, y = torch.chunk(x, 2, dim=2)
+        n_wins_x, n_wins_y = torch.chunk(n_wins, 2, dim=1)
         n_wins_x = n_wins_x.view(-1)
         n_wins_y = n_wins_y.view(-1)
         return x, y, n_wins_x, n_wins_y
@@ -484,7 +485,7 @@ class Framewise(nn.Module):
             raise NotImplementedError("Framwise model not available")
 
     def forward(self, x, n_wins):
-        (bs, length, channels, height, width) = x.shape
+        bs, length, channels, height, width = x.shape
         x_packed = pack_padded_sequence(
             x, n_wins.cpu(), batch_first=True, enforce_sorted=False
         )
