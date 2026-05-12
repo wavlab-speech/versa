@@ -50,6 +50,21 @@ VERSA aligns with original APIs provided by algorithm developers rather than red
 
 For metrics marked without "x" in the "Auto-Install" column of our metrics tables, please use the installers provided in the `tools` directory.
 
+### Installation Notes
+
+Some optional metric backends emit warnings during setup or first use. ESPnet may
+print a `flash_attn` warning when Flash Attention is not available; VERSA can
+still run metrics that do not require that backend. FADTK is only needed for
+FAD/KID-style metrics and can be installed with `tools/install_fadtk.sh` when
+those metrics are selected.
+
+If NLTK downloads fail with a certificate verification error, point Python at
+the certificate bundle used by `certifi` before running the tests:
+
+```bash
+export SSL_CERT_FILE=$(python -c "import certifi; print(certifi.where())")
+```
+
 
 ## 🧪 Quick Testing
 
