@@ -83,6 +83,14 @@ def get_parser() -> argparse.Namespace:
         action="store_true",
         help="Do not match the groundtruth and generated files.",
     )
+    parser.add_argument(
+        "--resume",
+        action="store_true",
+        help=(
+            "Resume utterance scoring from an existing output_file by skipping "
+            "keys already present in the JSONL results."
+        ),
+    )
 
     # ---------- NEW: chunking options ----------
     parser.add_argument(
@@ -369,6 +377,7 @@ def main():
             text_info,
             output_file=args.output_file,
             io=args.io,
+            resume=args.resume,
         )
         logging.info("Summary: %s", load_summary(score_info))
     else:

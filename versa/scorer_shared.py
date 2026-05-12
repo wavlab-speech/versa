@@ -5,6 +5,7 @@
 
 import logging
 import json
+import os
 import kaldiio
 import soundfile as sf
 import yaml
@@ -97,6 +98,7 @@ def list_scoring(
     output_file: Optional[str] = None,
     io: str = "kaldi",
     batch_size: int = 1,
+    resume: bool = False,
 ) -> List[Dict[str, Any]]:
     """Legacy wrapper for scoring a list of utterances."""
     scorer = VersaScorer(_create_populated_registry())
@@ -108,6 +110,7 @@ def list_scoring(
         output_file=output_file,
         io=io,
         batch_size=batch_size,
+        resume=resume,
     )
 
 
@@ -195,16 +198,76 @@ def corpus_scoring(
     return score_info
 
 
+def _load_existing_jsonl_scores(
+    output_file: Optional[str],
+) -> Dict[str, Dict[str, Any]]:
+    """Load previously written utterance scores keyed by utterance id."""
+    if not output_file or not os.path.exists(output_file):
+        return {}
+
+    existing_scores = {}
+    logger = logging.getLogger(__name__)
+    with open(output_file, "r", encoding="utf-8") as f:
+        for line_number, line in enumerate(f, start=1):
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                score = json.loads(line)
+            except json.JSONDecodeError:
+                logger.warning(
+                    "Ignoring invalid JSON line %d in resume file %s",
+                    line_number,
+                    output_file,
+                )
+                continue
+
+            key = score.get("key")
+            if key is None:
+                logger.warning(
+                    "Ignoring resume line %d in %s because it has no key",
+                    line_number,
+                    output_file,
+                )
+                continue
+
+            existing_scores[key] = score
+
+    return existing_scores
+
+
+def _ensure_append_starts_on_new_line(output_file: str) -> None:
+    """Make sure resumed JSONL appends cannot merge with a partial final line."""
+    if not os.path.exists(output_file) or os.path.getsize(output_file) == 0:
+        return
+
+    with open(output_file, "rb") as f:
+        f.seek(-1, os.SEEK_END)
+        if f.read(1) == b"\n":
+            return
+
+    with open(output_file, "a", encoding="utf-8") as f:
+        f.write("\n")
+
+
 class ScoreProcessor:
     """Handles batch processing and caching of scores."""
 
-    def __init__(self, metric_suite: MetricSuite, output_file: Optional[str] = None):
+    def __init__(
+        self,
+        metric_suite: MetricSuite,
+        output_file: Optional[str] = None,
+        resume: bool = False,
+    ):
         self.metric_suite = metric_suite
         self.output_file = output_file
         self.logger = logging.getLogger(self.__class__.__name__)
 
         if output_file:
-            self.file_handle = open(output_file, "w", encoding="utf-8")
+            mode = "a" if resume else "w"
+            if resume:
+                _ensure_append_starts_on_new_line(output_file)
+            self.file_handle = open(output_file, mode, encoding="utf-8")
         else:
             self.file_handle = None
 
@@ -246,6 +309,7 @@ class ScoreProcessor:
                     utt_score, default=default_numpy_serializer
                 )
                 self.file_handle.write(f"{printable_result}\n")
+                self.file_handle.flush()
 
         return batch_score_info
 
@@ -317,6 +381,7 @@ class VersaScorer:
         output_file: Optional[str] = None,
         io: str = "kaldi",
         batch_size: int = 1,
+        resume: bool = False,
     ) -> List[Dict[str, Any]]:
         """Score individual utterances."""
 
@@ -327,12 +392,31 @@ class VersaScorer:
                 if metric.get_metadata().category != MetricCategory.DISTRIBUTIONAL
             }
         )
-        processor = ScoreProcessor(metric_suite, output_file)
-        score_info = []
+        existing_scores = _load_existing_jsonl_scores(output_file) if resume else {}
+        completed_keys = set(existing_scores).intersection(gen_files)
+        if resume and output_file:
+            self.logger.info(
+                "Resume enabled: found %d completed utterances in %s",
+                len(completed_keys),
+                output_file,
+            )
+        elif resume:
+            self.logger.warning(
+                "Resume requested without output_file; scoring normally"
+            )
+
+        processor = ScoreProcessor(metric_suite, output_file, resume=resume)
+        score_info = [
+            existing_scores[key] for key in gen_files if key in existing_scores
+        ]
         cache_info = []
 
         try:
             for key in tqdm(gen_files.keys()):
+                if key in completed_keys:
+                    self.logger.debug("Skipping completed utterance %s", key)
+                    continue
+
                 # Step1: Load and validate generated audio
                 gen_sr, gen_wav = load_audio(gen_files[key], io)
                 gen_wav = wav_normalize(gen_wav)

@@ -191,6 +191,9 @@ class MetricSuite:
         self.metrics = metrics
         self.logger = logging.getLogger(self.__class__.__name__)
 
+    def __len__(self) -> int:
+        return len(self.metrics)
+
     def compute_all(
         self, predictions: Any, references: Any = None, metadata: Dict[str, Any] = None
     ) -> Dict[str, Any]:

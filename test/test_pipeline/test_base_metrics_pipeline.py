@@ -1,10 +1,18 @@
+import json
+
 import pytest
 import torch
 
 from versa.corpus_metrics.espnet_wer import register_espnet_wer_metric
 from versa.corpus_metrics.owsm_wer import register_owsm_wer_metric
 from versa.corpus_metrics.whisper_wer import register_whisper_wer_metric
-from versa.definition import MetricRegistry
+from versa.definition import (
+    BaseMetric,
+    MetricCategory,
+    MetricMetadata,
+    MetricRegistry,
+    MetricType,
+)
 from versa.scorer_shared import VersaScorer, find_files
 from versa.sequence_metrics.mcd_f0 import register_mcd_f0_metric
 from versa.sequence_metrics.signal_metric import register_signal_metric
@@ -30,6 +38,58 @@ def _sample_files():
     gen_files = find_files("test/test_samples/test2")
     gt_files = find_files("test/test_samples/test1")
     return gen_files, gt_files
+
+
+class CountingMetric(BaseMetric):
+    calls = 0
+
+    def _setup(self):
+        pass
+
+    def compute(self, predictions, references=None, metadata=None):
+        CountingMetric.calls += 1
+        return 1.0
+
+    def get_metadata(self):
+        return MetricMetadata(
+            name="counting",
+            category=MetricCategory.INDEPENDENT,
+            metric_type=MetricType.FLOAT,
+            requires_reference=False,
+            requires_text=False,
+            gpu_compatible=False,
+            auto_install=False,
+            dependencies=[],
+            description="Test metric that counts compute calls.",
+        )
+
+
+def test_score_utterances_resume_skips_completed_keys(tmp_path):
+    gen_files, _ = _sample_files()
+    completed_key = next(iter(gen_files))
+    output_file = tmp_path / "scores.jsonl"
+    output_file.write_text(
+        json.dumps({"key": completed_key, "counting": 3.0}) + "\n",
+        encoding="utf-8",
+    )
+
+    registry = MetricRegistry()
+    registry.register(CountingMetric, CountingMetric().get_metadata())
+    scorer = VersaScorer(registry)
+    metric_suite = scorer.load_metrics([{"name": "counting"}], use_gt=False)
+
+    CountingMetric.calls = 0
+    score_info = scorer.score_utterances(
+        gen_files,
+        metric_suite,
+        output_file=str(output_file),
+        io="soundfile",
+        resume=True,
+    )
+
+    assert score_info[0] == {"key": completed_key, "counting": 3.0}
+    assert CountingMetric.calls == max(len(gen_files) - 1, 0)
+    assert len(score_info) == len(gen_files)
 
 
 def test_stoi_and_signal_pipeline_with_registry():
