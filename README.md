@@ -99,6 +99,16 @@ python versa/bin/scorer.py \
     --output_file test_result \
     --text test/test_samples/text \
     --io soundfile
+
+# Load and score one metric at a time to reduce peak GPU memory
+python versa/bin/scorer.py \
+    --score_config egs/speech_gpu.yaml \
+    --gt test/test_samples/test1.scp \
+    --pred test/test_samples/test2.scp \
+    --output_file test_result \
+    --io soundfile \
+    --use_gpu True \
+    --scoring_mode metric
 ```
 
 ### Distributed Evaluation with Slurm
