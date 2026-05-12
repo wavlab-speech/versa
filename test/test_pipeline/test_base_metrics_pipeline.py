@@ -64,6 +64,30 @@ class CountingMetric(BaseMetric):
         )
 
 
+class CountingDictMetric(BaseMetric):
+    calls = 0
+
+    def _setup(self):
+        pass
+
+    def compute(self, predictions, references=None, metadata=None):
+        CountingDictMetric.calls += 1
+        return {"counting_dict": 2.0}
+
+    def get_metadata(self):
+        return MetricMetadata(
+            name="counting_dict",
+            category=MetricCategory.INDEPENDENT,
+            metric_type=MetricType.DICT,
+            requires_reference=False,
+            requires_text=False,
+            gpu_compatible=False,
+            auto_install=False,
+            dependencies=[],
+            description="Test metric returning multiple named scores.",
+        )
+
+
 def test_score_utterances_resume_skips_completed_keys(tmp_path):
     gen_files, _ = _sample_files()
     completed_key = next(iter(gen_files))
@@ -90,6 +114,37 @@ def test_score_utterances_resume_skips_completed_keys(tmp_path):
     assert score_info[0] == {"key": completed_key, "counting": 3.0}
     assert CountingMetric.calls == max(len(gen_files) - 1, 0)
     assert len(score_info) == len(gen_files)
+
+
+def test_score_utterances_by_metric_merges_scores_and_writes_jsonl(tmp_path):
+    gen_files, _ = _sample_files()
+    output_file = tmp_path / "scores.jsonl"
+
+    registry = MetricRegistry()
+    registry.register(CountingMetric, CountingMetric().get_metadata())
+    registry.register(CountingDictMetric, CountingDictMetric().get_metadata())
+    scorer = VersaScorer(registry)
+
+    CountingMetric.calls = 0
+    CountingDictMetric.calls = 0
+    score_info = scorer.score_utterances_by_metric(
+        gen_files,
+        [{"name": "counting"}, {"name": "counting_dict"}],
+        output_file=str(output_file),
+        io="soundfile",
+    )
+
+    assert len(score_info) == len(gen_files)
+    assert CountingMetric.calls == len(gen_files)
+    assert CountingDictMetric.calls == len(gen_files)
+    assert all(score["counting"] == 1.0 for score in score_info)
+    assert all(score["counting_dict"] == 2.0 for score in score_info)
+
+    written_scores = [
+        json.loads(line)
+        for line in output_file.read_text(encoding="utf-8").splitlines()
+    ]
+    assert written_scores == score_info
 
 
 def test_stoi_and_signal_pipeline_with_registry():

@@ -108,11 +108,25 @@ python versa/bin/scorer.py \
     --output_file test_result \
     --io soundfile \
     --resume
+
+# Load and score one metric at a time to reduce peak GPU memory
+python versa/bin/scorer.py \
+    --score_config egs/speech_gpu.yaml \
+    --gt test/test_samples/test1.scp \
+    --pred test/test_samples/test2.scp \
+    --output_file test_result \
+    --io soundfile \
+    --use_gpu True \
+    --scoring_mode metric
 ```
 
 `--resume` reads existing JSONL rows from `--output_file`, skips utterance keys
 that have already been scored, and appends only new results. This is useful for
 long-running evaluations that are interrupted or restarted.
+
+`--scoring_mode metric` loads and runs one metric at a time, then releases
+metric resources before moving to the next metric. This can reduce peak GPU
+memory when many model-backed metrics are configured together.
 
 ### Distributed Evaluation with Slurm
 

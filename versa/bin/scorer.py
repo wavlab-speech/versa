@@ -11,6 +11,7 @@ import logging
 import torch
 import yaml
 
+from versa.definition import MetricCategory
 from versa.scorer_shared import (
     audio_loader_setup,
     VersaScorer,
@@ -82,6 +83,16 @@ def get_parser() -> argparse.Namespace:
             "keys already present in the JSONL results."
         ),
     )
+    parser.add_argument(
+        "--scoring_mode",
+        type=str,
+        default="utterance",
+        choices=["utterance", "metric"],
+        help=(
+            "Scoring loop order. Use 'metric' to load one metric at a time, "
+            "reducing peak GPU memory when many metrics are configured."
+        ),
+    )
     return parser
 
 
@@ -148,17 +159,53 @@ def main():
 
     # Initialize VersaScorer
     scorer = VersaScorer()
+    score_metadata = {
+        config["name"]: scorer.registry.get_metadata(config["name"])
+        for config in score_config
+    }
+    corpus_score_config = [
+        config
+        for config in score_config
+        if (
+            score_metadata[config["name"]]
+            and score_metadata[config["name"]].category == MetricCategory.DISTRIBUTIONAL
+        )
+    ]
 
-    # Load utterance-level metrics
-    utterance_metrics = scorer.load_metrics(
-        score_config,
-        use_gt=(True if gt_files is not None else False),
-        use_gt_text=(True if text_info is not None else False),
-        use_gpu=args.use_gpu,
-    )
+    if args.scoring_mode == "metric":
+        score_info = scorer.score_utterances_by_metric(
+            gen_files,
+            score_config,
+            gt_files,
+            text_info,
+            output_file=args.output_file,
+            io=args.io,
+            resume=args.resume,
+            use_gpu=args.use_gpu,
+        )
+        logging.info("Summary: {}".format(compute_summary(score_info)))
+        utterance_metric_count = int(
+            any(any(key != "key" for key in score) for score in score_info)
+        )
+    else:
+        # Load utterance-level metrics
+        utterance_metrics = scorer.load_metrics(
+            score_config,
+            use_gt=(True if gt_files is not None else False),
+            use_gt_text=(True if text_info is not None else False),
+            use_gpu=args.use_gpu,
+        )
+
+        utterance_metric_count = len(
+            [
+                metric
+                for metric in utterance_metrics.metrics.values()
+                if metric.get_metadata().category != MetricCategory.DISTRIBUTIONAL
+            ]
+        )
 
     # Perform utterance-level scoring
-    if len(utterance_metrics.metrics) > 0:
+    if args.scoring_mode == "utterance" and len(utterance_metrics.metrics) > 0:
         score_info = scorer.score_utterances(
             gen_files,
             utterance_metrics,
@@ -169,20 +216,18 @@ def main():
             resume=args.resume,
         )
         logging.info("Summary: {}".format(compute_summary(score_info)))
-    else:
+    elif utterance_metric_count == 0:
         logging.info("No utterance-level scoring function is provided.")
 
     # Load corpus-level metrics (distributional metrics)
     corpus_metrics = scorer.load_metrics(
-        score_config,
+        corpus_score_config,
         use_gt=(True if gt_files is not None else False),
         use_gt_text=(True if text_info is not None else False),
         use_gpu=args.use_gpu,
     )
 
     # Filter for corpus-level metrics and perform corpus scoring
-    from versa.definition import MetricCategory
-
     corpus_suite = corpus_metrics.filter_by_category(MetricCategory.DISTRIBUTIONAL)
     if len(corpus_suite.metrics) > 0:
         corpus_score_info = scorer.score_corpus(
@@ -197,7 +242,7 @@ def main():
         logging.info("No corpus-level scoring function is provided.")
 
     # Ensure at least one scoring function is provided
-    if len(utterance_metrics.metrics) == 0 and len(corpus_suite.metrics) == 0:
+    if utterance_metric_count == 0 and len(corpus_suite.metrics) == 0:
         raise ValueError("No scoring function is provided")
 
 
