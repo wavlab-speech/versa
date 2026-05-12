@@ -22,7 +22,7 @@ VERSA (Versatile Evaluation of Speech and Audio) is a comprehensive toolkit for 
 - **Comprehensive**: 90+ metrics covering perceptual quality, intelligibility, and technical measurements (check [full metrics documentation](https://github.com/wavlab-speech/versa/blob/main/docs/supported_metrics.md) for a complete list)
 - **Integrated**: Widely used in speech toolkits and challenges (check the [incomplete list of toolkits/challenges](https://github.com/wavlab-speech/versa/blob/main/docs/users.md) using versa)
 - **Flexible**: Support for various input formats (file paths, SCP files, Kaldi-style ARKs)
-- **Scalable**: Built-in support for distributed evaluation using Slurm
+- **Scalable**: Built-in support for distributed evaluation using Slurm, with resume support for interrupted scoring runs
 - **Visualizable**: Interactive visualization with VERSA results (check [our visualization guideline](https://github.com/wavlab-speech/versa/blob/main/docs/visualization.md))
 
 ## 🔍 Interactive Demo
@@ -99,7 +99,20 @@ python versa/bin/scorer.py \
     --output_file test_result \
     --text test/test_samples/text \
     --io soundfile
+
+# Resume an interrupted utterance-level scoring run
+python versa/bin/scorer.py \
+    --score_config egs/speech_cpu.yaml \
+    --gt test/test_samples/test1.scp \
+    --pred test/test_samples/test2.scp \
+    --output_file test_result \
+    --io soundfile \
+    --resume
 ```
+
+`--resume` reads existing JSONL rows from `--output_file`, skips utterance keys
+that have already been scored, and appends only new results. This is useful for
+long-running evaluations that are interrupted or restarted.
 
 ### Distributed Evaluation with Slurm
 
