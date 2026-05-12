@@ -261,9 +261,7 @@ def _write_jsonl_scores(
 
     with open(output_file, "w", encoding="utf-8") as f:
         for utt_score in score_info:
-            printable_result = json.dumps(
-                utt_score, default=default_numpy_serializer
-            )
+            printable_result = json.dumps(utt_score, default=default_numpy_serializer)
             f.write(f"{printable_result}\n")
 
 
@@ -540,9 +538,7 @@ class VersaScorer:
             )
 
             if len(metric_suite.metrics) == 0:
-                self.logger.info(
-                    "Skipping %s for utterance-level scoring", metric_name
-                )
+                self.logger.info("Skipping %s for utterance-level scoring", metric_name)
                 _release_metric_resources()
                 continue
 

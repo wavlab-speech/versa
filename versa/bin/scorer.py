@@ -168,8 +168,7 @@ def main():
         for config in score_config
         if (
             score_metadata[config["name"]]
-            and score_metadata[config["name"]].category
-            == MetricCategory.DISTRIBUTIONAL
+            and score_metadata[config["name"]].category == MetricCategory.DISTRIBUTIONAL
         )
     ]
 
