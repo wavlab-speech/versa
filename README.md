@@ -40,13 +40,24 @@ cd versa
 pip install .
 ```
 
-or alternatively, without cloning: 
+The base install keeps dependency resolution light and includes the shared scorer
+runtime. Install optional groups for metrics that need larger model stacks or
+external toolkits:
+
+```bash
+pip install ".[audio,text,ml]"
+pip install ".[external]"  # Git/toolkit-backed metrics
+pip install ".[dev]"       # tests, linting, and formatting
+```
+
+or alternatively, without cloning:
+
 ```bash
 python -m pip install git+https://github.com/wavlab-speech/versa.git#egg=versa-speech-audio-toolkit --no-build-isolation
 ```
 ### Metric-Specific Dependencies
 
-VERSA aligns with original APIs provided by algorithm developers rather than redistributing models. The core package includes many metrics by default, but some require additional installation.
+VERSA aligns with original APIs provided by algorithm developers rather than redistributing models. The base package does not install every optional metric backend by default.
 
 For metrics marked without "x" in the "Auto-Install" column of our metrics tables, please use the installers provided in the `tools` directory.
 
@@ -69,8 +80,8 @@ export SSL_CERT_FILE=$(python -c "import certifi; print(certifi.where())")
 ## 🧪 Quick Testing
 
 ```bash
-# Test core functionality
-python -m pytest test/test_general.py
+# Test dependency-light core functionality
+python -m pytest test/test_metrics/test_definition.py
 
 # Test specific metrics that require additional installation
 python -m pytest test/test_metrics/test_{metric}.py

@@ -49,7 +49,7 @@ def get_parser() -> argparse.Namespace:
         "--cache_folder", type=str, default=None, help="Path of cache saving"
     )
     parser.add_argument(
-        "--use_gpu", type=bool, default=False, help="whether to use GPU if it can"
+        "--use_gpu", action="store_true", help="whether to use GPU if it can"
     )
     parser.add_argument(
         "--io",
@@ -101,6 +101,8 @@ def main():
 
     # In case of using `local` backend, all GPU will be visible to all process.
     if args.use_gpu:
+        if not torch.cuda.is_available() or torch.cuda.device_count() == 0:
+            raise RuntimeError("--use_gpu was set, but no CUDA device is available")
         gpu_rank = args.rank % torch.cuda.device_count()
         torch.cuda.set_device(gpu_rank)
         logging.info(f"using device: cuda:{gpu_rank}")
@@ -155,7 +157,7 @@ def main():
     logging.info("The number of utterances = %d" % len(gen_files))
 
     with open(args.score_config, "r", encoding="utf-8") as f:
-        score_config = yaml.full_load(f)
+        score_config = yaml.safe_load(f)
 
     # Initialize VersaScorer
     scorer = VersaScorer()

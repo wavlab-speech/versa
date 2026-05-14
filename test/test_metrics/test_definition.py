@@ -1,11 +1,15 @@
+import pytest
+
 from versa.definition import (
     BaseMetric,
     MetricCategory,
     MetricFactory,
     MetricMetadata,
     MetricRegistry,
+    MetricSuite,
     MetricType,
 )
+from versa.scorer_shared import compute_summary
 
 
 class DummyMetric(BaseMetric):
@@ -39,3 +43,34 @@ def test_metric_factory_create_suite_with_missing_dependency_and_default_config(
     suite = MetricFactory(registry).create_metric_suite(["dummy"])
 
     assert suite.compute_all(predictions=None) == {"dummy": {"dummy": 1.0}}
+
+
+def test_metric_suite_compute_parallel_is_explicitly_unimplemented():
+    suite = MetricSuite({})
+
+    with pytest.raises(NotImplementedError, match="compute_parallel"):
+        suite.compute_parallel(predictions=None)
+
+
+def test_compute_summary_infers_numeric_scores_without_metric_registry():
+    score_info = [
+        {
+            "key": "utt1",
+            "pesq": 1.0,
+            "match_details": {"ok": True},
+            "ref_text": "hello",
+            "espnet_wer_insert": 1,
+        },
+        {
+            "key": "utt2",
+            "pesq": 3.0,
+            "match_details": {"ok": False},
+            "ref_text": "world",
+            "espnet_wer_insert": 2,
+        },
+    ]
+
+    assert compute_summary(score_info) == {
+        "espnet_wer_insert": 3,
+        "pesq": 2.0,
+    }

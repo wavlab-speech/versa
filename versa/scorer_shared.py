@@ -10,6 +10,7 @@ import os
 import kaldiio
 import soundfile as sf
 import yaml
+from numbers import Real
 from typing import Dict, List, Optional, Any, Union
 from tqdm import tqdm
 
@@ -24,7 +25,6 @@ from versa.definition import (
     MetricType,
     MetricMetadata,
 )
-from versa.metrics import STR_METRIC, NUM_METRIC
 from versa.utils_shared import (
     check_all_same,
     check_minimum_length,
@@ -652,26 +652,39 @@ class VersaScorer:
         return gen_wav, gt_wav, gen_sr
 
 
+def _is_numeric_score(value: Any) -> bool:
+    """Return whether a score value should be included in numeric summaries."""
+    return isinstance(value, Real) and not isinstance(value, bool)
+
+
+def _is_count_metric(metric_name: str) -> bool:
+    """WER/CER/PER operation counts are summed rather than averaged."""
+    return any(token in metric_name for token in ("_wer", "_cer", "_per"))
+
+
 def compute_summary(score_info: List[Dict[str, Any]]) -> Dict[str, Any]:
     """Compute summary statistics from individual scores."""
     if not score_info:
         return {}
 
     summary = {}
-    for key in score_info[0].keys():
-        if key not in NUM_METRIC:
-            continue
-
-        values = [
-            score[key]
+    metric_names = sorted(
+        {
+            key
             for score in score_info
-            if key in score and score[key] is not None
+            for key, value in score.items()
+            if key != "key" and _is_numeric_score(value)
+        }
+    )
+    for key in metric_names:
+        values = [
+            score[key] for score in score_info if _is_numeric_score(score.get(key))
         ]
         if not values:
             continue
 
         summary[key] = sum(values)
-        if "_wer" not in key and "_cer" not in key and "_per" not in key:
+        if not _is_count_metric(key):
             summary[key] /= len(values)
 
     return summary

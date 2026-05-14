@@ -2,6 +2,131 @@
 requires = ["setuptools>=42", "wheel"]
 build-backend = "setuptools.build_meta"
 
+[project]
+name = "versa-speech-audio-toolkit"
+version = "1.0.0"
+description = "A package for versatile evaluation of speech and audio"
+readme = "README.md"
+requires-python = ">=3.8"
+license = {text = "MIT"}
+authors = [
+    {name = "Jiatong Shi", email = "ftshijt@gmail.com"},
+]
+keywords = ["speech", "audio", "metrics", "evaluation", "machine learning"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Multimedia :: Sound/Audio :: Analysis",
+]
+dependencies = [
+    "numpy",
+    "scipy",
+    "torch",
+    "torchaudio",
+    "soundfile",
+    "kaldiio",
+    "pyyaml",
+    "tqdm",
+]
+
+[project.optional-dependencies]
+dev = [
+    "black>=22.3.0",
+    "flake8>=4.0.0",
+    "isort>=5.0.0",
+    "mypy>=0.900",
+    "pre-commit",
+    "pytest>=6.0.0",
+    "pytest-cov>=2.10.0",
+]
+docs = [
+    "myst-parser>=0.17.0",
+    "sphinx>=4.0.0",
+    "sphinx-rtd-theme>=1.0.0",
+]
+jupyter = [
+    "ipykernel>=6.0.0",
+    "jupyter>=1.0.0",
+    "matplotlib>=3.3.0",
+]
+audio = [
+    "audioread",
+    "ci-sdr",
+    "fast-bss-eval",
+    "librosa",
+    "mir-eval",
+    "pesq",
+    "pystoi",
+    "pyworld",
+    "resampy",
+    "speechmos",
+    "torchlibrosa",
+]
+text = [
+    "Distance",
+    "Levenshtein",
+    "editdistance",
+    "rapidfuzz",
+    "sentencepiece",
+]
+ml = [
+    "accelerate",
+    "einops",
+    "hydra-core",
+    "huggingface-hub",
+    "idna",
+    "importlib-metadata",
+    "lazy_loader",
+    "omegaconf",
+    "onnxruntime",
+    "opt-einsum",
+    "protobuf",
+    "python-dateutil",
+    "safetensors",
+    "scikit-learn",
+    "setuptools",
+    "sympy",
+    "threadpoolctl",
+    "tokenizers",
+    "transformers>=4.36.2",
+]
+external = [
+    "Cython",
+    "cdpam",
+    "discrete-speech-metrics @ git+https://github.com/ftshijt/DiscreteSpeechMetrics.git@v1.0.2",
+    "espnet @ git+https://github.com/ftshijt/espnet.git@espnet_inference",
+    "espnet-tts-frontend",
+    "espnet_model_zoo",
+    "fastdtw",
+    "kaggle",
+    "openai-whisper @ git+https://github.com/openai/whisper.git",
+    "s3prl",
+    "torch-complex",
+]
+test = [
+    "pytest>=6.0.0",
+    "pytest-cov>=2.10.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/wavlab-speech/versa.git"
+
+[project.scripts]
+versa-score = "versa.bin.scorer:main"
+
+[tool.setuptools.packages.find]
+include = ["versa*"]
+
 [tool.black]
 line-length = 88
 target-version = ["py38", "py39", "py310"]

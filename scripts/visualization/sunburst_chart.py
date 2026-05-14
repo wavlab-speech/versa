@@ -55,8 +55,8 @@ def main():
     parser.add_argument(
         "--save_html",
         help="whether save the generated html file, please do so on slurm",
+        action=argparse.BooleanOptionalAction,
         default=True,
-        type=bool,
     )
     args = parser.parse_args()
 

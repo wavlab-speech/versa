@@ -2,8 +2,12 @@ import importlib
 import logging
 import os
 from pathlib import Path
+from importlib.metadata import PackageNotFoundError, version
 
-__version__ = "0.0.1"  # noqa: F401
+try:
+    __version__ = version("versa-speech-audio-toolkit")
+except PackageNotFoundError:
+    __version__ = "1.0.0"
 
 logger = logging.getLogger(__name__)
 
