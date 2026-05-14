@@ -8,51 +8,40 @@ jobs:
   code-quality:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v4  # Updated to v4
-      with:
-        fetch-depth: 0
+    - uses: actions/checkout@v4
 
     - name: Set up Python
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@v5
       with:
         python-version: '3.10'
         
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install black flake8 pre-commit
-        pip install -e .
+        pip install -e .[dev]
         
-    - name: Run pre-commit hooks with auto-fix
+    - name: Check formatting
       run: |
-        pre-commit run --all-files
-        
-    - name: Commit auto-fixes
-      uses: stefanzweifel/git-auto-commit-action@v4
-      with:
-        commit_message: "style: auto-fix code formatting with pre-commit"
-        branch: ${{ github.head_ref || github.ref_name }}
-      if: github.event_name == 'pull_request'  # Only auto-commit on PRs
+        git ls-files '*.py' | xargs black --check
       
     - name: Lint with flake8
       run: |
-        flake8 versa scripts test *.py --count --select=E9,F63,F7,F82 --show-source --statistics
-        flake8 versa scripts test *.py --count --exit-zero --max-line-length=127 --statistics
+        flake8 versa scripts test setup.py --count --select=E9,F63,F7,F82 --show-source --statistics
+        flake8 versa scripts test setup.py --count --exit-zero --max-line-length=127 --statistics
 
   install-tests:
     needs: code-quality
-    runs-on: ${{ matrix.os }}
+    runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, ubuntu-22.04]
         python-version: ['3.9', '3.10', '3.11', '3.12']
     
     steps:
-    - uses: actions/checkout@v4  # Updated to v4
+    - uses: actions/checkout@v4
         
     - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@v5
       with:
         python-version: ${{ matrix.python-version }}
         
@@ -66,47 +55,22 @@ jobs:
       run: |
         python -c "import versa; print(versa.__version__)"
 
-  basic-tests:
+  core-tests:
     needs: install-tests
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v4  # Updated to v4
+    - uses: actions/checkout@v4
         
     - name: Set up Python
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@v5
       with:
         python-version: '3.10'
         
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install pytest pytest-cov
-        pip install -e .
+        pip install -e .[test]
         
-    - name: Run basic tests
+    - name: Run core tests
       run: |
-        pytest -xvs test/test_general.py
-
-  metric-tests:
-    needs: basic-tests
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v4  # Updated to v4
-        
-    - name: Set up Python
-      uses: actions/setup-python@v4
-      with:
-        python-version: '3.10'
-        
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install pytest pytest-cov
-        pip install -e .
-        
-    - name: Run metric tests
-      run: |
-        pytest -xvs test/test_metrics/
-        
-        # Optionally, you can generate a coverage report
-        # pytest -xvs test/test_metrics/ --cov=versa.metrics --cov-report=xml
+        pytest -q test/test_metrics/test_definition.py

@@ -30,7 +30,7 @@ def info_update():
     with open(
         "egs/separate_metrics/audiobox_aesthetics.yaml", "r", encoding="utf-8"
     ) as f:
-        score_config = yaml.full_load(f)
+        score_config = yaml.safe_load(f)
 
     # Create registry and register AudioBox Aesthetics metric
     registry = MetricRegistry()

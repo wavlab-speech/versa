@@ -74,7 +74,7 @@ def info_update(mocked_speaking_rate_dependencies=None):
         gt_files = find_files("test/test_samples/test1")
 
     with open("egs/separate_metrics/speaking_rate.yaml", "r", encoding="utf-8") as f:
-        score_config = yaml.full_load(f)
+        score_config = yaml.safe_load(f)
 
     registry = MetricRegistry()
     register_speaking_rate_metric(registry)

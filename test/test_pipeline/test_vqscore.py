@@ -20,7 +20,7 @@ def info_update():
     logging.info("The number of utterances = %d" % len(gen_files))
 
     with open("egs/separate_metrics/vqscore.yaml", "r", encoding="utf-8") as f:
-        score_config = yaml.full_load(f)
+        score_config = yaml.safe_load(f)
 
     score_modules = load_score_modules(score_config, use_gt=False, use_gpu=False)
 

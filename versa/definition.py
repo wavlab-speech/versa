@@ -158,7 +158,8 @@ class MetricFactory:
             raise ValueError(f"Metric '{name}' not found in registry")
 
         # Check and install dependencies
-        self._ensure_dependencies(metadata.dependencies)
+        if metadata:
+            self._ensure_dependencies(metadata.dependencies)
 
         return metric_class(config)
 
@@ -215,8 +216,10 @@ class MetricSuite:
         n_workers: int = 4,
     ) -> Dict[str, Any]:
         """Compute metrics in parallel."""
-        # Implementation for parallel metric computation
-        pass
+        raise NotImplementedError(
+            "MetricSuite.compute_parallel is not implemented. "
+            "Use compute_all or add a metric-specific batching strategy."
+        )
 
     def filter_by_category(self, category: MetricCategory) -> "MetricSuite":
         """Filter metrics by category."""

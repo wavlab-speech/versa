@@ -16,7 +16,7 @@ RUN_REAL_MODEL_TESTS = os.environ.get("VERSA_RUN_REAL_MODEL_TESTS") == "1"
 
 def _load_scoreq_config():
     with open("egs/separate_metrics/scoreq.yaml", "r", encoding="utf-8") as f:
-        return yaml.full_load(f)
+        return yaml.safe_load(f)
 
 
 def _sample_files():

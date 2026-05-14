@@ -75,7 +75,7 @@ def setup_paths():
 def load_config():
     """Load the scoring configuration"""
     with open("egs/speech.yaml", "r", encoding="utf-8") as f:
-        return yaml.full_load(f)
+        return yaml.safe_load(f)
 
 
 def test_scoring_pipeline(setup_paths, load_config, caplog):

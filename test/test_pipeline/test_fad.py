@@ -20,7 +20,7 @@ TEST_INFO = {
 def info_update():
 
     with open("egs/separate_metrics/fad.yaml", "r", encoding="utf-8") as f:
-        score_config = yaml.full_load(f)
+        score_config = yaml.safe_load(f)
 
     score_modules = load_corpus_modules(
         score_config,

@@ -32,7 +32,7 @@ def test_clap_score_pipeline_registration(monkeypatch, tmp_path):
     sf.write(audio_dir / "test.wav", np.ones(16000, dtype=np.float32) * 0.1, 16000)
 
     with open("egs/separate_metrics/clap_score.yaml", "r", encoding="utf-8") as f:
-        score_config = yaml.full_load(f)
+        score_config = yaml.safe_load(f)
     score_config[0]["cache_dir"] = str(tmp_path / "cache")
 
     scorer = VersaScorer()

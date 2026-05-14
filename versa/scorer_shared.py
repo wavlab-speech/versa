@@ -3,12 +3,14 @@
 # Copyright 2024 Jiatong Shi
 #  Apache 2.0  (http://www.apache.org/licenses/LICENSE-2.0)
 
-import logging
+import gc
 import json
+import logging
 import os
 import kaldiio
 import soundfile as sf
 import yaml
+from numbers import Real
 from typing import Dict, List, Optional, Any, Union
 from tqdm import tqdm
 
@@ -23,7 +25,6 @@ from versa.definition import (
     MetricType,
     MetricMetadata,
 )
-from versa.metrics import STR_METRIC, NUM_METRIC
 from versa.utils_shared import (
     check_all_same,
     check_minimum_length,
@@ -250,6 +251,32 @@ def _ensure_append_starts_on_new_line(output_file: str) -> None:
         f.write("\n")
 
 
+def _write_jsonl_scores(
+    output_file: Optional[str],
+    score_info: List[Dict[str, Any]],
+) -> None:
+    """Write utterance scores as JSONL in the current utterance order."""
+    if not output_file:
+        return
+
+    with open(output_file, "w", encoding="utf-8") as f:
+        for utt_score in score_info:
+            printable_result = json.dumps(utt_score, default=default_numpy_serializer)
+            f.write(f"{printable_result}\n")
+
+
+def _release_metric_resources() -> None:
+    """Best-effort cleanup after unloading model-backed metrics."""
+    gc.collect()
+    try:
+        import torch
+    except ImportError:
+        return
+
+    if torch.cuda.is_available():
+        torch.cuda.empty_cache()
+
+
 class ScoreProcessor:
     """Handles batch processing and caching of scores."""
 
@@ -468,6 +495,85 @@ class VersaScorer:
         self.logger.info(f"Scoring completed. Results saved to {output_file}")
         return score_info
 
+    def score_utterances_by_metric(
+        self,
+        gen_files: Dict[str, str],
+        score_config: List[Dict[str, Any]],
+        gt_files: Optional[Dict[str, str]] = None,
+        text_info: Optional[Dict[str, str]] = None,
+        output_file: Optional[str] = None,
+        io: str = "kaldi",
+        batch_size: int = 1,
+        resume: bool = False,
+        use_gpu: bool = False,
+    ) -> List[Dict[str, Any]]:
+        """Score all utterances one metric at a time to lower peak model memory."""
+
+        use_gt = gt_files is not None
+        use_gt_text = text_info is not None
+        existing_scores = _load_existing_jsonl_scores(output_file) if resume else {}
+        score_by_key = {
+            key: dict(existing_scores.get(key, {"key": key})) for key in gen_files
+        }
+
+        for config in score_config:
+            metric_name = config["name"]
+            metadata = self.registry.get_metadata(metric_name)
+            if metadata and metadata.category == MetricCategory.DISTRIBUTIONAL:
+                self.logger.info("Skipping %s for utterance-level scoring", metric_name)
+                continue
+
+            metric_suite = self.load_metrics(
+                [config],
+                use_gt=use_gt,
+                use_gt_text=use_gt_text,
+                use_gpu=use_gpu,
+            )
+            metric_suite = MetricSuite(
+                {
+                    name: metric
+                    for name, metric in metric_suite.metrics.items()
+                    if metric.get_metadata().category != MetricCategory.DISTRIBUTIONAL
+                }
+            )
+
+            if len(metric_suite.metrics) == 0:
+                self.logger.info("Skipping %s for utterance-level scoring", metric_name)
+                _release_metric_resources()
+                continue
+
+            try:
+                self.logger.info("Scoring utterances with metric %s", metric_name)
+                metric_scores = self.score_utterances(
+                    gen_files,
+                    metric_suite,
+                    gt_files=gt_files,
+                    text_info=text_info,
+                    output_file=None,
+                    io=io,
+                    batch_size=batch_size,
+                    resume=False,
+                )
+                for utt_score in metric_scores:
+                    key = utt_score.get("key")
+                    if key is None:
+                        continue
+                    score_by_key.setdefault(key, {"key": key}).update(utt_score)
+            finally:
+                del metric_suite
+                _release_metric_resources()
+
+            _write_jsonl_scores(
+                output_file,
+                [score_by_key[key] for key in gen_files if key in score_by_key],
+            )
+
+        score_info = [score_by_key[key] for key in gen_files if key in score_by_key]
+        self.logger.info(
+            f"Metric-oriented scoring completed. Results saved to {output_file}"
+        )
+        return score_info
+
     def score_corpus(
         self,
         gen_files: Dict[str, str],
@@ -546,26 +652,39 @@ class VersaScorer:
         return gen_wav, gt_wav, gen_sr
 
 
+def _is_numeric_score(value: Any) -> bool:
+    """Return whether a score value should be included in numeric summaries."""
+    return isinstance(value, Real) and not isinstance(value, bool)
+
+
+def _is_count_metric(metric_name: str) -> bool:
+    """WER/CER/PER operation counts are summed rather than averaged."""
+    return any(token in metric_name for token in ("_wer", "_cer", "_per"))
+
+
 def compute_summary(score_info: List[Dict[str, Any]]) -> Dict[str, Any]:
     """Compute summary statistics from individual scores."""
     if not score_info:
         return {}
 
     summary = {}
-    for key in score_info[0].keys():
-        if key not in NUM_METRIC:
-            continue
-
-        values = [
-            score[key]
+    metric_names = sorted(
+        {
+            key
             for score in score_info
-            if key in score and score[key] is not None
+            for key, value in score.items()
+            if key != "key" and _is_numeric_score(value)
+        }
+    )
+    for key in metric_names:
+        values = [
+            score[key] for score in score_info if _is_numeric_score(score.get(key))
         ]
         if not values:
             continue
 
         summary[key] = sum(values)
-        if "_wer" not in key and "_cer" not in key and "_per" not in key:
+        if not _is_count_metric(key):
             summary[key] /= len(values)
 
     return summary

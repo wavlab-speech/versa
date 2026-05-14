@@ -27,7 +27,7 @@ def info_update():
     logging.info("The number of utterances = %d" % len(gen_files))
 
     with open("egs/separate_metrics/dpam_distance.yaml", "r", encoding="utf-8") as f:
-        score_config = yaml.full_load(f)
+        score_config = yaml.safe_load(f)
 
     # Create registry and register DPAM distance metric
     registry = MetricRegistry()

@@ -26,7 +26,7 @@ def info_update():
     logging.info("The number of utterances = %d" % len(gen_files))
 
     with open("egs/separate_metrics/sigmos.yaml", "r", encoding="utf-8") as f:
-        score_config = yaml.full_load(f)
+        score_config = yaml.safe_load(f)
 
     registry = MetricRegistry()
     register_sigmos_metric(registry)
