@@ -62,6 +62,7 @@ jupyter = [
 audio = [
     "audioread",
     "ci-sdr",
+    "fastdtw",
     "fast-bss-eval",
     "librosa",
     "mir-eval",
@@ -107,7 +108,6 @@ external = [
     "espnet @ git+https://github.com/ftshijt/espnet.git@espnet_inference",
     "espnet-tts-frontend",
     "espnet_model_zoo",
-    "fastdtw",
     "kaggle",
     "openai-whisper @ git+https://github.com/openai/whisper.git",
     "s3prl",
