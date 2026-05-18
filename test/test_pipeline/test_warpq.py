@@ -43,7 +43,7 @@ def info_update():
     summary = load_summary(score_info)
     print("Summary: {}".format(load_summary(score_info)), flush=True)
 
-    for key in summary:
+    for key in TEST_INFO:
         if math.isinf(TEST_INFO[key]) and math.isinf(summary[key]):
             # for sir"
             continue

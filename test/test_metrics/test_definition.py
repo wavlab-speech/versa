@@ -1,4 +1,5 @@
 import pytest
+import numpy as np
 
 from versa.definition import (
     BaseMetric,
@@ -9,7 +10,9 @@ from versa.definition import (
     MetricSuite,
     MetricType,
 )
-from versa.scorer_shared import compute_summary
+from scripts.survey.get_wer import calculate_average_wer
+from versa.scorer_shared import VersaScorer, compute_summary
+from versa.utils_shared import find_files
 
 
 class DummyMetric(BaseMetric):
@@ -74,3 +77,54 @@ def test_compute_summary_infers_numeric_scores_without_metric_registry():
         "espnet_wer_insert": 3,
         "pesq": 2.0,
     }
+
+
+def test_default_registry_includes_asvspoof_and_emo_vad():
+    scorer = VersaScorer()
+
+    assert scorer.registry.get_metadata("asvspoof_score").name == "asvspoof"
+    assert scorer.registry.get_metadata("emo_vad").name == "emo_vad"
+
+
+def test_find_files_preserves_nested_duplicate_basenames(tmp_path):
+    first = tmp_path / "speaker1" / "test.wav"
+    second = tmp_path / "speaker2" / "test.wav"
+    first.parent.mkdir()
+    second.parent.mkdir()
+    first.write_bytes(b"")
+    second.write_bytes(b"")
+
+    files = find_files(str(tmp_path))
+
+    assert files == {
+        "speaker1/test.wav": str(first),
+        "speaker2/test.wav": str(second),
+    }
+
+
+def test_validate_audio_uses_metric_specific_minimum_length():
+    scorer = VersaScorer(MetricRegistry())
+    short_audio = np.arange(1600, dtype=np.float64)
+
+    assert not scorer._validate_audio(
+        short_audio,
+        16000,
+        "short",
+        "generated",
+        ["visqol"],
+    )
+
+
+def test_get_wer_uses_safe_parsing_and_espnet_fallback(tmp_path, capsys):
+    input_file = tmp_path / "scores.txt"
+    input_file.write_text(
+        '{"whisper_wer_equal": 8, "whisper_wer_delete": 1, '
+        '"whisper_wer_insert": 0, "whisper_wer_replace": 1}\n'
+        "{'espnet_wer_equal': 7, 'espnet_wer_delete': 0, "
+        "'espnet_wer_insert': 1, 'espnet_wer_replace': 2}\n",
+        encoding="utf-8",
+    )
+
+    calculate_average_wer(str(input_file))
+
+    assert capsys.readouterr().out.strip() == "wer: 0.2631578947368421"

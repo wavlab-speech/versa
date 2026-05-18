@@ -28,16 +28,80 @@ SpeechBERTScore = None
 SpeechBLEU = None
 SpeechTokenDistance = None
 
-
-def _configure_huggingface_cache(cache_dir):
-    cache_path = Path(cache_dir).resolve()
-    cache_path.mkdir(parents=True, exist_ok=True)
-    os.environ.setdefault("HF_HOME", str(cache_path))
-    os.environ.setdefault("HF_HUB_CACHE", str(cache_path / "hub"))
-    os.environ.setdefault("TRANSFORMERS_CACHE", str(cache_path / "transformers"))
+DEFAULT_DISCRETE_SPEECH_CACHE_DIR = "versa_cache/discrete_speech_metrics"
+DISCRETE_SPEECH_CACHE_ENV = "VERSA_DISCRETE_SPEECH_CACHE_DIR"
 
 
-def _load_discrete_speech_classes(cache_dir):
+from versa.huggingface_cache import (
+    configure_huggingface_cache,
+    get_hf_cache_dir,
+    local_files_only_kwargs,
+    offline_if_cached,
+)
+
+
+def _get_discrete_speech_cache_dir(config_cache_dir=None):
+    return (
+        os.environ.get(DISCRETE_SPEECH_CACHE_ENV)
+        or config_cache_dir
+        or DEFAULT_DISCRETE_SPEECH_CACHE_DIR
+    )
+
+
+def _patch_transformers_loaders(cache_dir):
+    """Make third-party metric loaders use Versa's visible HF cache."""
+    from discrete_speech_metrics import speechbertscore
+    from discrete_speech_metrics import speechbleu
+    from discrete_speech_metrics import speechtokendistance
+
+    def patch_model(model_cls, repo_id):
+        original = model_cls.from_pretrained
+
+        def from_pretrained(pretrained_model_name_or_path, *args, **kwargs):
+            kwargs.setdefault("cache_dir", str(cache_dir))
+            kwargs.setdefault("use_safetensors", False)
+            kwargs.update(
+                local_files_only_kwargs(
+                    cache_dir,
+                    ((pretrained_model_name_or_path, "pytorch_model.bin"),),
+                )
+            )
+            return original(pretrained_model_name_or_path, *args, **kwargs)
+
+        from_pretrained._versa_cache_patched = True
+        from_pretrained._versa_repo_id = repo_id
+        model_cls.from_pretrained = from_pretrained
+
+    for module in (speechbertscore, speechbleu, speechtokendistance):
+        if hasattr(module, "HubertModel"):
+            patch_model(module.HubertModel, "facebook/hubert-base-ls960")
+        if hasattr(module, "WavLMModel"):
+            patch_model(module.WavLMModel, "microsoft/wavlm-large")
+        if hasattr(module, "Wav2Vec2Model"):
+            patch_model(module.Wav2Vec2Model, "facebook/wav2vec2-base-960h")
+
+
+def _patch_kmeans_loaders(kmeans_cache_dir):
+    from discrete_speech_metrics import speechbleu
+    from discrete_speech_metrics import speechtokendistance
+
+    kmeans_dir = Path(kmeans_cache_dir).resolve() / "km"
+
+    def patch_module(module):
+        original_apply_kmeans = module.ApplyKmeans
+
+        class VisibleCacheApplyKmeans(original_apply_kmeans):
+            def __init__(self, km_path, device):
+                visible_path = kmeans_dir / Path(km_path).name
+                super().__init__(visible_path if visible_path.exists() else km_path, device)
+
+        module.ApplyKmeans = VisibleCacheApplyKmeans
+
+    patch_module(speechbleu)
+    patch_module(speechtokendistance)
+
+
+def _load_discrete_speech_classes(cache_dir, kmeans_cache_dir):
     global SpeechBERTScore, SpeechBLEU, SpeechTokenDistance
 
     if not DISCRETE_SPEECH_AVAILABLE:
@@ -45,7 +109,7 @@ def _load_discrete_speech_classes(cache_dir):
             "discrete_speech_metrics is not properly installed. "
             "Please install discrete_speech_metrics and retry"
         )
-    _configure_huggingface_cache(cache_dir)
+    cache_path = configure_huggingface_cache(cache_dir)
     if SpeechBERTScore is None or SpeechBLEU is None or SpeechTokenDistance is None:
         from discrete_speech_metrics import (
             SpeechBERTScore as _SpeechBERTScore,
@@ -53,6 +117,8 @@ def _load_discrete_speech_classes(cache_dir):
             SpeechTokenDistance as _SpeechTokenDistance,
         )
 
+        _patch_transformers_loaders(cache_path)
+        _patch_kmeans_loaders(kmeans_cache_dir)
         SpeechBERTScore = _SpeechBERTScore
         SpeechBLEU = _SpeechBLEU
         SpeechTokenDistance = _SpeechTokenDistance
@@ -92,40 +158,49 @@ class DiscreteSpeechMetric(BaseMetric):
 
         self.use_gpu = self.config.get("use_gpu", False)
         self.sample_rate = self.config.get("sample_rate", 16000)
-        self.cache_dir = self.config.get("cache_dir", "versa_cache/huggingface")
+        self.cache_dir = get_hf_cache_dir(self.config.get("cache_dir"))
+        self.kmeans_cache_dir = _get_discrete_speech_cache_dir(
+            self.config.get("discrete_speech_cache_dir")
+        )
         speech_bert_cls, speech_bleu_cls, speech_token_distance_cls = (
-            _load_discrete_speech_classes(self.cache_dir)
+            _load_discrete_speech_classes(self.cache_dir, self.kmeans_cache_dir)
         )
 
         # NOTE(jiatong) existing discrete speech metrics only works for 16khz
         # We keep the paper best setting. To use other settings, please conduct the
         # test on your own.
 
+        required_cache_files = (
+            ("microsoft/wavlm-large", "pytorch_model.bin"),
+            ("facebook/hubert-base-ls960", "pytorch_model.bin"),
+        )
         try:
-            self.speech_bert = speech_bert_cls(
-                sr=self.sample_rate,
-                model_type="wavlm-large",
-                layer=14,
-                use_gpu=self.use_gpu,
-            )
-            self.speech_bleu = speech_bleu_cls(
-                sr=self.sample_rate,
-                model_type="hubert-base",
-                vocab=200,
-                layer=11,
-                n_ngram=2,
-                remove_repetition=True,
-                use_gpu=self.use_gpu,
-            )
-            self.speech_token_distance = speech_token_distance_cls(
-                sr=self.sample_rate,
-                model_type="hubert-base",
-                vocab=200,
-                layer=6,
-                distance_type="jaro-winkler",
-                remove_repetition=False,
-                use_gpu=self.use_gpu,
-            )
+            cache_dir = configure_huggingface_cache(self.cache_dir)
+            with offline_if_cached(cache_dir, required_cache_files):
+                self.speech_bert = speech_bert_cls(
+                    sr=self.sample_rate,
+                    model_type="wavlm-large",
+                    layer=14,
+                    use_gpu=self.use_gpu,
+                )
+                self.speech_bleu = speech_bleu_cls(
+                    sr=self.sample_rate,
+                    model_type="hubert-base",
+                    vocab=200,
+                    layer=11,
+                    n_ngram=2,
+                    remove_repetition=True,
+                    use_gpu=self.use_gpu,
+                )
+                self.speech_token_distance = speech_token_distance_cls(
+                    sr=self.sample_rate,
+                    model_type="hubert-base",
+                    vocab=200,
+                    layer=6,
+                    distance_type="jaro-winkler",
+                    remove_repetition=False,
+                    use_gpu=self.use_gpu,
+                )
         except Exception as e:
             raise RuntimeError(
                 f"Failed to initialize discrete speech metrics: {str(e)}"

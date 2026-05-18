@@ -65,6 +65,7 @@ audio = [
     "fastdtw",
     "fast-bss-eval",
     "librosa",
+    "matplotlib",
     "mir-eval",
     "pesq",
     "pystoi",

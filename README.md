@@ -61,6 +61,25 @@ VERSA aligns with original APIs provided by algorithm developers rather than red
 
 For metrics marked without "x" in the "Auto-Install" column of our metrics tables, please use the installers provided in the `tools` directory.
 
+Some real model-backed tests and metrics also need checkpoint assets that are
+too large to keep in the package. Prepare those assets in a repo-visible cache
+before running the full real-model checks:
+
+```bash
+PYTHON=python tools/setup_huggingface_cache.sh
+```
+
+This populates `versa_cache/huggingface` and
+`versa_cache/discrete_speech_metrics`. To reuse an existing local Hugging Face
+cache without network access, run:
+
+```bash
+SOURCE_HF_CACHE="$HOME/.cache/huggingface/hub" \
+VERSA_HF_LOCAL_ONLY=1 \
+PYTHON=python \
+tools/setup_huggingface_cache.sh
+```
+
 ### Installation Notes
 
 Some optional metric backends emit warnings during setup or first use. ESPnet may
@@ -85,6 +104,12 @@ python -m pytest test/test_metrics/test_definition.py
 
 # Test specific metrics that require additional installation
 python -m pytest test/test_metrics/test_{metric}.py
+
+# Run real model-backed checks after preparing the visible model cache
+VERSA_RUN_REAL_MODEL_TESTS=1 \
+VERSA_HF_CACHE_DIR="$PWD/versa_cache/huggingface" \
+VERSA_DISCRETE_SPEECH_CACHE_DIR="$PWD/versa_cache/discrete_speech_metrics" \
+python -m pytest --import-mode=importlib test
 ```
 
 

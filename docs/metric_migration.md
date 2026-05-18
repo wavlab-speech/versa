@@ -141,8 +141,11 @@ not prove checkpoint download or real inference.
 Run optional real model checks locally after installing the metric dependencies:
 
 ```bash
+PYTHON=python tools/setup_huggingface_cache.sh
 tools/install_scoreq.sh
 VERSA_RUN_REAL_MODEL_TESTS=1 \
+  VERSA_HF_CACHE_DIR="$PWD/versa_cache/huggingface" \
+  VERSA_DISCRETE_SPEECH_CACHE_DIR="$PWD/versa_cache/discrete_speech_metrics" \
   /opt/homebrew/bin/mamba run -n versa-dev python -m pytest \
   test/test_pipeline/test_scoreq.py -q -s
 ```

@@ -409,7 +409,6 @@ def main():
             pred_for_corpus,
             corpus_score_modules,
             args.gt if (args.gt is not None and not args.enable_chunking) else None,
-            text_info if (text_info is not None and args.enable_chunking) else None,
             output_file=(args.output_file + ".corpus") if args.output_file else None,
         )
         logging.info("Corpus Summary: %s", corpus_score_info)

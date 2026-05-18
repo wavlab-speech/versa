@@ -34,7 +34,7 @@ def info_update():
     summary = compute_summary(score_info)
     print("Summary: {}".format(summary), flush=True)
 
-    for key in summary:
+    for key in TEST_INFO:
         if abs(TEST_INFO[key] - summary[key]) > 1e-4 and key != "plcmos":
             raise ValueError(
                 "Value issue in the test case, might be some issue in scorer {}".format(

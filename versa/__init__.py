@@ -132,8 +132,18 @@ _optional_metric_import(
     ("AudioBoxAestheticsMetric", "register_audiobox_aesthetics_metric"),
 )
 _optional_metric_import(
+    "versa.utterance_metrics.asvspoof_score",
+    ("ASVSpoofMetric", "register_asvspoof_metric"),
+    "Please install AASIST following tools/install_asvspoof.sh",
+)
+_optional_metric_import(
     "versa.utterance_metrics.emo_similarity",
     ("Emo2vecMetric", "register_emo2vec_metric"),
+)
+_optional_metric_import(
+    "versa.utterance_metrics.emo_vad",
+    ("EmoVadMetric", "register_emo_vad_metric"),
+    "Please install transformers and retry",
 )
 _optional_metric_import(
     "versa.utterance_metrics.nomad",

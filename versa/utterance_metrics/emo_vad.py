@@ -18,6 +18,7 @@ logger = logging.getLogger(__name__)
 
 # Handle optional transformers dependency
 try:
+    from transformers import Wav2Vec2FeatureExtractor
     from transformers import Wav2Vec2Processor
     from transformers.models.wav2vec2.modeling_wav2vec2 import (
         Wav2Vec2Model,
@@ -31,12 +32,18 @@ except ImportError:
         "Please install transformers and retry"
     )
     Wav2Vec2Processor = None
+    Wav2Vec2FeatureExtractor = None
     Wav2Vec2Model = None
     Wav2Vec2PreTrainedModel = None
     TRANSFORMERS_AVAILABLE = False
 
 from versa.audio_utils import resample_audio
 from versa.definition import BaseMetric, MetricMetadata, MetricCategory, MetricType
+from versa.huggingface_cache import (
+    configure_huggingface_cache,
+    get_hf_cache_dir,
+    local_files_only_kwargs,
+)
 
 
 class TransformersNotAvailableError(RuntimeError):
@@ -78,30 +85,44 @@ class RegressionHead(nn.Module):
         return x
 
 
-class EmotionModel(Wav2Vec2PreTrainedModel):
-    r"""Speech emotion classifier."""
+if TRANSFORMERS_AVAILABLE:
 
-    def __init__(self, config):
+    class EmotionModel(Wav2Vec2PreTrainedModel):
+        r"""Speech emotion classifier."""
 
-        super().__init__(config)
+        def __init__(self, config):
 
-        self.config = config
-        self.all_tied_weights_keys = {}
-        self.wav2vec2 = Wav2Vec2Model(config)
-        self.classifier = RegressionHead(config)
-        self.init_weights()
+            super().__init__(config)
 
-    def forward(
-        self,
-        input_values,
-    ):
+            self.config = config
+            self.all_tied_weights_keys = {}
+            self.wav2vec2 = Wav2Vec2Model(config)
+            self.classifier = RegressionHead(config)
+            self.init_weights()
 
-        outputs = self.wav2vec2(input_values)
-        hidden_states = outputs[0]
-        hidden_states = torch.mean(hidden_states, dim=1)
-        logits = self.classifier(hidden_states)
+        def forward(
+            self,
+            input_values,
+        ):
 
-        return hidden_states, logits
+            outputs = self.wav2vec2(input_values)
+            hidden_states = outputs[0]
+            hidden_states = torch.mean(hidden_states, dim=1)
+            logits = self.classifier(hidden_states)
+
+            return hidden_states, logits
+
+else:
+
+    class EmotionModel(nn.Module):
+        """Placeholder used when transformers is not installed."""
+
+        @classmethod
+        def from_pretrained(cls, *args, **kwargs):
+            raise ImportError(
+                "transformers is not properly installed. "
+                "Please install transformers and retry"
+            )
 
 
 class EmoVadMetric(BaseMetric):
@@ -119,7 +140,7 @@ class EmoVadMetric(BaseMetric):
         self.model_path = self.config.get("model_path", None)
         self.model_config = self.config.get("model_config", None)
         self.processor_path = self.config.get("processor_path", None)
-        self.cache_dir = self.config.get("cache_dir", "versa_cache/huggingface")
+        self.cache_dir = get_hf_cache_dir(self.config.get("cache_dir"))
         self.use_gpu = self.config.get("use_gpu", False)
 
         self.device = "cuda" if self.use_gpu and torch.cuda.is_available() else "cpu"
@@ -132,18 +153,29 @@ class EmoVadMetric(BaseMetric):
     def _setup_model(self):
         """Setup the EmoVad model."""
         if self.model_path is not None and self.model_config is not None:
+            cache_dir = configure_huggingface_cache(self.cache_dir)
             model = EmotionModel.from_pretrained(
                 pretrained_model_name_or_path=self.model_path,
                 config=self.model_config,
-                cache_dir=self.cache_dir,
+                cache_dir=cache_dir,
+                **local_files_only_kwargs(
+                    cache_dir,
+                    ((self.model_path, "model.safetensors"),),
+                ),
             ).to(self.device)
         else:
             if self.model_tag == "default":
                 model_tag = "audeering/wav2vec2-large-robust-12-ft-emotion-msp-dim"
             else:
                 model_tag = self.model_tag
+            cache_dir = configure_huggingface_cache(self.cache_dir)
             model = EmotionModel.from_pretrained(
-                model_tag, cache_dir=self.cache_dir
+                model_tag,
+                cache_dir=cache_dir,
+                **local_files_only_kwargs(
+                    cache_dir,
+                    ((model_tag, "model.safetensors"),),
+                ),
             ).to(self.device)
 
         processor_path = (
@@ -151,9 +183,25 @@ class EmoVadMetric(BaseMetric):
             or self.model_path
             or "audeering/wav2vec2-large-robust-12-ft-emotion-msp-dim"
         )
-        processor = Wav2Vec2Processor.from_pretrained(
-            processor_path, cache_dir=self.cache_dir
-        )
+        cache_dir = configure_huggingface_cache(self.cache_dir)
+        try:
+            processor = Wav2Vec2Processor.from_pretrained(
+                processor_path,
+                cache_dir=cache_dir,
+                **local_files_only_kwargs(
+                    cache_dir,
+                    ((processor_path, "preprocessor_config.json"),),
+                ),
+            )
+        except Exception:
+            processor = Wav2Vec2FeatureExtractor.from_pretrained(
+                processor_path,
+                cache_dir=cache_dir,
+                **local_files_only_kwargs(
+                    cache_dir,
+                    ((processor_path, "preprocessor_config.json"),),
+                ),
+            )
 
         return model, processor
 
