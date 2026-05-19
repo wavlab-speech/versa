@@ -47,6 +47,37 @@ pytest test/test_metrics/test_stoi.py
 pytest test/test_metrics/test_pesq.py
 ```
 
+### Real Model Cache Setup
+
+Full model-backed checks require external checkpoint assets. Keep those assets
+in a visible workspace cache so local runs and dedicated real-model CI jobs are
+reproducible:
+
+```bash
+PYTHON=python tools/setup_huggingface_cache.sh
+```
+
+The script prepares `versa_cache/huggingface` for Hugging Face models and
+`versa_cache/discrete_speech_metrics` for discrete-speech k-means assets. Then
+run the real-model suite with explicit cache paths:
+
+```bash
+VERSA_RUN_REAL_MODEL_TESTS=1 \
+VERSA_HF_CACHE_DIR="$PWD/versa_cache/huggingface" \
+VERSA_DISCRETE_SPEECH_CACHE_DIR="$PWD/versa_cache/discrete_speech_metrics" \
+python -m pytest --import-mode=importlib test
+```
+
+For offline machines that already have the Hugging Face models cached, seed the
+workspace cache from the user cache:
+
+```bash
+SOURCE_HF_CACHE="$HOME/.cache/huggingface/hub" \
+VERSA_HF_LOCAL_ONLY=1 \
+PYTHON=python \
+tools/setup_huggingface_cache.sh
+```
+
 ## Adding New Metric Tests
 
 When implementing a new metric, follow these steps:

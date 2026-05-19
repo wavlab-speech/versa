@@ -52,7 +52,7 @@ class NomadMetric(BaseMetric):
 
     def _setup(self):
         """Initialize NOMAD-specific components."""
-        if not NOMAD_AVAILABLE and Nomad is None:
+        if not NOMAD_AVAILABLE or Nomad is None:
             raise ImportError(
                 "nomad is not installed. Please use `tools/install_nomad.sh` to install"
             )

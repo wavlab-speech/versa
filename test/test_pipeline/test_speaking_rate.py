@@ -93,7 +93,7 @@ def info_update(mocked_speaking_rate_dependencies=None):
     summary = compute_summary(score_info)
     print("Summary: {}".format(summary), flush=True)
 
-    for key in summary:
+    for key in TEST_INFO:
         assert summary[key] == pytest.approx(TEST_INFO[key], abs=1e-4)
     print("check successful", flush=True)
 

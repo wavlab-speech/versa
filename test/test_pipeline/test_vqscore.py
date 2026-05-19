@@ -10,6 +10,8 @@ from versa.scorer_shared import (
     load_summary,
 )
 
+EXPECTED_KEYS = {"vqscore"}
+
 
 def info_update():
 
@@ -32,7 +34,7 @@ def info_update():
     summary = load_summary(score_info)
     print("Summary: {}".format(load_summary(score_info)), flush=True)
 
-    for key in summary:
+    for key in EXPECTED_KEYS:
         if summary[key] > 2:
             raise ValueError(
                 "Value issue in the test case, might be some issue in scorer {}".format(

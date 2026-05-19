@@ -39,7 +39,7 @@ def info_update():
     )
     print("Summary: {}".format(score_info), flush=True)
 
-    for key in score_info:
+    for key in TEST_INFO:
         if math.isinf(TEST_INFO[key]) and math.isinf(score_info[key]):
             # for sir"
             continue
@@ -66,7 +66,7 @@ def info_update():
     )
     print("Summary: {}".format(score_info), flush=True)
 
-    for key in score_info:
+    for key in TEST_INFO:
         if math.isinf(TEST_INFO[key]) and math.isinf(score_info[key]):
             # for sir"
             continue
@@ -93,7 +93,7 @@ def info_update():
     )
     print("Summary: {}".format(score_info), flush=True)
 
-    for key in score_info:
+    for key in TEST_INFO:
         if math.isinf(TEST_INFO[key]) and math.isinf(score_info[key]):
             # for sir"
             continue

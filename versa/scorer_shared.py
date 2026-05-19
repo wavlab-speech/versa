@@ -448,7 +448,13 @@ class VersaScorer:
                 gen_sr, gen_wav = load_audio(gen_files[key], io)
                 gen_wav = wav_normalize(gen_wav)
 
-                if not self._validate_audio(gen_wav, gen_sr, key, "generated"):
+                if not self._validate_audio(
+                    gen_wav,
+                    gen_sr,
+                    key,
+                    "generated",
+                    metric_suite.metrics.keys(),
+                ):
                     continue
 
                 # Step2: Load and validate ground truth audio
@@ -463,7 +469,13 @@ class VersaScorer:
                     gt_sr, gt_wav = load_audio(gt_files[key], io)
                     gt_wav = wav_normalize(gt_wav)
 
-                    if not self._validate_audio(gt_wav, gt_sr, key, "ground truth"):
+                    if not self._validate_audio(
+                        gt_wav,
+                        gt_sr,
+                        key,
+                        "ground truth",
+                        metric_suite.metrics.keys(),
+                    ):
                         continue
 
                 # Step3: Load text information
@@ -612,12 +624,17 @@ class VersaScorer:
 
         return score_info
 
-    def _validate_audio(self, wav: Any, sr: int, key: str, audio_type: str) -> bool:
+    def _validate_audio(
+        self,
+        wav: Any,
+        sr: int,
+        key: str,
+        audio_type: str,
+        metric_names: Optional[Any] = None,
+    ) -> bool:
         """Validate audio data."""
         # Length check
-        if not check_minimum_length(
-            wav.shape[0] / sr, []
-        ):  # Metric names would be passed here
+        if not check_minimum_length(wav.shape[0] / sr, list(metric_names or [])):
             self.logger.warning(
                 f"Audio {key} ({audio_type}, length {wav.shape[0] / sr}) is too short, skipping"
             )

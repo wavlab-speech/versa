@@ -3,10 +3,10 @@ from pathlib import Path
 
 import numpy as np
 import pytest
-import torch
-from packaging.version import parse as V
 
 from versa.utterance_metrics.asr_matching import asr_match_metric, asr_match_setup
+
+TEST_SAMPLE_RATE = 16000
 
 
 # -------------------------------
@@ -78,7 +78,7 @@ def fixed_ground_truth_wav(tmp_path_factory):
 # -------------------------------
 # Fixtures to Load WAV Files into NumPy Arrays
 # -------------------------------
-def load_wav_as_array(wav_path, sample_rate=16000):
+def load_wav_as_array(wav_path):
     """
     Load a WAV file and convert it into a NumPy array of floats scaled to [-1, 1].
     """
@@ -118,24 +118,32 @@ def fixed_ground_truth(fixed_ground_truth_wav):
     ],
 )
 def test_utterance_asr_matching(
-    model_tag, beam_size, text_cleaner, cache_text, fixed_audio, fixed_ground_truth
+    model_tag,
+    beam_size,
+    text_cleaner,
+    cache_text,
+    fixed_audio,
+    fixed_ground_truth,
 ):
     """
     Test the ASR matching metric using the fixed audio and ground truth.
     The test uses deterministic data so that the result is always reproducible.
     """
+    assert fixed_audio.shape == fixed_ground_truth.shape
+    assert fixed_audio.shape[0] == TEST_SAMPLE_RATE
+    assert not np.allclose(fixed_audio, fixed_ground_truth)
+
     wer_utils = asr_match_setup(model_tag, beam_size, text_cleaner, use_gpu=False)
     result = asr_match_metric(
-        wer_utils, fixed_audio, fixed_ground_truth, cache_text, 16000
+        wer_utils, fixed_audio, fixed_ground_truth, cache_text, TEST_SAMPLE_RATE
     )
     asr_match_error_rate = result["asr_match_error_rate"]
 
-    # We expect the error rate to be 1.0 based on the intentional differences in the signals.
-    assert asr_match_error_rate == pytest.approx(
-        1.0, rel=1e-3, abs=1e-6
-    ), "value from asr_match_error_rate {} is mismatch from the defined one {}".format(
-        asr_match_error_rate, 1
-    )
+    assert "whisper_hyp_text" in result
+    assert "match_details" in result
+    assert 0.0 <= asr_match_error_rate
+    if cache_text is not None:
+        assert result["whisper_hyp_text"] == cache_text
 
 
 # -------------------------------

@@ -34,7 +34,11 @@ def find_files(
                 value = os.path.join(root, filename)
                 if not include_root_dir:
                     value = value.replace(root_dir + "/", "")
-                files[filename] = value
+                relative_path = os.path.relpath(value, root_dir)
+                key = (
+                    filename if os.path.dirname(relative_path) == "" else relative_path
+                )
+                files[key] = value
     return files
 
 
