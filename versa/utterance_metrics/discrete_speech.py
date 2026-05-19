@@ -55,7 +55,11 @@ def _patch_transformers_loaders(cache_dir):
     from discrete_speech_metrics import speechtokendistance
 
     def patch_model(model_cls, repo_id):
-        original = model_cls.from_pretrained
+        original = getattr(
+            model_cls.from_pretrained,
+            "_versa_original_from_pretrained",
+            model_cls.from_pretrained,
+        )
 
         def from_pretrained(pretrained_model_name_or_path, *args, **kwargs):
             kwargs.setdefault("cache_dir", str(cache_dir))
@@ -68,6 +72,7 @@ def _patch_transformers_loaders(cache_dir):
             )
             return original(pretrained_model_name_or_path, *args, **kwargs)
 
+        from_pretrained._versa_original_from_pretrained = original
         from_pretrained._versa_cache_patched = True
         from_pretrained._versa_repo_id = repo_id
         model_cls.from_pretrained = from_pretrained
@@ -88,13 +93,20 @@ def _patch_kmeans_loaders(kmeans_cache_dir):
     kmeans_dir = Path(kmeans_cache_dir).resolve() / "km"
 
     def patch_module(module):
-        original_apply_kmeans = module.ApplyKmeans
+        original_apply_kmeans = getattr(
+            module.ApplyKmeans,
+            "_versa_original_apply_kmeans",
+            module.ApplyKmeans,
+        )
 
         class VisibleCacheApplyKmeans(original_apply_kmeans):
             def __init__(self, km_path, device):
                 visible_path = kmeans_dir / Path(km_path).name
-                super().__init__(visible_path if visible_path.exists() else km_path, device)
+                super().__init__(
+                    visible_path if visible_path.exists() else km_path, device
+                )
 
+        VisibleCacheApplyKmeans._versa_original_apply_kmeans = original_apply_kmeans
         module.ApplyKmeans = VisibleCacheApplyKmeans
 
     patch_module(speechbleu)
@@ -117,11 +129,11 @@ def _load_discrete_speech_classes(cache_dir, kmeans_cache_dir):
             SpeechTokenDistance as _SpeechTokenDistance,
         )
 
-        _patch_transformers_loaders(cache_path)
-        _patch_kmeans_loaders(kmeans_cache_dir)
         SpeechBERTScore = _SpeechBERTScore
         SpeechBLEU = _SpeechBLEU
         SpeechTokenDistance = _SpeechTokenDistance
+    _patch_transformers_loaders(cache_path)
+    _patch_kmeans_loaders(kmeans_cache_dir)
     return SpeechBERTScore, SpeechBLEU, SpeechTokenDistance
 
 

@@ -756,12 +756,7 @@ def test_wer_pipeline_with_registry_and_mocked_models(monkeypatch):
     )
     monkeypatch.setattr(
         "versa.corpus_metrics.whisper_wer.whisper_levenshtein_metric",
-        lambda wer_utils,
-        pred_x,
-        ref_text,
-        fs=16000,
-        cache_pred_text=None,
-        cache_pred_language=None: {
+        lambda wer_utils, pred_x, ref_text, fs=16000, cache_pred_text=None, cache_pred_language=None: {
             "whisper_hyp_text": cache_pred_text or ref_text,
             "whisper_wer_equal": 1,
         },

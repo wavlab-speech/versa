@@ -6,14 +6,15 @@ import os
 from contextlib import contextmanager
 from pathlib import Path
 
-
 DEFAULT_HF_CACHE_DIR = "versa_cache/huggingface"
 VERSA_HF_CACHE_ENV = "VERSA_HF_CACHE_DIR"
 
 
 def get_hf_cache_dir(config_cache_dir=None):
     """Return the visible Hugging Face cache directory used by Versa metrics."""
-    return os.environ.get(VERSA_HF_CACHE_ENV) or config_cache_dir or DEFAULT_HF_CACHE_DIR
+    return (
+        os.environ.get(VERSA_HF_CACHE_ENV) or config_cache_dir or DEFAULT_HF_CACHE_DIR
+    )
 
 
 def configure_huggingface_cache(cache_dir):

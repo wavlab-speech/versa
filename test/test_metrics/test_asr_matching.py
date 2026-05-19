@@ -6,7 +6,6 @@ import pytest
 
 from versa.utterance_metrics.asr_matching import asr_match_metric, asr_match_setup
 
-
 TEST_SAMPLE_RATE = 16000
 
 
@@ -134,9 +133,7 @@ def test_utterance_asr_matching(
     assert fixed_audio.shape[0] == TEST_SAMPLE_RATE
     assert not np.allclose(fixed_audio, fixed_ground_truth)
 
-    wer_utils = asr_match_setup(
-        model_tag, beam_size, text_cleaner, use_gpu=False
-    )
+    wer_utils = asr_match_setup(model_tag, beam_size, text_cleaner, use_gpu=False)
     result = asr_match_metric(
         wer_utils, fixed_audio, fixed_ground_truth, cache_text, TEST_SAMPLE_RATE
     )
