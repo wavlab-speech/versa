@@ -1,3 +1,6 @@
+import importlib.util
+from pathlib import Path
+
 import pytest
 import numpy as np
 
@@ -10,9 +13,22 @@ from versa.definition import (
     MetricSuite,
     MetricType,
 )
-from scripts.survey.get_wer import calculate_average_wer
 from versa.scorer_shared import VersaScorer, compute_summary
 from versa.utils_shared import find_files
+
+
+def _load_calculate_average_wer():
+    script_path = (
+        Path(__file__).resolve().parents[2] / "scripts" / "survey" / "get_wer.py"
+    )
+    spec = importlib.util.spec_from_file_location("versa_test_get_wer", script_path)
+    module = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    spec.loader.exec_module(module)
+    return module.calculate_average_wer
+
+
+calculate_average_wer = _load_calculate_average_wer()
 
 
 class DummyMetric(BaseMetric):
