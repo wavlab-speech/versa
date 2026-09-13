@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>VERSA — Versatile Evaluation of Speech and Audio</title>
+  <meta name="description" content="An open-source toolkit for evaluating speech, audio, and music. Explore 90+ metrics, configure your evaluation, and understand your audio.">
+  <meta name="theme-color" content="#153dce">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Crect width='40' height='40' rx='10' fill='%23153dce'/%3E%3Cpath d='m10 11 10 20 10-20' fill='none' stroke='white' stroke-width='5'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <a class="skip" href="#main">Skip to content</a>
+  <header class="header wrap">
+    <a class="wordmark" href="#" aria-label="VERSA home"><span class="mark" aria-hidden="true">V</span> VERSA</a>
+    <nav aria-label="Main navigation"><a href="#capabilities">Capabilities</a><a href="#start">Quick start</a><a href="https://github.com/wavlab-speech/versa/tree/main/docs">Docs</a><a class="github" href="https://github.com/wavlab-speech/versa">GitHub <span aria-hidden="true">↗</span></a></nav>
+  </header>
+  <main id="main">
+    <section class="hero wrap">
+      <div class="hero-copy"><p class="eyebrow">SPEECH · AUDIO · MUSIC</p>
+        <h1>Understand your audio.<br><span>From every angle.</span></h1>
+        <p class="intro">Versatile Evaluation of Speech and Audio.<br>One open-source toolkit to bring quality, intelligibility, and acoustic analysis into your evaluation workflow.</p>
+        <div class="actions"><a class="button primary" href="#start">Get started <span aria-hidden="true">↗</span></a><a class="button secondary" href="https://arxiv.org/abs/2412.17667">Read the paper</a></div>
+        <p class="hero-note">Built for researchers. Ready for your next experiment.</p>
+      </div>
+      <div class="signal-panel" aria-label="Conceptual evaluation workflow: audio input, VERSA, and multiple evaluation dimensions">
+        <div class="panel-top"><span>THE EVALUATION TOOLKIT</span><span>01 / VERSA</span></div>
+        <div class="wave" aria-hidden="true"><svg viewBox="0 0 480 130" fill="none"><path d="M0 65H40L47 55L54 78L61 46L68 86L75 37L82 96L89 29L96 106L103 19L110 116L117 35L124 99L131 47L138 85L145 59L152 72L159 64H187L194 44L201 87L208 30L215 108L222 12L229 120L236 22L243 111L250 37L257 98L264 47L271 82L278 56L285 72L292 65H323L330 53L337 79L344 39L351 93L358 28L365 106L372 39L379 92L386 50L393 81L400 59L407 70L414 65H480" stroke="currentColor" stroke-width="3" stroke-linejoin="round"/></svg></div>
+        <div class="input-caption">YOUR AUDIO <span>↓</span></div>
+        <div class="engine"><span class="engine-name">VERSA</span><span>One configurable workflow</span></div>
+        <div class="dimensions"><span>Perceptual quality</span><span>Intelligibility</span><span>Acoustic properties</span><span>Audio distributions</span></div>
+        <div class="panel-bottom">MULTIPLE PERSPECTIVES. A CLEARER PICTURE.</div>
+      </div>
+    </section>
+    <div class="facts wrap"><div><strong>90+</strong><span>Evaluation & profiling metrics</span></div><div><strong>4</strong><span>Complementary metric categories</span></div><div><strong>One toolkit</strong><span>From local runs to distributed evaluation</span></div></div>
+    <section class="section wrap" id="capabilities">
+      <div class="section-heading"><div><p class="eyebrow">A WIDER PERSPECTIVE</p><h2>Good audio has more<br>than one dimension.</h2></div><p>Choose the metrics that fit your task, whether you have a reference recording, a text prompt, or a whole collection of audio.</p></div>
+      <div class="metric-grid">
+        <article><span class="number">01 / INDEPENDENT</span><h3>Listen without a reference.</h3><p>Assess an audio sample on its own, from perceptual quality to speaker and signal characteristics.</p><div class="tags"><span>DNSMOS</span><span>NISQA</span><span>UTMOS</span></div></article>
+        <article><span class="number">02 / DEPENDENT</span><h3>Compare with the original.</h3><p>Measure how predicted audio differs from a reference in fidelity, intelligibility, and acoustic detail.</p><div class="tags"><span>PESQ</span><span>STOI</span><span>SI-SDR</span></div></article>
+        <article><span class="number">03 / NON-MATCH</span><h3>Connect sound and context.</h3><p>Evaluate with non-matching references or information from other modalities, including text.</p><div class="tags"><span>Cross-modal evaluation</span></div></article>
+        <article><span class="number">04 / DISTRIBUTIONAL</span><h3>See the bigger picture.</h3><p>Compare statistical properties across audio collections to evaluate a system beyond individual samples.</p><div class="tags"><span>FAD</span><span>KID</span></div></article>
+      </div>
+      <a class="text-link" href="https://github.com/wavlab-speech/versa/blob/main/docs/supported_metrics.md">Explore the full metric catalog <span aria-hidden="true">↗</span></a>
+    </section>
+    <section class="workflow"><div class="wrap workflow-inner"><div><p class="eyebrow">FITS YOUR EXPERIMENT</p><h2>Your data.<br>Your metrics.<br>Your workflow.</h2></div><div class="workflow-list"><div><span>01</span><div><h3>Bring your audio</h3><p>Work with file paths, SCP lists, or Kaldi-style ARKs.</p></div></div><div><span>02</span><div><h3>Configure your evaluation</h3><p>Select metrics with YAML configurations and install the backends your experiment needs.</p></div></div><div><span>03</span><div><h3>Run, scale, and explore</h3><p>Start locally, scale with Slurm, and explore your results with VERSA’s visualization tools.</p></div></div></div></div></section>
+    <section class="section wrap start" id="start"><div><p class="eyebrow">FROM AUDIO TO INSIGHT</p><h2>Start your<br>first evaluation.</h2><p>Install the toolkit, then try a configuration with the included audio samples. Add optional metric dependencies as needed.</p><a class="text-link" href="https://github.com/wavlab-speech/versa#-installation">Full installation guide <span aria-hidden="true">↗</span></a></div><div class="terminal"><div class="terminal-bar"><span>QUICK START</span><button id="copy" type="button" hidden>Copy commands</button><span id="copy-status" role="status" class="sr-only"></span></div><pre><code id="commands">git clone https://github.com/wavlab-speech/versa.git
+cd versa
+pip install .
+
+# Run on the included audio samples
+python versa/bin/scorer.py \
+  --score_config egs/speech_cpu.yaml \
+  --pred test/test_samples/test2 \
+  --gt test/test_samples/test1 \
+  --output_file test_result \
+  --io dir</code></pre></div></section>
+    <section class="resources wrap"><a href="https://colab.research.google.com/drive/11c0vZxbSa8invMSfqM999tI3MnyAVsOp?usp=sharing"><span>TRY IT</span><h3>Explore the Colab demo ↗</h3><p>A hands-on introduction to VERSA.</p></a><a href="https://github.com/wavlab-speech/versa/blob/main/docs/visualization.md"><span>GO DEEPER</span><h3>Visualize your results ↗</h3><p>Explore your evaluation from multiple perspectives.</p></a><a href="https://github.com/wavlab-speech/versa#-citation"><span>BUILD ON VERSA</span><h3>Research & citation ↗</h3><p>Read and cite the work behind the toolkit.</p></a></section>
+  </main>
+  <footer class="wrap"><img src="assets/versa-logo.png" alt="VERSA: Versatile Evaluation of Speech and Audio" width="232" height="89"><div><p>An open-source toolkit for speech, audio, and music.</p><a href="https://github.com/wavlab-speech/versa/blob/main/docs/contributing.md">Contribute</a><a href="https://github.com/wavlab-speech/versa">Source code</a><a href="https://github.com/wavlab-speech/versa/blob/main/LICENSE">License</a></div></footer>
+  <script src="script.js"></script>
+</body>
+</html>
