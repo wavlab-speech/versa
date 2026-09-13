@@ -2,6 +2,8 @@
 
 # VERSA: Versatile Evaluation of Speech and Audio
 
+[Website](https://wavlab-speech.github.io/versa/) · [Documentation](https://wavlab-speech.github.io/versa/docs/) · [Installation](https://wavlab-speech.github.io/versa/docs/installation/) · [Metric catalog](https://wavlab-speech.github.io/versa/docs/metrics/)
+
 [![GitHub stars](https://img.shields.io/github/stars/wavlab-speech/versa?style=social)](https://github.com/wavlab-speech/versa/stargazers)
 ![CI](https://github.com/wavlab-speech/versa/actions/workflows/ci.yml/badge.svg)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
@@ -21,11 +23,11 @@ VERSA (Versatile Evaluation of Speech and Audio) is a comprehensive toolkit for 
 
 ## 🚀 Features
 
-- **Comprehensive**: 90+ metrics covering perceptual quality, intelligibility, and technical measurements (check [full metrics documentation](https://github.com/wavlab-speech/versa/blob/main/docs/supported_metrics.md) for a complete list)
-- **Integrated**: Widely used in speech toolkits and challenges (check the [incomplete list of toolkits/challenges](https://github.com/wavlab-speech/versa/blob/main/docs/users.md) using versa)
+- **Comprehensive**: 90+ metrics covering perceptual quality, intelligibility, and technical measurements (check [full metrics documentation](https://wavlab-speech.github.io/versa/docs/metrics/) for a complete list)
+- **Integrated**: Widely used in speech toolkits and challenges (check the [incomplete list of toolkits/challenges](https://wavlab-speech.github.io/versa/docs/community/) using versa)
 - **Flexible**: Support for various input formats (file paths, SCP files, Kaldi-style ARKs)
 - **Scalable**: Built-in support for distributed evaluation using Slurm, with resume support for interrupted scoring runs
-- **Visualizable**: Interactive visualization with VERSA results (check [our visualization guideline](https://github.com/wavlab-speech/versa/blob/main/docs/visualization.md))
+- **Visualizable**: Interactive visualization with VERSA results (check [our visualization guideline](https://wavlab-speech.github.io/versa/docs/visualization/))
 
 ## 🔍 Interactive Demo
 
@@ -328,7 +330,7 @@ VERSA organizes metrics into four categories:
 3. **Non-match Metrics** - Metrics that work with non-matching references or information from other modalities
 4. **Distributional Metrics** - Metrics that evaluate statistical properties of audio collections
 
-*See the [full metrics documentation](https://github.com/wavlab-speech/versa/blob/main/docs/supported_metrics.md) for a complete list with references.*
+*See the [full metrics documentation](https://wavlab-speech.github.io/versa/docs/metrics/) for a complete list with references.*
 
 ## 📝 Citation
 
@@ -356,11 +358,11 @@ url={https://openreview.net/forum?id=zU0hmbnyQm}
 
 ## 🙏 Acknowledgement
 
-We sincerely thank all the authors of the open-source implementations listed in our [metrics documentation](https://github.com/wavlab-speech/versa/blob/main/docs/supported_metrics.md).
+We sincerely thank all the authors of the open-source implementations listed in our [metrics documentation](https://wavlab-speech.github.io/versa/docs/metrics/).
 
 ## 🤝 Contributing
 
-Contributions are welcome! Please feel free to submit a Pull Request. Please check the [contributing guideline](https://github.com/wavlab-speech/versa/blob/main/docs/contributing.md) first.
+Contributions are welcome! Please feel free to submit a Pull Request. Please check the [contributing guideline](https://wavlab-speech.github.io/versa/docs/contributing/) first.
 
 ## 📄 License
 
