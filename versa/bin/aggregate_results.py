@@ -8,13 +8,16 @@
 import argparse
 import json
 import logging
+import math
 import os
 
 from tqdm import tqdm
 
 from versa.reporting import (
     analyze_records,
+    discover_numeric_metrics,
     read_result_records,
+    summarize_metric,
     write_csv_report,
     write_html_report,
     write_markdown_report,
@@ -70,24 +73,54 @@ def get_parser() -> argparse.Namespace:
     return parser
 
 
+def _finite_json_float(token: str):
+    """Convert a JSON float token, replacing overflow with null."""
+    value = float(token)
+    return value if math.isfinite(value) else None
+
+
 def aggregate_results(logdir: str, scoredir: str, nj: int) -> None:
-    """Aggregate results."""
+    """Combine numbered JSONL chunks and write finite per-field means.
+
+    Preserve row order and duplicates. Missing and invalid values do not enter
+    means; fields without finite observations are omitted. Nonfinite JSON
+    constants become null, including in nested results. Empty chunks produce
+    empty output files. Reject malformed records before opening either output.
+    """
+    if nj < 1:
+        raise ValueError("nj must be at least 1")
     logging.info("Aggregating results...")
     score_info = []
     for i in range(nj):
-        with open("{}/result.{}.txt".format(logdir, i + 1), "r") as f:
-            for line in f:
-                score_info.append(json.loads(line.strip()))
-    with open("{}/utt_result.txt".format(scoredir), "w") as f, open(
-        "{}/avg_result.txt".format(scoredir), "w"
-    ) as f2:
+        path = os.path.join(logdir, f"result.{i + 1}.txt")
+        with open(path, encoding="utf-8") as f:
+            for line_number, line in enumerate(f, start=1):
+                if not line.strip():
+                    continue
+                try:
+                    record = json.loads(
+                        line,
+                        parse_constant=lambda value: None,
+                        parse_float=_finite_json_float,
+                    )
+                except ValueError as exc:
+                    raise ValueError(f"Invalid JSON in {path}:{line_number}") from exc
+                if not isinstance(record, dict):
+                    raise ValueError(f"Expected object in {path}:{line_number}")
+                score_info.append(record)
+    summaries = [
+        summarize_metric(key, score_info)
+        for key in discover_numeric_metrics(score_info)
+    ]
+    os.makedirs(scoredir, exist_ok=True)
+    with open(
+        os.path.join(scoredir, "utt_result.txt"), "w", encoding="utf-8"
+    ) as f, open(os.path.join(scoredir, "avg_result.txt"), "w", encoding="utf-8") as f2:
         for info in tqdm(score_info):
-            f.write("{}\n".format(info))
-        for key in score_info[0].keys():
-            if key == "key":
-                continue
-            avg = sum([info[key] for info in score_info]) / len(score_info)
-            f2.write("{}: {}\n".format(key, avg))
+            f.write(json.dumps(info, allow_nan=False) + "\n")
+        for summary in summaries:
+            if summary.count:
+                f2.write(f"{summary.name}: {summary.mean}\n")
 
     logging.info("Done.")
 
