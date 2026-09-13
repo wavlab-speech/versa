@@ -276,6 +276,23 @@ versa-score --list-metrics --metric-category dependent --metric-type float
 
 ### Distributed Evaluation with Slurm
 
+The launcher defaults to 4 CPUs and a 12-hour limit per job. It checks the
+actual chunk count against `MAX_JOBS` (default 50) and the combined requested
+CPU time against `MAX_TOTAL_CPU_HOURS` (default 5000) before submitting.
+These limits apply to one invocation, not all jobs already running on the cluster.
+Use a fresh score directory; existing split files are rejected. Submission requires
+confirmation; pass `--yes` for unattended runs (resource checks still apply).
+
+Override resources with `CPUS`, `MEM` (MB per CPU), `CPU_TIME`, and `GPU_TIME`.
+Numeric settings must be integers from 1 to 999999999. Time limits accept Slurm's
+finite positive time formats, including minutes, minutes:seconds, hours:minutes:seconds,
+and days-hours[:minutes[:seconds]]. Seconds round up to a minute for the estimate.
+Jobs request one task on one node; cluster allocation and billing policies may differ
+from the requested CPU estimate. `CPU_OTHER_OPTS` and `GPU_OTHER_OPTS` accept
+space-separated `--name=value` options for account, qos, constraint, reservation,
+dependency, exclude, nodelist, mail-type, mail-user, and comment. Resource overrides,
+arrays, and other implicit `SBATCH_*` settings are rejected to keep the estimate valid.
+
 ```bash
 # Option 1: With ground truth speech
 ./launch_slurm.sh \
