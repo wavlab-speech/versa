@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{title}} — VERSA documentation</title>
+  <meta name="description" content="{{description}}">
+  <meta name="theme-color" content="#153dce">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Crect width='40' height='40' rx='10' fill='%23153dce'/%3E%3Cpath d='m10 11 10 20 10-20' fill='none' stroke='white' stroke-width='5'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="{{root}}styles.css">
+  <link rel="stylesheet" href="{{root}}docs.css">
+</head>
+<body class="docs-page">
+  <a class="skip" href="#main">Skip to content</a>
+  <header class="header wrap">
+    <a class="wordmark" href="{{root}}" aria-label="VERSA home"><span class="mark" aria-hidden="true">V</span> VERSA</a>
+    <nav aria-label="Main navigation"><a href="{{root}}">Home</a><a href="{{root}}docs/" aria-current="true">Docs</a><a class="github" href="https://github.com/wavlab-speech/versa">Source code ↗</a></nav>
+  </header>
+  <div class="docs-layout wrap">
+    <aside class="docs-sidebar"><p class="sidebar-label">DOCUMENTATION</p><nav aria-label="Documentation">{{navigation}}</nav></aside>
+    <main id="main" class="doc-main">
+      <div class="breadcrumbs"><a href="{{root}}">VERSA</a><span aria-hidden="true">/</span><a href="{{root}}docs/">Docs</a></div>
+      <h1>{{title}}</h1>
+      <p class="doc-description">{{description}}</p>
+      <details class="page-contents"><summary>On this page</summary>{{toc}}</details>
+      <article class="prose">{{content}}</article>
+      <nav class="doc-pagination" aria-label="Adjacent documentation pages">{{pagination}}</nav>
+    </main>
+  </div>
+  <footer class="wrap"><a class="wordmark" href="{{root}}">VERSA</a><div><p>Versatile Evaluation of Speech and Audio</p><a href="{{root}}docs/contributing/">Contribute</a><a href="{{root}}docs/license/">License</a></div></footer>
+</body>
+</html>

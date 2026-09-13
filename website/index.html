@@ -13,7 +13,7 @@
   <a class="skip" href="#main">Skip to content</a>
   <header class="header wrap">
     <a class="wordmark" href="#" aria-label="VERSA home"><span class="mark" aria-hidden="true">V</span> VERSA</a>
-    <nav aria-label="Main navigation"><a href="#capabilities">Capabilities</a><a href="#start">Quick start</a><a href="https://github.com/wavlab-speech/versa/tree/main/docs">Docs</a><a class="github" href="https://github.com/wavlab-speech/versa">GitHub <span aria-hidden="true">↗</span></a></nav>
+    <nav aria-label="Main navigation"><a href="#capabilities">Capabilities</a><a href="#start">Quick start</a><a href="docs/">Docs</a><a class="github" href="https://github.com/wavlab-speech/versa">GitHub <span aria-hidden="true">↗</span></a></nav>
   </header>
   <main id="main">
     <section class="hero wrap">
@@ -41,10 +41,10 @@
         <article><span class="number">03 / NON-MATCH</span><h3>Connect sound and context.</h3><p>Evaluate with non-matching references or information from other modalities, including text.</p><div class="tags"><span>Cross-modal evaluation</span></div></article>
         <article><span class="number">04 / DISTRIBUTIONAL</span><h3>See the bigger picture.</h3><p>Compare statistical properties across audio collections to evaluate a system beyond individual samples.</p><div class="tags"><span>FAD</span><span>KID</span></div></article>
       </div>
-      <a class="text-link" href="https://github.com/wavlab-speech/versa/blob/main/docs/supported_metrics.md">Explore the full metric catalog <span aria-hidden="true">↗</span></a>
+      <a class="text-link" href="docs/metrics/">Explore the full metric catalog <span aria-hidden="true">↗</span></a>
     </section>
     <section class="workflow"><div class="wrap workflow-inner"><div><p class="eyebrow">FITS YOUR EXPERIMENT</p><h2>Your data.<br>Your metrics.<br>Your workflow.</h2></div><div class="workflow-list"><div><span>01</span><div><h3>Bring your audio</h3><p>Work with file paths, SCP lists, or Kaldi-style ARKs.</p></div></div><div><span>02</span><div><h3>Configure your evaluation</h3><p>Select metrics with YAML configurations and install the backends your experiment needs.</p></div></div><div><span>03</span><div><h3>Run, scale, and explore</h3><p>Start locally, scale with Slurm, and explore your results with VERSA’s visualization tools.</p></div></div></div></div></section>
-    <section class="section wrap start" id="start"><div><p class="eyebrow">FROM AUDIO TO INSIGHT</p><h2>Start your<br>first evaluation.</h2><p>Install the toolkit, then try a configuration with the included audio samples. Add optional metric dependencies as needed.</p><a class="text-link" href="https://github.com/wavlab-speech/versa#-installation">Full installation guide <span aria-hidden="true">↗</span></a></div><div class="terminal"><div class="terminal-bar"><span>QUICK START</span><button id="copy" type="button" hidden>Copy commands</button><span id="copy-status" role="status" class="sr-only"></span></div><pre><code id="commands">git clone https://github.com/wavlab-speech/versa.git
+    <section class="section wrap start" id="start"><div><p class="eyebrow">FROM AUDIO TO INSIGHT</p><h2>Start your<br>first evaluation.</h2><p>Install the toolkit, then try a configuration with the included audio samples. Add optional metric dependencies as needed.</p><a class="text-link" href="docs/installation/">Full installation guide <span aria-hidden="true">↗</span></a></div><div class="terminal"><div class="terminal-bar"><span>QUICK START</span><button id="copy" type="button" hidden>Copy commands</button><span id="copy-status" role="status" class="sr-only"></span></div><pre><code id="commands">git clone https://github.com/wavlab-speech/versa.git
 cd versa
 pip install .
 
@@ -55,9 +55,9 @@ python versa/bin/scorer.py \
   --gt test/test_samples/test1 \
   --output_file test_result \
   --io dir</code></pre></div></section>
-    <section class="resources wrap"><a href="https://colab.research.google.com/drive/11c0vZxbSa8invMSfqM999tI3MnyAVsOp?usp=sharing"><span>TRY IT</span><h3>Explore the Colab demo ↗</h3><p>A hands-on introduction to VERSA.</p></a><a href="https://github.com/wavlab-speech/versa/blob/main/docs/visualization.md"><span>GO DEEPER</span><h3>Visualize your results ↗</h3><p>Explore your evaluation from multiple perspectives.</p></a><a href="https://github.com/wavlab-speech/versa#-citation"><span>BUILD ON VERSA</span><h3>Research & citation ↗</h3><p>Read and cite the work behind the toolkit.</p></a></section>
+    <section class="resources wrap"><a href="https://colab.research.google.com/drive/11c0vZxbSa8invMSfqM999tI3MnyAVsOp?usp=sharing"><span>TRY IT</span><h3>Explore the Colab demo ↗</h3><p>A hands-on introduction to VERSA.</p></a><a href="docs/visualization/"><span>GO DEEPER</span><h3>Visualize your results ↗</h3><p>Explore your evaluation from multiple perspectives.</p></a><a href="docs/citation/"><span>BUILD ON VERSA</span><h3>Research & citation ↗</h3><p>Read and cite the work behind the toolkit.</p></a></section>
   </main>
-  <footer class="wrap"><img src="assets/versa-logo.png" alt="VERSA: Versatile Evaluation of Speech and Audio" width="232" height="89"><div><p>An open-source toolkit for speech, audio, and music.</p><a href="https://github.com/wavlab-speech/versa/blob/main/docs/contributing.md">Contribute</a><a href="https://github.com/wavlab-speech/versa">Source code</a><a href="https://github.com/wavlab-speech/versa/blob/main/LICENSE">License</a></div></footer>
+  <footer class="wrap"><img src="assets/versa-logo.png" alt="VERSA: Versatile Evaluation of Speech and Audio" width="232" height="89"><div><p>An open-source toolkit for speech, audio, and music.</p><a href="docs/contributing/">Contribute</a><a href="https://github.com/wavlab-speech/versa">Source code</a><a href="docs/license/">License</a></div></footer>
   <script src="script.js"></script>
 </body>
 </html>
