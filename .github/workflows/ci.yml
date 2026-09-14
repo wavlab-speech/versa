@@ -109,4 +109,4 @@ jobs:
         
     - name: Run core tests
       run: |
-        pytest -q test/test_metrics/test_definition.py test/test_docstring_check.py test/test_slurm_launcher.py test/test_aggregate_results.py test/test_result_summary.py test/test_reporting.py
+        pytest -q test/test_metrics/test_definition.py test/test_metric_imports.py test/test_docstring_check.py test/test_slurm_launcher.py test/test_aggregate_results.py test/test_result_summary.py test/test_reporting.py
