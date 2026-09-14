@@ -12,9 +12,12 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Sequence, Tuple
 
 from versa.definition import MetricRegistry
-
-IGNORED_FIELDS = {"key", "_source_file"}
-
+from versa.result_summary import (
+    discover_numeric_metrics,
+    is_count_metric,
+    numeric_observations,
+    reduce_values,
+)
 
 METRIC_CATEGORIES = {
     "audio_quality": [
@@ -123,6 +126,8 @@ class MetricSummary:
     worst_key: str
     worst_value: float
     outliers: List[Tuple[str, float, float]]
+    reducer: str
+    aggregate: Optional[float]
 
 
 def read_result_records(input_path: str) -> List[Dict[str, Any]]:
@@ -162,11 +167,12 @@ def analyze_records(
     outlier_limit: int = 3,
     registry: Optional[MetricRegistry] = None,
 ) -> Dict[str, Any]:
-    """Compute report-ready summaries from result records."""
-    if not records:
-        raise ValueError("No result records were found")
+    """Summarize every row, retaining duplicate keys as separate observations.
 
-    metrics = discover_numeric_metrics(records)
+    Empty inputs produce empty reports. The summary mapping follows the scorer's
+    reducers; metric means remain descriptive per-observation statistics.
+    """
+    metrics = [name for name in discover_numeric_metrics(records) if name != group_by]
     metric_summaries = [
         summarize_metric(
             metric, records, outlier_limit=outlier_limit, registry=registry
@@ -182,6 +188,11 @@ def analyze_records(
         groups = summarize_groups(records, metrics, group_by, registry=registry)
 
     return {
+        "summary": {
+            item.name: item.aggregate
+            for item in metric_summaries
+            if item.aggregate is not None
+        },
         "records": records,
         "metrics": metric_summaries,
         "categories": dict(sorted(categories.items())),
@@ -190,18 +201,6 @@ def analyze_records(
         "record_count": len(records),
         "metric_count": len(metric_summaries),
     }
-
-
-def discover_numeric_metrics(records: Sequence[Dict[str, Any]]) -> List[str]:
-    """Find sorted numeric fields, excluding booleans, text, and internal fields."""
-    metrics = set()
-    for record in records:
-        for key, value in record.items():
-            if key in IGNORED_FIELDS or key.startswith("_") or "text" in key.lower():
-                continue
-            if _to_float(value) is not None:
-                metrics.add(key)
-    return sorted(metrics)
 
 
 def summarize_metric(
@@ -217,23 +216,15 @@ def summarize_metric(
     invalid. Statistics are zero when no valid values exist. Confidence limits
     use mean +/- 1.96 standard errors, and outliers have absolute z-score >= 2.
     Unknown score direction is ranked as higher-is-better for extrema."""
-    values: List[Tuple[str, float]] = []
-    missing = 0
-    invalid = 0
-    for index, record in enumerate(records, start=1):
-        key = str(record.get("key") or f"utt_{index}")
-        if metric not in record:
-            missing += 1
-            continue
-        value = _to_float(record[metric])
-        if value is None or not math.isfinite(value):
-            invalid += 1
-            continue
-        values.append((key, value))
+    observations, missing, invalid = numeric_observations(records, metric)
+    values = [
+        (str(records[index].get("key") or f"utt_{index + 1}"), value)
+        for index, value in observations
+    ]
 
     numeric = [value for _, value in values]
     count = len(numeric)
-    mean = sum(numeric) / count if count else 0.0
+    mean = sum(value / count for value in numeric) if count else 0.0
     sorted_values = sorted(numeric)
     median = _median(sorted_values)
     std = _sample_std(numeric, mean)
@@ -283,6 +274,8 @@ def summarize_metric(
         worst_key=worst_key,
         worst_value=worst_value,
         outliers=outliers,
+        reducer="sum" if is_count_metric(metric) else "mean",
+        aggregate=reduce_values(metric, numeric),
     )
 
 
@@ -332,6 +325,8 @@ def write_csv_report(analysis: Dict[str, Any], output_path: str) -> None:
     """Overwrite a UTF-8 CSV with one row per metric from ``analyze_records``."""
     fields = [
         "metric",
+        "reducer",
+        "aggregate",
         "category",
         "count",
         "missing",
@@ -368,12 +363,14 @@ def write_markdown_report(analysis: Dict[str, Any], output_path: str) -> None:
         "",
         "## Summary",
         "",
-        "| Metric | Category | Count | Mean | Std | 95% CI | Missing | Invalid | Best | Worst |",
-        "| --- | --- | ---: | ---: | ---: | --- | ---: | ---: | --- | --- |",
+        "| Metric | Category | Count | Reducer | Aggregate | Mean | Std | 95% CI | Missing | Invalid | Best | Worst |",
+        "| --- | --- | ---: | --- | ---: | ---: | ---: | --- | ---: | ---: | --- | --- |",
     ]
     for summary in analysis["metrics"]:
         lines.append(
-            "| {metric} | {category} | {count} | {mean} | {std} | {ci} | {missing} | {invalid} | {best} | {worst} |".format(
+            "| {metric} | {category} | {count} | {reducer} | {aggregate} | {mean} | {std} | {ci} | {missing} | {invalid} | {best} | {worst} |".format(
+                reducer=summary.reducer,
+                aggregate=_fmt(summary.aggregate),
                 metric=summary.name,
                 category=summary.category,
                 count=summary.count,
@@ -482,7 +479,7 @@ svg text {{ font-family: inherit; fill: var(--muted); font-size: 11px; }}
 </section>
 <section class="panel"><h2>Category Summary</h2><table><thead><tr><th>Category</th><th>Metrics</th><th>Observed Values</th><th>Missing</th><th>Invalid</th><th>Coverage</th></tr></thead><tbody>{category_html}</tbody></table></section>
 {ranking_html}
-<section class="panel"><h2>Metric Summary</h2><table class="metric-table"><thead><tr><th>Metric</th><th>Category</th><th>Count</th><th>Mean</th><th>Std</th><th>95% CI</th><th>Missing</th><th>Invalid</th><th>Best</th><th>Worst</th></tr></thead><tbody>{rows_html}</tbody></table></section>
+<section class="panel"><h2>Metric Summary</h2><table class="metric-table"><thead><tr><th>Metric</th><th>Category</th><th>Count</th><th>Reducer</th><th>Aggregate</th><th>Mean</th><th>Std</th><th>95% CI</th><th>Missing</th><th>Invalid</th><th>Best</th><th>Worst</th></tr></thead><tbody>{rows_html}</tbody></table></section>
 <section class="panel"><h2>Outlier Examples</h2>{outlier_html}</section>
 <div class="footer">Tip: CSV and Markdown exports are available from the same CLI for downstream analysis.</div>
 </main>
@@ -612,15 +609,6 @@ def _literal_eval_with_special_floats(line: str) -> Any:
     return ast.literal_eval(tree)
 
 
-def _to_float(value: Any) -> Optional[float]:
-    """Convert numeric scalars to float; reject booleans and nonnumeric values."""
-    if isinstance(value, bool):
-        return None
-    if isinstance(value, (int, float)):
-        return float(value)
-    return None
-
-
 def _sample_std(values: Sequence[float], mean: float) -> float:
     """Return sample standard deviation, or zero for fewer than two observations."""
     if len(values) <= 1:
@@ -664,6 +652,8 @@ def _summary_row(summary: MetricSummary) -> Dict[str, Any]:
     """Convert a metric summary to CSV fields, flattening its outlier list."""
     return {
         "metric": summary.name,
+        "reducer": summary.reducer,
+        "aggregate": summary.aggregate,
         "category": summary.category,
         "count": summary.count,
         "missing": summary.missing,
@@ -698,6 +688,8 @@ def _metric_html_row(summary: MetricSummary) -> str:
         f"<td>{html.escape(summary.name)}</td>"
         f"<td>{html.escape(summary.category)}</td>"
         f"<td>{summary.count}</td>"
+        f"<td>{summary.reducer}</td>"
+        f"<td>{_fmt(summary.aggregate)}</td>"
         f"<td>{_fmt(summary.mean)}</td>"
         f"<td>{_fmt(summary.std)}</td>"
         f"<td>{html.escape(ci)}</td>"

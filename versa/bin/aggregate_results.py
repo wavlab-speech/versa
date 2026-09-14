@@ -13,11 +13,11 @@ import os
 
 from tqdm import tqdm
 
+from versa.result_summary import compute_summary
+
 from versa.reporting import (
     analyze_records,
-    discover_numeric_metrics,
     read_result_records,
-    summarize_metric,
     write_csv_report,
     write_html_report,
     write_markdown_report,
@@ -80,10 +80,11 @@ def _finite_json_float(token: str):
 
 
 def aggregate_results(logdir: str, scoredir: str, nj: int) -> None:
-    """Combine numbered JSONL chunks and write finite per-field means.
+    """Combine numbered JSONL chunks using the shared finite-score reducers.
 
     Preserve row order and duplicates. Missing and invalid values do not enter
-    means; fields without finite observations are omitted. Nonfinite JSON
+    reductions; named error-operation counts are summed. Fields without finite
+    observations are omitted. Nonfinite JSON
     constants become null, including in nested results. Empty chunks produce
     empty output files. Reject malformed records before opening either output.
     """
@@ -108,19 +109,15 @@ def aggregate_results(logdir: str, scoredir: str, nj: int) -> None:
                 if not isinstance(record, dict):
                     raise ValueError(f"Expected object in {path}:{line_number}")
                 score_info.append(record)
-    summaries = [
-        summarize_metric(key, score_info)
-        for key in discover_numeric_metrics(score_info)
-    ]
+    summary = compute_summary(score_info)
     os.makedirs(scoredir, exist_ok=True)
     with open(
         os.path.join(scoredir, "utt_result.txt"), "w", encoding="utf-8"
     ) as f, open(os.path.join(scoredir, "avg_result.txt"), "w", encoding="utf-8") as f2:
         for info in tqdm(score_info):
             f.write(json.dumps(info, allow_nan=False) + "\n")
-        for summary in summaries:
-            if summary.count:
-                f2.write(f"{summary.name}: {summary.mean}\n")
+        for key, value in summary.items():
+            f2.write(f"{key}: {value}\n")
 
     logging.info("Done.")
 

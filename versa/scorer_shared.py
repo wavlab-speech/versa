@@ -4,6 +4,7 @@
 #  Apache 2.0  (http://www.apache.org/licenses/LICENSE-2.0)
 
 """Shared scoring, result persistence, resume, and multi-source orchestration."""
+
 import gc
 import json
 import logging
@@ -13,11 +14,11 @@ from concurrent.futures import ProcessPoolExecutor
 import kaldiio
 import soundfile as sf
 import yaml
-from numbers import Real
 from pathlib import Path
 from typing import Dict, List, Optional, Any, Union
 from tqdm import tqdm
 
+from versa.result_summary import compute_summary
 from versa.audio_utils import resample_audio
 from versa.definition import (
     BaseMetric,
@@ -964,41 +965,3 @@ class VersaScorer:
             gt_wav = resample_audio(gt_wav, gt_sr, gen_sr)
 
         return gen_wav, gt_wav, gen_sr
-
-
-def _is_numeric_score(value: Any) -> bool:
-    """Return whether a score value should be included in numeric summaries."""
-    return isinstance(value, Real) and not isinstance(value, bool)
-
-
-def _is_count_metric(metric_name: str) -> bool:
-    """WER/CER/PER operation counts are summed rather than averaged."""
-    return any(token in metric_name for token in ("_wer", "_cer", "_per"))
-
-
-def compute_summary(score_info: List[Dict[str, Any]]) -> Dict[str, Any]:
-    """Compute summary statistics from individual scores."""
-    if not score_info:
-        return {}
-
-    summary = {}
-    metric_names = sorted(
-        {
-            key
-            for score in score_info
-            for key, value in score.items()
-            if key != "key" and _is_numeric_score(value)
-        }
-    )
-    for key in metric_names:
-        values = [
-            score[key] for score in score_info if _is_numeric_score(score.get(key))
-        ]
-        if not values:
-            continue
-
-        summary[key] = sum(values)
-        if not _is_count_metric(key):
-            summary[key] /= len(values)
-
-    return summary
