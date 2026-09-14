@@ -1,1 +1,2 @@
 Markdown==3.8.2
+PyYAML==6.0.2

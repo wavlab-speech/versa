@@ -43,3 +43,20 @@ remain external. Unlisted planning documents are never included.
 Generated output is ignored by Git. Edit the original Markdown documentation
 to keep the website and repository synchronized. Relative assets support
 either project URL.
+
+## Project statistics
+
+The build reads canonical metric names through VERSA's source-based discovery
+registry and fetches stars and forks from the official GitHub repository API.
+No model backends are imported. Counts, category totals, the source revision,
+and collection timestamp are published in `dist/stats.json` and the statistics
+guide. Aliases are excluded; named prompt metrics count separately.
+
+GitHub Actions refreshes the site daily at 08:23 UTC and on changes to `versa/`
+or the existing documentation and website sources. Scheduled runs may be delayed.
+The build uses its read-only `GITHUB_TOKEN` for API requests; no credential is
+included in the published files. Local builds need network access and may use
+an optional `GITHUB_TOKEN` to avoid unauthenticated API rate limits.
+
+Unavailable or invalid GitHub data fails the build before replacing the output,
+leaving the last successful deployment and its dated statistics online.

@@ -1,6 +1,7 @@
 """Build an allowlisted set of VERSA guides as portable GitHub Pages HTML."""
 
 import html
+import json
 import posixpath
 import re
 import shutil
@@ -9,6 +10,7 @@ from pathlib import Path
 from urllib.parse import unquote, urlsplit
 
 import markdown
+from site_stats import collect_statistics, statistics_markdown
 
 SITE = Path(__file__).resolve().parent
 REPO = SITE.parent
@@ -86,6 +88,13 @@ PAGES = [
         "docs/docstring_coverage.md",
         None,
     ),
+    (
+        "statistics",
+        "Project statistics",
+        "Current metric collection and GitHub activity, with sources and counting methodology.",
+        "website/content/statistics.md",
+        None,
+    ),
     ("license", "License", "Terms for using and distributing VERSA.", "LICENSE", None),
 ]
 DOC_ROUTES = {source: slug for slug, _, _, source, section in PAGES if section is None}
@@ -126,7 +135,7 @@ def rewrite_url(url, source, current):
             return url
     elif parsed.scheme or parsed.netloc or not path:
         return url
-    elif source == "website/content/overview.md":
+    elif source.startswith("website/content/"):
         return url
     else:
         path = posixpath.normpath(posixpath.join(posixpath.dirname(source), path))
@@ -218,11 +227,25 @@ def content_for(source, section):
 
 def build():
     """Create only public assets and allowlisted documentation in dist."""
+    stats = collect_statistics()
     if OUT.exists():
         shutil.rmtree(OUT)
     OUT.mkdir()
     for filename in ("index.html", "styles.css", "script.js", "docs.css"):
         shutil.copy2(SITE / filename, OUT / filename)
+    homepage = (OUT / "index.html").read_text()
+    values = {
+        "metric_count": str(stats["metric_count"]),
+        "stars": f'{stats["stars"]:,}',
+        "forks": f'{stats["forks"]:,}',
+        "category_count": str(len(stats["categories"])),
+        "updated_at": stats["updated_at"],
+        "updated_label": stats["updated_at"].replace("T", " ").replace("Z", " UTC"),
+    }
+    for key, value in values.items():
+        homepage = homepage.replace("{{" + key + "}}", html.escape(value))
+    (OUT / "index.html").write_text(homepage)
+    (OUT / "stats.json").write_text(json.dumps(stats, indent=2) + "\n")
     shutil.copytree(SITE / "assets", OUT / "assets")
     for filename in ("radar_chart.png", "sample_sunburstchart.png"):
         shutil.copy2(
@@ -236,7 +259,12 @@ def build():
             extensions=["tables", "fenced_code", "toc"],
             extension_configs={"toc": {"permalink": True, "toc_depth": "2-3"}},
         )
-        rendered = renderer.convert(content_for(source, section))
+        content = (
+            statistics_markdown(stats)
+            if slug == "statistics"
+            else content_for(source, section)
+        )
+        rendered = renderer.convert(content)
         links = HostedLinks(source, current)
         links.feed(rendered)
         navigation = "".join(

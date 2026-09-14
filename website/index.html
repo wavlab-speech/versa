@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>VERSA — Versatile Evaluation of Speech and Audio</title>
-  <meta name="description" content="An open-source toolkit for evaluating speech, audio, and music. Explore 90+ metrics, configure your evaluation, and understand your audio.">
+  <meta name="description" content="An open-source toolkit for evaluating speech, audio, and music. Explore {{metric_count}} discoverable metrics, configure your evaluation, and understand your audio.">
   <meta name="theme-color" content="#153dce">
   <link rel="icon" type="image/png" href="assets/versa-icon.png">
   <link rel="stylesheet" href="styles.css">
@@ -32,7 +32,15 @@
         <div class="panel-bottom">MULTIPLE PERSPECTIVES. A CLEARER PICTURE.</div>
       </div>
     </section>
-    <div class="facts wrap"><div><strong>90+</strong><span>Evaluation & profiling metrics</span></div><div><strong>4</strong><span>Complementary metric categories</span></div><div><strong>One toolkit</strong><span>From local runs to distributed evaluation</span></div></div>
+    <section class="project-stats" aria-label="VERSA project statistics">
+      <div class="facts wrap">
+        <div><a href="docs/statistics/"><strong>{{metric_count}}</strong><span>Discoverable metrics</span></a></div>
+        <div><a href="https://github.com/wavlab-speech/versa/stargazers"><strong>{{stars}}</strong><span>GitHub stars</span></a></div>
+        <div><a href="https://github.com/wavlab-speech/versa/forks"><strong>{{forks}}</strong><span>GitHub forks</span></a></div>
+        <div><a href="docs/statistics/#metrics-by-category"><strong>{{category_count}}</strong><span>Metric categories</span></a></div>
+      </div>
+      <p class="stats-note wrap">Updated <time datetime="{{updated_at}}">{{updated_label}}</time> · Refreshed daily · <a href="docs/statistics/">Sources &amp; how we count ↗</a></p>
+    </section>
     <section class="section wrap" id="capabilities">
       <div class="section-heading"><div><p class="eyebrow">A WIDER PERSPECTIVE</p><h2>Good audio has more<br>than one dimension.</h2></div><p>Choose the metrics that fit your task, whether you have a reference recording, a text prompt, or a whole collection of audio.</p></div>
       <div class="metric-grid">
