@@ -41,7 +41,9 @@ flake8 versa test scripts *.py
 
 ```bash
 # Run dependency-light core tests
-pytest test/test_metrics/test_definition.py
+pytest -q test/test_metrics/test_definition.py test/test_docstring_check.py \
+  test/test_slurm_launcher.py test/test_aggregate_results.py \
+  test/test_result_summary.py test/test_reporting.py
 
 # Run specific test modules
 pytest test/test_general.py
