@@ -22,6 +22,7 @@ from versa.metric_metadata import (
     _qwen_omni_aliases,
     _squim_metadata,
     _scoreq_metadata,
+    _stoi_metadata,
 )
 
 _MCD_F0_DEFAULTS = {
@@ -407,12 +408,24 @@ def _metadata_from_known_helper(node: ast.Call) -> Optional[Any]:
     """Evaluate only the supported dependency-light metadata helpers."""
     if not isinstance(node.func, ast.Name):
         return None
-    helpers = {"_squim_metadata": _squim_metadata, "_scoreq_metadata": _scoreq_metadata}
+    helpers = {
+        "_squim_metadata": _squim_metadata,
+        "_scoreq_metadata": _scoreq_metadata,
+        "_stoi_metadata": _stoi_metadata,
+    }
     helper = helpers.get(node.func.id)
-    if helper is None or len(node.args) < 2:
+    if helper is None:
         return None
-    args = [_literal_metric_value(arg) for arg in node.args[:2]]
-    return helper(*args)
+    try:
+        args = [ast.literal_eval(arg) for arg in node.args]
+        kwargs = {
+            keyword.arg: ast.literal_eval(keyword.value) for keyword in node.keywords
+        }
+        if None in kwargs:  # Do not evaluate expanded keyword dictionaries.
+            return None
+        return helper(*args, **kwargs)
+    except (TypeError, ValueError):
+        return None
 
 
 def _metadata_from_call(node: ast.AST) -> Optional[Any]:

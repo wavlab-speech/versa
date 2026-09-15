@@ -107,3 +107,26 @@ def _scoreq_metadata(name, mode):
         paper_reference="https://arxiv.org/pdf/2410.06675",
         implementation_source="https://github.com/ftshijt/scoreq",
     )
+
+
+def _stoi_metadata(name, extended):
+    """Return registry metadata describing stoi inputs and dependencies."""
+    label = "ESTOI" if extended else "STOI"
+    description = (
+        "Extended Short-Time Objective Intelligibility"
+        if extended
+        else "Short-Time Objective Intelligibility"
+    )
+    return MetricMetadata(
+        name=name,
+        category=MetricCategory.DEPENDENT,
+        metric_type=MetricType.FLOAT,
+        requires_reference=True,
+        requires_text=False,
+        gpu_compatible=False,
+        auto_install=False,
+        dependencies=["pystoi", "numpy"],
+        description=f"{label}: {description}",
+        paper_reference="https://doi.org/10.1109/TASL.2010.2045551",
+        implementation_source="https://github.com/mpariente/pystoi",
+    )
