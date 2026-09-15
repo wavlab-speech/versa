@@ -47,8 +47,18 @@ Every metric registration should include a `MetricMetadata` entry with:
 - aliases for existing YAML names or common alternate names
 
 Register the metric in `register_<metric>_metric(registry)`, then expose that
-registration function from `versa/__init__.py` with `_optional_metric_import(...)`.
-The scorer discovers available metrics by calling these registration functions.
+registration function and public classes in a `MetricModuleSpec` entry in
+`versa/metric_registry.py`. Add an installation hint for optional dependencies.
+`versa/__init__.py` exposes those symbols lazily. Discovery extracts metadata and
+aliases from source without importing backends; keep metadata constructors and
+alias lists statically readable (or extend the source parser for generated names).
+The scorer resolves the exact canonical name or alias to its module and calls only
+that module’s registration functions. Unknown names and unavailable dependencies
+fail for the selected metric without probing unrelated backends.
+
+Run `pytest -q test/test_metric_imports.py` when changing registration or discovery.
+Cover canonical names, aliases, and generated prompt names; tests must not download
+models. Explicit `create_populated_registry()` remains a bulk-import operation.
 
 If the metric returns a dict, make the output keys clear and stable. Numeric
 summary handling is inferred from numeric values in scorer output, while string

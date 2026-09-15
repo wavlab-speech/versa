@@ -101,21 +101,43 @@ def test_recommendation_values_and_header(task, device):
 
 
 def test_asr_match_dictionary_type_matches_runtime_and_discovery():
-    """Expose the multi-field ASR result in dictionary-filtered metric listings."""
+    """Execute ASR metadata/registration definitions without its inference imports."""
     from versa.definition import MetricType
-    from versa.utterance_metrics.asr_matching import (
-        ASRMatchMetric,
-        register_asr_match_metric,
-    )
 
-    registry = MetricRegistry()
-    register_asr_match_metric(registry)
-    assert registry.list_metrics(metric_type=MetricType.DICT) == ["asr_match"]
-    assert registry.list_metrics(metric_type=MetricType.FLOAT) == []
-    metric = object.__new__(ASRMatchMetric)
-    assert metric.get_metadata() == registry.get_metadata("asr_match")
     path = (
         Path(__file__).resolve().parents[2] / "versa/utterance_metrics/asr_matching.py"
     )
+    tree = ast.parse(path.read_text(encoding="utf-8"))
+    metric_class = next(
+        node
+        for node in tree.body
+        if isinstance(node, ast.ClassDef) and node.name == "ASRMatchMetric"
+    )
+    method = next(
+        node
+        for node in metric_class.body
+        if isinstance(node, ast.FunctionDef) and node.name == "get_metadata"
+    )
+    register = next(
+        node
+        for node in tree.body
+        if isinstance(node, ast.FunctionDef)
+        and node.name == "register_asr_match_metric"
+    )
+    namespace = vars(metric_metadata).copy()
+    namespace["ASRMatchMetric"] = type("ASRMatchMetric", (), {})
+    exec(
+        compile(
+            ast.Module(body=[method, register], type_ignores=[]), str(path), "exec"
+        ),
+        namespace,
+    )
+    namespace["ASRMatchMetric"].get_metadata = namespace["get_metadata"]
+    registry = MetricRegistry()
+    namespace["register_asr_match_metric"](registry)
+    assert registry.list_metrics(metric_type=MetricType.DICT) == ["asr_match"]
+    assert registry.list_metrics(metric_type=MetricType.FLOAT) == []
+    metric = namespace["ASRMatchMetric"]()
+    assert metric.get_metadata() == registry.get_metadata("asr_match")
     discovered = dict((item.name, item) for item, _ in _discover_module_metadata(path))
     assert discovered["asr_match"].metric_type == MetricType.DICT
