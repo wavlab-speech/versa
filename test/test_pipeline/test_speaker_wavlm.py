@@ -16,10 +16,17 @@ RUN_REAL_MODEL_TESTS = os.environ.get("VERSA_RUN_REAL_MODEL_TESTS") == "1"
 
 
 def _load_wavlm_speaker_config():
+    """Load the example, optionally selecting the CI-prepared immutable snapshot."""
     with open(
         "egs/separate_metrics/spk_similarity_wavlm.yaml", "r", encoding="utf-8"
     ) as f:
-        return yaml.safe_load(f)
+        config = yaml.safe_load(f)
+    model_path = os.environ.get("VERSA_WAVLM_MODEL_PATH")
+    if model_path:
+        for metric in config:
+            metric["model_tag"] = model_path
+            metric["backend"] = "huggingface"
+    return config
 
 
 def _sample_files():
@@ -38,7 +45,7 @@ def _sample_files():
 @pytest.mark.skipif(
     not is_transformers_available(), reason="Transformers not available"
 )
-def test_speaker_wavlm_pipeline_with_real_model():
+def test_speaker_wavlm_pipeline_with_real_model(record_testsuite_property):
     """Run the WavLM speaker backend through the registry/scorer path."""
     gen_files, gt_files = _sample_files()
     score_config = _load_wavlm_speaker_config()
@@ -63,6 +70,7 @@ def test_speaker_wavlm_pipeline_with_real_model():
     assert "spk_similarity" in summary
     assert math.isfinite(summary["spk_similarity"])
     assert -1.0 <= summary["spk_similarity"] <= 1.0
+    record_testsuite_property("spk_similarity", summary["spk_similarity"])
 
 
 if __name__ == "__main__":

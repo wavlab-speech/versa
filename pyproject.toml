@@ -135,6 +135,10 @@ versa-visualize = "versa.bin.visualize:main"
 
 [tool.setuptools.packages.find]
 include = ["versa*"]
+exclude = ["versa.corpus_metrics.test", "versa.corpus_metrics.test.*"]
+
+[tool.setuptools.exclude-package-data]
+"*" = ["test/*", "test/**/*"]
 
 [tool.black]
 line-length = 88

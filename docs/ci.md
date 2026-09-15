@@ -7,15 +7,17 @@ This document explains the CI/CD setup for the VERSA repository.
 The CI workflow is defined in `.github/workflows/ci.yml` and consists of several jobs:
 
 1. **Code Quality**: Checks code formatting with Black and linting with Flake8
-2. **Installation Tests**: Tests the lean package install across Python versions
-3. **Core Tests**: Runs dependency-light registry and scoring unit tests
+2. **Installation Tests**: Builds a wheel and tests a clean installation on Python
+   3.8–3.12, including the oldest declared supported version
+3. **Core Tests**: Runs the explicit base-dependency suite in
+   `ci/pytest-core.ini`, including registry/configuration, import isolation,
+   aggregation/reporting, mocked MAPSS, scorer entrypoints, and CPU workers
 4. **Docstring Coverage**: Runs pinned Interrogate and docstr-coverage package
    checks plus an AST-based function-only check, each with an 80% minimum
 
-Full metric tests are intentionally not part of the default CI path because many
-metrics require large models, Git dependencies, or external toolkits. Run those
-locally or in a dedicated real-model CI job with the required extras and
-environment variables.
+The independent `real-model-smoke.yml` workflow runs WavLM inference only after
+a manual dispatch with an explicit model commit SHA. It is not a required PR
+check. Other model-backed tests still need their own dependencies and assets.
 
 ## Running Tests Locally
 
@@ -50,6 +52,64 @@ pytest test/test_general.py
 pytest test/test_metrics/test_stoi.py
 pytest test/test_metrics/test_pesq.py
 ```
+
+The core lane installs only the base package and test extra. Its explicit file
+list avoids collecting the optional model suite. It uses real orchestration with
+small fake metrics and mocked backends; passing these checks is not numerical
+validation of MAPSS or a neural evaluator. The JUnit check rejects empty suites,
+skips, failures, and errors. CI retains the report as an artifact.
+
+Existing resume tests cover the current behavior, including metric-oriented
+recomputation. They do not establish R1's planned configuration-aware completion
+contract. Add the R1/R3 regression files to `ci/pytest-core.ini` as those features
+are implemented; add prompt-resource checks when the bank exists.
+
+### Installed-wheel checks
+
+CI builds a wheel instead of testing an editable install. Each Python-version job
+creates a fresh virtual environment, installs that wheel with its base
+dependencies, then runs `ci/check_installed_wheel.py` using `python -I` from outside
+the checkout. This verifies installed distribution/version identity, packaged
+source discovery, aliases and generated Qwen names, absence of backend imports
+in lightweight APIs, all three console scripts, and actual CSV/HTML output.
+It also rejects test fixtures accidentally included through repository symlinks.
+
+To reproduce, start from the repository root with a clean `build/` directory:
+
+```bash
+python -m pip wheel --no-deps --wheel-dir dist .
+python -m venv /tmp/versa-wheel-check
+/tmp/versa-wheel-check/bin/python -m pip install dist/*.whl
+VERSA_CHECK_SCRIPT="$PWD/ci/check_installed_wheel.py"
+cd /tmp
+HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1 \
+/tmp/versa-wheel-check/bin/python -I "$VERSA_CHECK_SCRIPT"
+```
+
+Run subsequent repository commands from the checkout again. The matrix tests
+base-package compatibility; optional model stacks may have narrower Python
+requirements. This does not change the package's declared support policy.
+
+### Optional pinned WavLM check
+
+Manually run **Optional WavLM model smoke** in GitHub Actions and supply a full
+40-character commit SHA from `microsoft/wavlm-base-sv`. Mutable branch names and
+short SHAs are rejected. The workflow:
+
+1. Installs the base/test dependencies and the selected Transformers backend.
+2. Downloads the requested snapshot into an explicit runner cache and records
+   its model ID, revision, local path, and dependency versions.
+3. Passes that local directory through `VERSA_WAVLM_MODEL_PATH`, then runs the
+   real speaker pipeline with Hugging Face network access disabled.
+4. Requires an executed, successful test with no skips, and retains the model
+   manifest, full dependency inventory, and JUnit result including the measured
+   speaker similarity.
+
+This check uses the small bundled WAV fixtures on CPU. It establishes model
+loading and finite output in the expected range, not benchmark accuracy or human
+agreement. It may download a large checkpoint during preparation; default CI
+never triggers it. Local real-model tests retain their example-config behavior
+unless `VERSA_WAVLM_MODEL_PATH` is explicitly set.
 
 ### Docstring Coverage
 
