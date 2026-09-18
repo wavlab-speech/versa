@@ -1,0 +1,4 @@
+# Install alongside .[external] from the repository root.
+# Keep fork dependencies out of distribution metadata: PyPI rejects direct URLs.
+discrete-speech-metrics @ git+https://github.com/ftshijt/DiscreteSpeechMetrics.git@v1.0.2
+espnet @ git+https://github.com/ftshijt/espnet.git@espnet_inference

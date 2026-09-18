@@ -21,6 +21,35 @@ check. Other model-backed tests still need their own dependencies and assets.
 
 ## Running Tests Locally
 
+### Package Validation
+
+The independent `.github/workflows/packaging.yml` workflow builds the sdist and
+then a wheel from that sdist on pushes and pull requests. It checks both artifacts
+with Twine and `ci/check_package_metadata.py`. The latter rejects direct URL
+dependencies in every `Requires-Dist` field, including extras and inactive
+environment markers, which `twine check` alone does not catch.
+
+```bash
+python -m pip install build twine packaging pytest
+python -m pytest -q test/test_package_metadata.py
+python -m build
+python -m twine check --strict dist/*
+python ci/check_package_metadata.py dist/*
+```
+
+Use a clean checkout/output directory when preparing a release so `dist/` contains
+only the intended version. Publish under the declared distribution name
+`versa-speech-audio-toolkit`; the Python import remains `versa`. After the checks
+pass, a maintainer with PyPI access can upload those same artifacts using
+`python -m twine upload dist/*`. Building and validating does not publish a release.
+
+The ESPnet and discrete-speech forks remain in
+`tools/requirements-external.txt`, included in the sdist, and must be installed
+separately alongside the `external` extra. Do not put Git references back into
+package extras: they prevent upload of the entire distribution. Replacing these
+forks with index dependencies requires publishing the forks or verifying upstream
+compatibility first.
+
 Before pushing your changes, you can run the same checks locally:
 
 ### Code Quality
