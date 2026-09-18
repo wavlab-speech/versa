@@ -21,6 +21,44 @@ check. Other model-backed tests still need their own dependencies and assets.
 
 ## Running Tests Locally
 
+### Package Validation
+
+The independent `.github/workflows/packaging.yml` workflow builds the sdist and
+then a wheel from that sdist on pushes and pull requests. It checks both artifacts
+with Twine and `ci/check_package_metadata.py`. The latter rejects direct URL
+dependencies in every `Requires-Dist` field, including extras and inactive
+environment markers, which `twine check` alone does not catch.
+
+```bash
+python -m pip install build twine packaging pytest
+python -m pytest -q test/test_package_metadata.py
+python -m build
+python -m twine check --strict dist/*
+python ci/check_package_metadata.py dist/*
+```
+
+Use a clean checkout/output directory when preparing a release so `dist/` contains
+only the intended version. Publish under the declared distribution name
+`versa-speech-audio-toolkit`; the Python import remains `versa`. After the checks
+pass, a maintainer with PyPI access can upload those same artifacts using
+`python -m twine upload dist/*`. Building and validating does not publish a release.
+
+The discrete-speech fork remains in `tools/requirements-external.txt`, included
+in the sdist, and is installed separately alongside the `external` extra.
+
+**Current release blocker:** ESPnet remains a declared dependency in the existing
+`external` extra, pinned to commit `00275004934c5c0aeed8e1765ab32fca4a693d34`
+of the inference fork. Moving it into a manual installation step would break the
+existing setup. Consequently, the direct-reference guard currently fails on the
+ESPnet requirement and these artifacts must not be uploaded to PyPI.
+
+Keep this packaging change in draft until the separate ESPnet work lands the
+required Uni-VERSA and Arecho changes and a compatible release is available.
+Then replace the Git requirement with the verified PyPI version constraint,
+validate the affected backends, and rerun the packaging checks. The guard must
+continue rejecting all direct references; pinning a Git commit does not make it
+acceptable to PyPI.
+
 Before pushing your changes, you can run the same checks locally:
 
 ### Code Quality

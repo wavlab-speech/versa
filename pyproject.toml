@@ -111,12 +111,12 @@ ml = [
 external = [
     "Cython",
     "cdpam",
-    "discrete-speech-metrics @ git+https://github.com/ftshijt/DiscreteSpeechMetrics.git@v1.0.2",
-    "espnet @ git+https://github.com/ftshijt/espnet.git@espnet_inference",
+    # Keep the inference fork installed automatically until its APIs are released.
+    "espnet @ git+https://github.com/ftshijt/espnet.git@00275004934c5c0aeed8e1765ab32fca4a693d34",
     "espnet-tts-frontend",
     "espnet_model_zoo",
     "kaggle",
-    "openai-whisper @ git+https://github.com/openai/whisper.git",
+    "openai-whisper",
     "s3prl",
     "torch-complex",
 ]
