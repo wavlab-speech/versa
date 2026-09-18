@@ -51,16 +51,15 @@ external toolkits:
 ```bash
 pip install ".[audio,text,ml]"
 pip install ".[songeval]" # SongEval Python dependencies only
-pip install ".[external]"  # PyPI-hosted optional toolkits
-pip install -r tools/requirements-external.txt  # ESPnet and discrete-speech forks
+pip install ".[external]"  # Optional toolkits, including the ESPnet inference fork
+pip install -r tools/requirements-external.txt  # Discrete-speech fork
 pip install ".[dev]"       # tests, linting, and formatting
 ```
 
-The `external` extra uses PyPI dependencies. Metrics that use ESPnet (including
-the ESPnet text cleaners) or discrete-speech metrics also need the forks listed
-in `tools/requirements-external.txt`. Install both commands above for those
-backends. Git dependencies are kept outside package metadata so VERSA can be
-published to PyPI.
+The `external` extra installs the pinned ESPnet inference fork automatically.
+Discrete-speech metrics additionally need `tools/requirements-external.txt`.
+PyPI publication is pending a compatible ESPnet release containing the required
+Uni-VERSA and Arecho changes; the fork remains a declared dependency until then.
 
 or alternatively, without cloning:
 

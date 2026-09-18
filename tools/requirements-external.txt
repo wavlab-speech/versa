@@ -1,4 +1,3 @@
 # Install alongside .[external] from the repository root.
-# Keep fork dependencies out of distribution metadata: PyPI rejects direct URLs.
+# Discrete-speech fork only; ESPnet remains a declared dependency in .[external].
 discrete-speech-metrics @ git+https://github.com/ftshijt/DiscreteSpeechMetrics.git@v1.0.2
-espnet @ git+https://github.com/ftshijt/espnet.git@espnet_inference
