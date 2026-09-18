@@ -3,6 +3,8 @@
 import importlib
 import logging
 from dataclasses import dataclass
+from functools import lru_cache
+from pathlib import Path
 from typing import Any, Dict, Iterable, Optional
 
 from versa.definition import MetricRegistry
@@ -312,27 +314,54 @@ def register_metric_for_config(
     metric_name: str,
     logger: Optional[logging.Logger] = None,
 ) -> None:
-    """Import the best matching runtime module for one configured metric."""
+    """Register only the selected backend, preserving source-discovered aliases.
+
+    Raise ValueError for unknown names and ImportError with installation guidance
+    for unavailable backends. Already registered concrete metrics are untouched.
+    """
     if _has_concrete_metric(registry, metric_name):
         return
+    spec = _metric_specs_by_name().get(metric_name)
+    if spec is None:
+        raise ValueError(f"No runtime module registered for metric {metric_name!r}")
+    try:
+        module = importlib.import_module(spec.module_name)
+    except ImportError as exc:
+        hint = spec.install_hint or (
+            "Install the selected metric's dependencies listed by --describe-metric "
+            f"{metric_name} and retry"
+        )
+        raise ImportError(
+            f"Cannot load metric {metric_name!r} from {spec.module_name}: {exc}. {hint}"
+        ) from exc
+    for symbol in spec.symbols:
+        if symbol.startswith("register_") and symbol.endswith("_metric"):
+            getattr(module, symbol)(registry)
+    if not _has_concrete_metric(registry, metric_name):
+        raise ValueError(
+            f"Module {spec.module_name} did not register metric {metric_name!r}"
+        )
 
-    log = logger or logging.getLogger(__name__)
-    for spec in sorted(
-        METRIC_MODULES, key=lambda item: _metric_spec_score(metric_name, item)
-    ):
-        module = _try_import_metric_module(spec, logger=log)
-        if module is None:
-            continue
-        for symbol in spec.symbols:
-            if not symbol.startswith("register_") or not symbol.endswith("_metric"):
-                continue
-            register_fn = getattr(module, symbol)
-            try:
-                register_fn(registry)
-            except Exception as exc:
-                log.warning("Failed to register metric via %s: %s", symbol, exc)
-        if _has_concrete_metric(registry, metric_name):
-            return
+
+@lru_cache(maxsize=1)
+def _metric_specs_by_name() -> Dict[str, MetricModuleSpec]:
+    """Index canonical names and aliases from packaged source without backend imports."""
+    from versa.metric_discovery import _discover_module_metadata
+
+    package_root = Path(__file__).resolve().parent
+    specs = {}
+    for spec in METRIC_MODULES:
+        path = package_root.joinpath(*spec.module_name.split(".")[1:]).with_suffix(
+            ".py"
+        )
+        for metadata, aliases in _discover_module_metadata(path):
+            for name in [metadata.name, *aliases]:
+                if name in specs and specs[name] != spec:
+                    raise ValueError(
+                        f"Metric name {name!r} belongs to multiple modules"
+                    )
+                specs[name] = spec
+    return specs
 
 
 def _has_concrete_metric(registry: MetricRegistry, metric_name: str) -> bool:
@@ -341,34 +370,6 @@ def _has_concrete_metric(registry: MetricRegistry, metric_name: str) -> bool:
     if metric_class is None:
         return False
     return hasattr(metric_class, "compute") and hasattr(metric_class, "get_metadata")
-
-
-def _metric_spec_score(metric_name: str, spec: MetricModuleSpec) -> int:
-    """Rank likely module or symbol name matches ahead of unrelated metric modules."""
-    query = _normalize_metric_name(metric_name)
-    module_tail = _normalize_metric_name(spec.module_name.rsplit(".", 1)[-1])
-    symbol_tails = [
-        _normalize_metric_name(_strip_symbol_affixes(symbol)) for symbol in spec.symbols
-    ]
-    if query == module_tail or module_tail in query or query in module_tail:
-        return 0
-    if any(query == tail or tail in query or query in tail for tail in symbol_tails):
-        return 0
-    return 1
-
-
-def _normalize_metric_name(value: str) -> str:
-    """Lowercase a metric identifier and remove non-alphanumeric characters."""
-    return "".join(character for character in value.lower() if character.isalnum())
-
-
-def _strip_symbol_affixes(symbol: str) -> str:
-    """Remove registry-function affixes to recover a candidate metric identifier."""
-    if symbol.startswith("register_"):
-        symbol = symbol[len("register_") :]
-    if symbol.endswith("_metric"):
-        symbol = symbol[: -len("_metric")]
-    return symbol
 
 
 def _try_import_metric_module(

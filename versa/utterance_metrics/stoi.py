@@ -4,6 +4,7 @@
 #  Apache 2.0  (http://www.apache.org/licenses/LICENSE-2.0)
 
 """Standard and extended short-time objective intelligibility scoring."""
+
 import numpy as np
 
 try:
@@ -11,7 +12,8 @@ try:
 except ImportError:
     raise ImportError("Please install pystoi and retry: pip install stoi")
 
-from versa.definition import BaseMetric, MetricCategory, MetricMetadata, MetricType
+from versa.definition import BaseMetric
+from versa.metric_metadata import _stoi_metadata
 
 
 def stoi_metric(pred_x, gt_x, fs):
@@ -75,29 +77,6 @@ class EstoiMetric(StoiMetric):
         """Default to extended STOI unless the configuration explicitly disables it."""
         self.extended = self.config.get("extended", True)
         self.output_key = "estoi" if self.extended else "stoi"
-
-
-def _stoi_metadata(name, extended):
-    """Return registry metadata describing stoi inputs and dependencies."""
-    label = "ESTOI" if extended else "STOI"
-    description = (
-        "Extended Short-Time Objective Intelligibility"
-        if extended
-        else "Short-Time Objective Intelligibility"
-    )
-    return MetricMetadata(
-        name=name,
-        category=MetricCategory.DEPENDENT,
-        metric_type=MetricType.FLOAT,
-        requires_reference=True,
-        requires_text=False,
-        gpu_compatible=False,
-        auto_install=False,
-        dependencies=["pystoi", "numpy"],
-        description=f"{label}: {description}",
-        paper_reference="https://doi.org/10.1109/TASL.2010.2045551",
-        implementation_source="https://github.com/mpariente/pystoi",
-    )
 
 
 def register_stoi_metric(registry):
