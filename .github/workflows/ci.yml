@@ -58,8 +58,8 @@ jobs:
       
     - name: Lint with flake8
       run: |
-        flake8 versa scripts test setup.py --count --select=E9,F63,F7,F82 --show-source --statistics
-        flake8 versa scripts test setup.py --count --exit-zero --max-line-length=127 --statistics
+        flake8 versa scripts test ci setup.py --count --select=E9,F63,F7,F82 --show-source --statistics
+        flake8 versa scripts test ci setup.py --count --exit-zero --max-line-length=127 --statistics
 
   install-tests:
     needs: code-quality
@@ -67,7 +67,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version: ['3.9', '3.10', '3.11', '3.12']
+        python-version: ['3.8', '3.9', '3.10', '3.11', '3.12']
     
     steps:
     - uses: actions/checkout@v7
@@ -82,12 +82,18 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install pytest
-        pip install -e .
-        
-    - name: Test installation
+        python -m pip wheel --no-deps --wheel-dir dist .
+        python -m venv "$RUNNER_TEMP/versa-wheel-env"
+        "$RUNNER_TEMP/versa-wheel-env/bin/python" -m pip install --upgrade pip
+        "$RUNNER_TEMP/versa-wheel-env/bin/python" -m pip install dist/*.whl
+
+    - name: Test the installed wheel outside the checkout
+      working-directory: ${{ runner.temp }}
+      env:
+        HF_HUB_OFFLINE: '1'
+        TRANSFORMERS_OFFLINE: '1'
       run: |
-        python -c "import versa; print(versa.__version__)"
+        "$RUNNER_TEMP/versa-wheel-env/bin/python" -I "$GITHUB_WORKSPACE/ci/check_installed_wheel.py"
 
   core-tests:
     needs: install-tests
@@ -107,6 +113,19 @@ jobs:
         python -m pip install --upgrade pip
         pip install -e .[test]
         
-    - name: Run core tests
+    - name: Run core and mocked pipeline tests
+      env:
+        HF_HUB_OFFLINE: '1'
+        TRANSFORMERS_OFFLINE: '1'
+        VERSA_RUN_REAL_MODEL_TESTS: '0'
       run: |
-        pytest -q test/test_metrics/test_definition.py test/test_metric_imports.py test/test_docstring_check.py test/test_slurm_launcher.py test/test_aggregate_results.py test/test_result_summary.py test/test_reporting.py
+        python -m pytest -c ci/pytest-core.ini --rootdir=. -q --junitxml=core-results.xml
+        python ci/check_test_report.py core-results.xml
+
+    - name: Preserve core test results
+      if: ${{ !cancelled() }}
+      uses: actions/upload-artifact@v4
+      with:
+        name: core-test-results
+        path: core-results.xml
+        if-no-files-found: error
