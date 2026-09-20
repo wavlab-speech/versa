@@ -266,3 +266,37 @@ def test_run_status_without_failures_is_complete():
     status.record_load(1, 1)
 
     assert not status.has_failures
+
+
+def test_merge_changed_inputs_invalidates_metrics_not_yet_recomputed():
+    """A partial rerun cannot certify old scores under its new input identity."""
+    existing = {"key": "utt", "a": 1.0, "b": 2.0}
+    ensure_completion(existing, "old-inputs")
+    record_metric_status(existing, "a", "sig-a", STATUS_SUCCESS, ["a"])
+    record_metric_status(existing, "b", "sig-b", STATUS_SUCCESS, ["b"])
+    original = json.loads(json.dumps(existing))
+    fresh = {"key": "utt", "a": 3.0}
+    ensure_completion(fresh, "new-inputs")
+    record_metric_status(fresh, "a", "sig-a", STATUS_SUCCESS, ["a"])
+
+    merged = merge_rows(existing, fresh)
+
+    assert merged["a"] == 3.0
+    assert "b" not in merged
+    assert pending_metrics(merged, {"a": "sig-a", "b": "sig-b"}, "new-inputs") == ["b"]
+    assert existing == original
+
+
+def test_run_status_filters_historical_metric_failures():
+    """Only failures of currently requested metrics affect strict completion."""
+    row = {"key": "utt"}
+    record_metric_status(row, "a", "sig-a", STATUS_SUCCESS)
+    record_metric_status(row, "removed", "sig-b", STATUS_FAILED, error="old failure")
+    status = RunStatus()
+    status.record_row(row, resumed=True, metric_names={"a"})
+    assert status.resumed_utterances == 1
+    assert status.metric_status_counts[STATUS_SUCCESS] == 1
+    assert not status.metric_error_counts
+    assert not status.has_failures
+    status.record_row(row, resumed=True, metric_names={"removed"})
+    assert status.has_failures
