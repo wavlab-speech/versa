@@ -6,6 +6,7 @@ model backend or a VERSA metric module.
 """
 
 import difflib
+from collections.abc import Hashable
 from dataclasses import dataclass
 from types import MappingProxyType
 from typing import Mapping, Tuple
@@ -43,6 +44,13 @@ def _construct_unique_mapping(loader, node, deep=False):
     mapping = {}
     for key_node, value_node in node.value:
         key = loader.construct_object(key_node, deep=deep)
+        if not isinstance(key, Hashable):
+            raise yaml.constructor.ConstructorError(
+                "while constructing a mapping",
+                node.start_mark,
+                "found unhashable key",
+                key_node.start_mark,
+            )
         if key in mapping:
             raise yaml.constructor.ConstructorError(
                 "while constructing a mapping",

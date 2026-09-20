@@ -873,6 +873,36 @@ def test_non_finite_schema_bounds_are_rejected(contract, message):
     assert any(message in entry for entry in messages), messages
 
 
+def test_unbounded_integers_do_not_crash_validation():
+    """A huge integer is finite; converting it to float would raise OverflowError."""
+    huge = "1" + "0" * 400
+    contract = get_protocol("interaction.turn_taking.v1").response_contract
+    response = (
+        '{{"score": {}, "evidence": [], "disruptions": [],'
+        ' "confidence": 0.5, "abstain": false}}'
+    ).format(huge)
+    assert validate_response(response, contract) == [
+        "field 'score' is above the declared maximum"
+    ]
+    protocol = _base_protocol()
+    protocol["response_contract"] = {
+        "mode": "integer",
+        "minimum": 0,
+        "maximum": int(huge),
+    }
+    protocol["protocol"] = {"zero_shot": "Count something in the audio."}
+    bank = _build(protocol)
+    assert bank.protocols[0].response_contract.maximum == int(huge)
+    assert validate_response(huge, bank.protocols[0].response_contract) == []
+
+
+def test_unhashable_yaml_keys_are_reported_not_raised():
+    """A sequence key must fail as a validation error, not a TypeError."""
+    document = "schema_version: 1\nprotocols:\n  - id: x\n    ? [a, b]\n    : oops\n"
+    with pytest.raises(BankValidationError, match="unhashable key"):
+        build_bank([(MANIFEST_NAME, ""), ("unhashable.yaml", document)])
+
+
 def test_duplicate_yaml_keys_are_rejected():
     """A repeated key would discard evaluation logic before validation sees it."""
     document = """

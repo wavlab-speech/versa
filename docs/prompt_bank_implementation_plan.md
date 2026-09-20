@@ -152,10 +152,12 @@ what the code does.
 
 ### Rendering
 
-- `few_shot_text` renders the demonstrations followed by the `template` body.
-  It does not also render `zero_shot`, so each protocol's few-shot template
-  restates the task in full. Benchmarking still reports the two modes
-  separately.
+- `few_shot_text` renders the zero-shot body, then the demonstrations, then the
+  `template` body as a closing instruction, so both modes judge against an
+  identical rubric. See
+  [the review corrections](#corrections-made-during-review-of-the-foundation)
+  for why the demonstrations do not replace the rubric. Benchmarking still
+  reports the two modes separately.
 - Every protocol must define `zero_shot`, including a pairwise protocol, whose
   `pairwise` body adds candidate naming. A `pairwise` body requires the pairwise
   response contract and two audio inputs, and two audio inputs require the

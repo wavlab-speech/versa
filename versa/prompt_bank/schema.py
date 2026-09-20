@@ -282,12 +282,17 @@ class NonFiniteJsonError(ValueError):
 
 
 def is_finite_number(value):
-    """Report whether a value is a real, finite number and not a boolean."""
-    return (
-        isinstance(value, (int, float))
-        and not isinstance(value, bool)
-        and math.isfinite(value)
-    )
+    """Report whether a value is a real, finite number and not a boolean.
+
+    Python integers have unbounded range and are always finite. They are never
+    passed to :func:`math.isfinite`, which would convert them to float and raise
+    ``OverflowError`` for a large literal.
+    """
+    if isinstance(value, bool):
+        return False
+    if isinstance(value, int):
+        return True
+    return isinstance(value, float) and math.isfinite(value)
 
 
 def _reject_json_constant(name):
@@ -1046,7 +1051,7 @@ def validate_response(text, contract):
             number = float(value)
         except ValueError:
             return ["must be a single number"]
-        if not math.isfinite(number):
+        if not is_finite_number(number):
             return ["must be a finite number"]
         if not contract.minimum <= number <= contract.maximum:
             return [
