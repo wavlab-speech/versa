@@ -1,0 +1,8 @@
+# Authoritative, ordered index of the bundled Prompt Bank protocol files.
+# Validation rejects a missing file, a repeated entry, and any protocol YAML
+# file in this package that is not listed here.
+schema_version: 1
+files:
+  - speech_understanding.yaml
+  - generation_alignment.yaml
+  - interaction.yaml

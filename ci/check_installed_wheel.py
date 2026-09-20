@@ -15,6 +15,7 @@ def main():
     import versa
     from versa.metric_discovery import create_metric_discovery_registry
     from versa.metric_registry import _metric_specs_by_name
+    from versa.prompt_bank import list_protocols, render_protocol, validate_bank
     from versa.reporting import analyze_records
 
     dist = distribution("versa-speech-audio-toolkit")
@@ -30,6 +31,12 @@ def main():
     assert any(name.startswith("qwen2_audio_") for name in names)
     assert any(name.startswith("qwen_omni_") for name in names)
     assert names <= _metric_specs_by_name().keys()
+    bank = validate_bank()
+    assert Path(bank.protocols[0].source_file).suffix == ".yaml"
+    assert len(list_protocols()) == len(bank.protocols) >= 8
+    rendered = render_protocol("speech.emotion.v1")
+    assert rendered.text.endswith("\n") and "unclear" in rendered.text
+    assert rendered.bank_schema_version == bank.schema_version
     rows = [{"key": "one", "smoke_score": 1.0}, {"key": "two", "smoke_score": 3.0}]
     assert analyze_records(rows)
     forbidden = {"torch", "torchaudio", "transformers"} & sys.modules.keys()
@@ -85,7 +92,8 @@ def main():
         run("versa-visualize", str(source), "--out", "report.html")
         assert "smoke_score" in Path("report.html").read_text(encoding="utf-8")
     print(
-        f"Installed wheel {dist.version}: {len(names)} metric names/aliases, all CLIs and reports passed"
+        f"Installed wheel {dist.version}: {len(names)} metric names/aliases, "
+        f"{len(bank.protocols)} prompt-bank protocols, all CLIs and reports passed"
     )
 
 

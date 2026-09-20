@@ -1,0 +1,260 @@
+# Speech understanding protocols: one audio input, no reference signal.
+schema_version: 1
+protocols:
+  - id: speech.emotion.v1
+    version: 1
+    title: Dominant speech emotion
+    status: experimental
+    domain: speech
+    task: emotion_classification
+    description: >-
+      Identify the dominant perceived emotion of spoken audio from audible
+      delivery alone, without a reference signal or transcript.
+    input_contract:
+      audio_inputs: 1
+      requires_target_instruction: false
+      requires_reference_audio: false
+      requires_reference_text: false
+    response_contract:
+      mode: closed_label
+      labels: [neutral, happy, sad, angry, fearful, surprised, disgusted, other]
+      allow_abstain: true
+      abstain_label: unclear
+    protocol:
+      zero_shot: |
+        Listen to the audio and identify the dominant perceived emotion of the speech. Judge only from audible delivery: pitch contour, loudness, tempo, and voice quality. Do not infer the emotion from assumed speaker identity or from the literal meaning of the words.
+        Label guide:
+        - neutral: even-toned delivery with little emotional colouring
+        - happy: bright, energetic, positively toned delivery
+        - sad: subdued, low-energy, downward-inflected delivery
+        - angry: tense, forceful, sharply articulated delivery
+        - fearful: unsteady, breathy, constricted delivery
+        - surprised: abrupt pitch rise with sudden energy change
+        - disgusted: recoiling, nasalised, heavily stressed delivery
+        - other: an emotion that none of the labels above describes
+      few_shot_text:
+        examples:
+          - input: >-
+              Audible evidence: level pitch, steady pace, even loudness, no
+              marked stress.
+            output: neutral
+          - input: >-
+              Audible evidence: raised loudness, clipped consonants, tense and
+              forceful phrasing.
+            output: angry
+          - input: >-
+              Audible evidence: lowered pitch, slow pace, reduced energy,
+              falling intonation at phrase ends.
+            output: sad
+        template: |
+          Each example above states audible evidence and the label that evidence supports. Use the same standard for the audio you are given: identify the dominant perceived emotion of the speech from pitch contour, loudness, tempo, and voice quality only, and not from assumed speaker identity or from the literal meaning of the words.
+    provenance:
+      sources:
+        - https://github.com/wavlab-speech/versa
+      rationale: >-
+        Adapted from the existing VERSA Qwen speech_emotion default prompt. The
+        label set is restated as an explicit closed-label response contract with
+        an abstention label, which the free-text default prompt lacked.
+    model_compatibility:
+      - family: qwen2_audio
+        status: expected
+      - family: qwen2_5_omni
+        status: expected
+    runner_compatibility:
+      - runner: qwen2_audio
+        status: planned
+        modes: [zero_shot, few_shot_text]
+      - runner: qwen_omni
+        status: planned
+        modes: [zero_shot, few_shot_text]
+    metric_links:
+      - metric: emo_vad
+        role: companion
+      - metric: emotion
+        role: companion
+
+  - id: speech.recording_quality.v1
+    version: 1
+    title: Technical recording quality of speech
+    status: experimental
+    domain: speech
+    task: recording_quality_classification
+    description: >-
+      Rate the technical quality of a speech recording on an ordered five-point
+      label scale, separately from how well the content is delivered.
+    input_contract:
+      audio_inputs: 1
+      requires_target_instruction: false
+      requires_reference_audio: false
+      requires_reference_text: false
+    response_contract:
+      mode: closed_label
+      labels: [professional, good, fair, poor, very_poor]
+      allow_abstain: true
+      abstain_label: unclear
+    protocol:
+      zero_shot: |
+        Listen to the audio and rate the technical quality of the recording. Judge capture quality only: background noise, reverberation, clipping, bandwidth limitation, dropouts, and coding artefacts. Do not rate the speaker's delivery, accent, or the interest of the content.
+        Label guide:
+        - professional: studio-clean capture with no audible defect
+        - good: clear capture with only slight noise or reverberation
+        - fair: audible defects that do not prevent comfortable listening
+        - poor: strong defects that make listening effortful
+        - very_poor: severe defects that make parts of the speech unusable
+      few_shot_text:
+        examples:
+          - input: >-
+              Audible evidence: silent background, full bandwidth, no
+              reverberation, stable level.
+            output: professional
+          - input: >-
+              Audible evidence: steady low-level hiss and light room
+              reverberation, speech otherwise clear throughout.
+            output: fair
+          - input: >-
+              Audible evidence: loud broadband noise, repeated clipping, and two
+              dropouts that remove syllables.
+            output: very_poor
+        template: |
+          Each example above states audible evidence and the recording-quality label that evidence supports. Rate the audio you are given on the same scale, judging capture quality only: background noise, reverberation, clipping, bandwidth limitation, dropouts, and coding artefacts. Do not rate the speaker's delivery or the content.
+    provenance:
+      sources:
+        - https://github.com/wavlab-speech/versa
+      rationale: >-
+        Adapted from the existing VERSA Qwen recording_quality default prompt.
+        Companion metric links let a judged label be read next to the
+        established non-intrusive quality predictors.
+    model_compatibility:
+      - family: qwen2_audio
+        status: expected
+      - family: qwen2_5_omni
+        status: expected
+    runner_compatibility:
+      - runner: qwen2_audio
+        status: planned
+        modes: [zero_shot, few_shot_text]
+      - runner: qwen_omni
+        status: planned
+        modes: [zero_shot, few_shot_text]
+    metric_links:
+      - metric: dnsmos
+        role: companion
+      - metric: utmos
+        role: companion
+      - metric: nisqa
+        role: companion
+      - metric: srmr
+        role: diagnostic
+
+  - id: speech.speaker_count.v1
+    version: 1
+    title: Number of distinct speakers
+    status: experimental
+    domain: speech
+    task: speaker_counting
+    description: >-
+      Count the distinct speakers audible in one recording and return the count
+      as a bounded integer rather than as free text.
+    input_contract:
+      audio_inputs: 1
+      requires_target_instruction: false
+      requires_reference_audio: false
+      requires_reference_text: false
+    response_contract:
+      mode: integer
+      minimum: 0
+      maximum: 10
+      allow_abstain: true
+      abstain_label: unclear
+    protocol:
+      zero_shot: |
+        Listen to the audio and count the distinct speakers you can hear. Count a speaker once however often they speak, and count only human voices that produce speech. Do not count background voices that are part of an ambience and cannot be followed, and do not count singing or non-speech vocal sounds. Answer 0 when the recording contains no speech, and 10 when more distinct speakers than that are audible.
+    provenance:
+      sources:
+        - https://github.com/wavlab-speech/versa
+      rationale: >-
+        Adapted from the existing VERSA Qwen speaker_count default prompt. The
+        bounded integer contract replaces the informal "single number between
+        1-10" instruction and adds an explicit zero-speech case.
+    model_compatibility:
+      - family: qwen2_audio
+        status: expected
+      - family: qwen2_5_omni
+        status: expected
+    runner_compatibility:
+      - runner: qwen2_audio
+        status: planned
+        modes: [zero_shot]
+      - runner: qwen_omni
+        status: planned
+        modes: [zero_shot]
+    metric_links:
+      - metric: speaking_rate
+        role: diagnostic
+
+  - id: speech.overlap.v1
+    version: 1
+    title: Overlapping speech in a recording
+    status: experimental
+    domain: speech
+    task: overlap_classification
+    description: >-
+      Judge how much simultaneous speech a recording contains, as an ordered
+      label rather than a timestamped segmentation.
+    input_contract:
+      audio_inputs: 1
+      requires_target_instruction: false
+      requires_reference_audio: false
+      requires_reference_text: false
+    response_contract:
+      mode: closed_label
+      labels: [none, minimal, moderate, significant, constant]
+      allow_abstain: true
+      abstain_label: unclear
+    protocol:
+      zero_shot: |
+        Listen to the audio and judge how much of it contains two or more people speaking at the same time. Judge only simultaneous speech; back-channel sounds such as a brief "mm-hm" over a pause do not count, and neither does background media or ambience.
+        Label guide:
+        - none: speakers take turns cleanly, or only one speaker is present
+        - minimal: a few brief overlaps at turn boundaries
+        - moderate: repeated overlaps that are still easy to follow
+        - significant: frequent overlaps that make following the speech hard
+        - constant: simultaneous speech through most of the recording
+      few_shot_text:
+        examples:
+          - input: >-
+              Audible evidence: two speakers alternate with clear pauses between
+              turns and never start before the other finishes.
+            output: none
+          - input: >-
+              Audible evidence: speakers begin before the previous turn ends at
+              several turn boundaries, each overlap under a second.
+            output: minimal
+          - input: >-
+              Audible evidence: three voices speak together through most of the
+              recording and individual words are rarely separable.
+            output: constant
+        template: |
+          Each example above states audible evidence and the overlap label that evidence supports. Judge the audio you are given on the same scale by how much of it contains two or more people speaking simultaneously. Back-channel sounds over a pause, background media, and ambience do not count as overlap.
+    provenance:
+      sources:
+        - https://github.com/wavlab-speech/versa
+      rationale: >-
+        Adapted from the existing VERSA Qwen overlapping_speech default prompt.
+        This protocol reports a coarse amount of overlap; it is not a substitute
+        for diarization or for a timestamped overlap detector.
+    model_compatibility:
+      - family: qwen2_audio
+        status: expected
+      - family: qwen2_5_omni
+        status: expected
+    runner_compatibility:
+      - runner: qwen2_audio
+        status: planned
+        modes: [zero_shot, few_shot_text]
+      - runner: qwen_omni
+        status: planned
+        modes: [zero_shot, few_shot_text]
+    metric_links:
+      - metric: vad
+        role: diagnostic

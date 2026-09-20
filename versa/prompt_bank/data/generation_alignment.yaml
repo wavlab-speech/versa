@@ -1,0 +1,197 @@
+# Caption and generation alignment protocols with structured responses.
+schema_version: 1
+protocols:
+  - id: audio.caption_accuracy.v1
+    version: 1
+    title: Accuracy of an audio caption
+    status: experimental
+    domain: general_audio
+    task: caption_accuracy
+    description: >-
+      Judge how accurately a written caption describes one audio recording, and
+      name the unsupported and missing details that justify the rating.
+    input_contract:
+      audio_inputs: 1
+      requires_target_instruction: false
+      requires_reference_audio: false
+      requires_reference_text: true
+    response_contract:
+      mode: json
+      fields:
+        accuracy: {type: integer, minimum: 1, maximum: 5, required: true}
+        unsupported_details: {type: array, items: string, required: true}
+        missing_details: {type: array, items: string, required: true}
+        confidence: {type: number, minimum: 0, maximum: 1, required: true}
+        abstain: {type: boolean, required: true}
+      primary_numeric_field: accuracy
+      output_key: prompt_audio_caption_accuracy
+    protocol:
+      zero_shot: |
+        Listen to the audio and judge how accurately the caption below describes it.
+
+        Caption: {reference_text}
+
+        Rate accuracy from 1 to 5:
+        - 5: every stated detail is audible and nothing prominent is missing
+        - 4: all stated details are audible, a prominent detail is missing
+        - 3: a minor stated detail is not audible, or several are missing
+        - 2: a central stated detail is not audible
+        - 1: the caption describes different audio
+
+        List in unsupported_details each caption claim you cannot hear, and in missing_details each prominent audible event the caption omits. Keep every entry to a short phrase describing what is audible. Set abstain to true when the recording is too unclear to judge; then use accuracy 1, confidence 0, and leave both lists empty.
+    provenance:
+      sources:
+        - https://github.com/wavlab-speech/versa
+      rationale: >-
+        Covers caption judging with a hallucination-aware response contract: the
+        unsupported and missing detail lists make the rating auditable instead
+        of asking for hidden reasoning.
+    model_compatibility:
+      - family: qwen2_audio
+
+        status: expected
+        rendering_notes: >-
+          The caption is rendered inside the instruction text; the wrapper
+          supplies exactly one audio input.
+      - family: qwen2_5_omni
+
+        status: expected
+    runner_compatibility:
+      - runner: qwen2_audio
+
+        status: planned
+        modes: [zero_shot]
+      - runner: qwen_omni
+
+        status: planned
+        modes: [zero_shot]
+    metric_links:
+      - metric: audiobox_aesthetics
+
+        role: companion
+
+  - id: generation.prompt_alignment.v1
+    version: 1
+    title: Alignment between generated audio and its instruction
+    status: experimental
+    domain: general_audio
+    task: prompt_alignment
+    description: >-
+      Judge how well one generated recording satisfies the generation
+      instruction that produced it, reported as a declared numeric score with
+      short audible evidence.
+    input_contract:
+      audio_inputs: 1
+      requires_target_instruction: true
+      requires_reference_audio: false
+      requires_reference_text: false
+    response_contract:
+      mode: json
+      fields:
+        score: {type: integer, minimum: 1, maximum: 5, required: true}
+        evidence: {type: array, items: string, required: true}
+        unmet_requirements: {type: array, items: string, required: true}
+        confidence: {type: number, minimum: 0, maximum: 1, required: true}
+        abstain: {type: boolean, required: true}
+      primary_numeric_field: score
+      output_key: prompt_generation_prompt_alignment
+    protocol:
+      zero_shot: |
+        Listen to the audio and judge how well it satisfies the generation instruction below.
+
+        Instruction: {target_instruction}
+
+        Rate alignment from 1 to 5:
+        - 5: every requirement of the instruction is audibly satisfied
+        - 4: all central requirements are satisfied, a detail is not
+        - 3: a central requirement is only partly satisfied
+        - 2: most requirements are unsatisfied
+        - 1: the audio is unrelated to the instruction
+
+        Judge instruction-following only. Do not reward or penalise recording quality, loudness, or duration unless the instruction asks for them. List in evidence the audible observations behind the rating, and in unmet_requirements each instruction requirement you cannot hear. Set abstain to true when the audio is unusable; then use score 1, confidence 0, and leave both lists empty.
+    provenance:
+      sources:
+        - https://github.com/wavlab-speech/versa
+      rationale: >-
+        Makes prompt-to-audio evaluation a first-class prompt-only task with one
+        explicitly declared reportable numeric field, so no score is inferred
+        from arbitrary text.
+    model_compatibility:
+      - family: qwen2_audio
+
+        status: expected
+      - family: qwen2_5_omni
+
+        status: expected
+    runner_compatibility:
+      - runner: qwen2_audio
+
+        status: planned
+        modes: [zero_shot]
+      - runner: qwen_omni
+
+        status: planned
+        modes: [zero_shot]
+    metric_links:
+      - metric: audiobox_aesthetics
+
+        role: companion
+
+  - id: generation.pairwise_alignment.v1
+    version: 1
+    title: Pairwise preference between two generated candidates
+    status: experimental
+    domain: general_audio
+    task: pairwise_prompt_alignment
+    description: >-
+      Compare two generated recordings against one generation instruction and
+      state which candidate follows it better. No current VERSA runner supplies
+      two audio inputs, so this protocol renders but does not execute.
+    input_contract:
+      audio_inputs: 2
+      requires_target_instruction: true
+      requires_reference_audio: false
+      requires_reference_text: false
+    response_contract:
+      mode: pairwise
+      preference_labels: [a, b, tie]
+      allow_abstain: true
+      abstain_label: unclear
+    protocol:
+      zero_shot: |
+        You are given two generated recordings, the first as candidate a and the second as candidate b, produced for the same generation instruction.
+
+        Instruction: {target_instruction}
+
+        State which candidate follows the instruction better. Judge instruction-following only, not recording quality, loudness, or duration, unless the instruction asks for them. Answer tie when both candidates follow the instruction equally well. The presentation order carries no information about quality.
+      pairwise: |
+        You are given two generated recordings for the same generation instruction. The first recording is {candidate_a_name} and is reported as a; the second is {candidate_b_name} and is reported as b.
+
+        Instruction: {target_instruction}
+
+        State which candidate follows the instruction better. Judge instruction-following only, not recording quality, loudness, or duration, unless the instruction asks for them. Answer tie when both candidates follow the instruction equally well. The presentation order carries no information about quality, and the candidate names are labels only.
+    provenance:
+      sources:
+        - https://github.com/wavlab-speech/versa
+      rationale: >-
+        Exercises the two-audio input contract, tie handling, and abstention.
+        Candidate order randomization and its seed belong to execution metadata,
+        not to the rendered text.
+    model_compatibility:
+      - family: qwen2_audio
+
+        status: expected
+        rendering_notes: >-
+          Two audio inputs are rendered as first and second recording; the
+          wrapper must supply them in that order.
+      - family: qwen2_5_omni
+
+        status: expected
+    runner_compatibility:
+      - runner: qwen2_audio
+
+        status: unsupported
+      - runner: qwen_omni
+
+        status: unsupported
+    metric_links: []

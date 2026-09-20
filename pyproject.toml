@@ -137,6 +137,11 @@ versa-visualize = "versa.bin.visualize:main"
 include = ["versa*"]
 exclude = ["versa.corpus_metrics.test", "versa.corpus_metrics.test.*"]
 
+[tool.setuptools.package-data]
+# Prompt Bank protocol records are loaded with importlib.resources, so they
+# must ship inside the wheel next to the package modules.
+"versa.prompt_bank.data" = ["*.yaml"]
+
 [tool.setuptools.exclude-package-data]
 "*" = ["test/*", "test/**/*"]
 
