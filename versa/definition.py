@@ -231,14 +231,35 @@ class MetricSuite:
     def compute_all(
         self, predictions: Any, references: Any = None, metadata: Dict[str, Any] = None
     ) -> Dict[str, Any]:
-        """Compute all metrics in the suite."""
+        """Compute all metrics in the suite, mapping a failed metric to None."""
+        return {
+            name: value
+            for name, (value, _) in self.compute_all_detailed(
+                predictions, references, metadata
+            ).items()
+        }
+
+    def compute_all_detailed(
+        self, predictions: Any, references: Any = None, metadata: Dict[str, Any] = None
+    ) -> Dict[str, tuple]:
+        """Compute every metric, returning its value and failure separately.
+
+        Each entry is a ``(value, error)`` pair. ``error`` is the exception a
+        metric raised, in which case ``value`` is None; callers cannot otherwise
+        tell a failure from a metric that legitimately returned no score. The
+        full traceback is logged while the caller records a concise status."""
         results = {}
         for name, metric in self.metrics.items():
             try:
-                results[name] = metric.compute(predictions, references, metadata)
+                results[name] = (
+                    metric.compute(predictions, references, metadata),
+                    None,
+                )
             except Exception as e:
-                self.logger.error(f"Error computing metric '{name}': {e}")
-                results[name] = None
+                self.logger.error(
+                    f"Error computing metric '{name}': {e}", exc_info=True
+                )
+                results[name] = (None, e)
         return results
 
     def compute_parallel(

@@ -11,6 +11,8 @@ from pathlib import Path
 
 import numpy as np
 import soundfile as sf
+from versa.bin.cli_options import add_resume_arguments, enforce_run_status
+from versa.completion import RunStatus
 from versa.bin.scoring import (
     configure_runtime,
     load_inputs,
@@ -78,14 +80,7 @@ def get_parser() -> argparse.Namespace:
         action="store_true",
         help="Do not match the groundtruth and generated files.",
     )
-    parser.add_argument(
-        "--resume",
-        action="store_true",
-        help=(
-            "Resume utterance scoring from an existing output_file by skipping "
-            "keys already present in the JSONL results."
-        ),
-    )
+    add_resume_arguments(parser)
 
     # ---------- NEW: chunking options ----------
     parser.add_argument(
@@ -333,6 +328,7 @@ def main():
         logging.info(f"Corpus scoring over chunk directory: {pred_for_corpus}")
         gt_for_corpus = str(chunk_tmp_dir / "gt") if gt_files is not None else None
 
+    run_status = RunStatus()
     has_metrics, _ = run_scoring(
         args,
         scorer,
@@ -344,8 +340,10 @@ def main():
         parser=parser,
         corpus_defaults={"io": "dir" if args.enable_chunking else args.io},
         corpus_use_gt=gt_for_corpus is not None,
+        run_status=run_status,
     )
     assert has_metrics, "no scoring function is provided"
+    enforce_run_status(args, run_status)
 
 
 if __name__ == "__main__":

@@ -5,6 +5,7 @@ import logging
 import torch
 import yaml
 
+from versa.completion import INPUT_IDENTITY_PATH, LEGACY_RECOMPUTE
 from versa.definition import MetricCategory
 from versa.scorer_shared import (
     audio_loader_setup,
@@ -101,12 +102,15 @@ def run_scoring(
     corpus_inputs=None,
     corpus_defaults=None,
     corpus_use_gt=None,
+    run_status=None,
 ):
     """Score prepared inputs; return availability and utterance records.
 
     The chunk CLI supplies its historical corpus paths and config defaults.
     Metric/resource and result-file lifetimes remain owned by VersaScorer.
     Configuration validation happens in the entrypoints before input loading.
+    Run completeness is collected in ``run_status`` when one is supplied, and
+    the caller decides whether an incomplete run is fatal.
     """
     corpus_score_config = []
     utterance_score_config = []
@@ -139,6 +143,9 @@ def run_scoring(
             io=args.io,
             resume=args.resume,
             use_gpu=args.use_gpu,
+            legacy_resume=getattr(args, "legacy_resume", LEGACY_RECOMPUTE),
+            input_identity=getattr(args, "input_identity", INPUT_IDENTITY_PATH),
+            run_status=run_status,
         )
         logging.info("Summary: {}".format(compute_summary(score_info)))
         utterance_metric_count = int(
@@ -151,6 +158,7 @@ def run_scoring(
             use_gt=gt_files is not None,
             use_gt_text=text_info is not None,
             use_gpu=args.use_gpu,
+            run_status=run_status,
         )
 
         utterance_metric_count = len(
@@ -172,6 +180,9 @@ def run_scoring(
             io=args.io,
             resume=args.resume,
             num_workers=num_workers,
+            legacy_resume=getattr(args, "legacy_resume", LEGACY_RECOMPUTE),
+            input_identity=getattr(args, "input_identity", INPUT_IDENTITY_PATH),
+            run_status=run_status,
         )
         logging.info("Summary: {}".format(compute_summary(score_info)))
     elif utterance_metric_count == 0:
@@ -183,6 +194,7 @@ def run_scoring(
         use_gt=(gt_files is not None if corpus_use_gt is None else corpus_use_gt),
         use_gt_text=text_info is not None,
         use_gpu=args.use_gpu,
+        run_status=run_status,
     )
 
     # Filter for corpus-level metrics and perform corpus scoring
@@ -197,6 +209,7 @@ def run_scoring(
             corpus_gt,
             text_info,
             output_file=args.output_file + ".corpus" if args.output_file else None,
+            run_status=run_status,
         )
         logging.info("Corpus Summary: {}".format(corpus_score_info))
     else:

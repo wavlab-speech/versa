@@ -1,6 +1,7 @@
 """Ordered multi-source CLI validation and result persistence contracts."""
 
 import json
+import pathlib
 import sys
 from dataclasses import replace
 from types import SimpleNamespace
@@ -8,6 +9,7 @@ from types import SimpleNamespace
 import pytest
 
 from versa import config_validation, scorer_shared
+from versa.completion import COMPLETION_FIELD, STATUS_SUCCESS
 from versa.bin.scorer import (
     _text_required_multi_source_metrics,
     get_parser,
@@ -164,10 +166,17 @@ def test_multi_source_pipeline_preserves_order_and_writes_jsonl(tmp_path):
         io="soundfile",
     )
 
-    assert scores == [
+    assert [
+        {name: value for name, value in row.items() if name != COMPLETION_FIELD}
+        for row in scores
+    ] == [
         {"key": "mixture-a", "ordered_source_score": 2.0},
         {"key": "mixture-b", "ordered_source_score": 2.0},
     ]
+    for row in scores:
+        entry = row[COMPLETION_FIELD]["metrics"]["ordered_source"]
+        assert entry["status"] == STATUS_SUCCESS
+        assert entry["fields"] == ["ordered_source_score"]
     assert len(OrderedSourceMetric.calls) == 2
     assert all(
         len(call[0]) == 2 and len(call[1]) == 2 for call in OrderedSourceMetric.calls
@@ -194,3 +203,76 @@ def test_multi_source_pipeline_rejects_key_mismatch():
             [{"a": "one.wav"}, {}],
             io="soundfile",
         )
+
+
+def test_multi_source_resume_recomputes_only_incomplete_mixtures(tmp_path):
+    """Resume keeps completed mixtures and rescores the ones without records."""
+    registry = MetricRegistry()
+    registry.register(OrderedSourceMetric, OrderedSourceMetric().get_metadata())
+    scorer = VersaScorer(registry)
+    suite = scorer.load_metrics([{"name": "ordered_source"}], use_gt=True)
+    predictions, references = _source_mappings()
+    output_file = tmp_path / "mapss.jsonl"
+
+    OrderedSourceMetric.calls = []
+    complete = scorer.score_multi_source_utterances(
+        predictions,
+        suite,
+        references,
+        output_file=str(output_file),
+        io="soundfile",
+    )
+    # Keep only the first mixture, as an interrupted run would have done.
+    output_file.write_text(
+        json.dumps(complete[0]) + "\n",
+        encoding="utf-8",
+    )
+    OrderedSourceMetric.calls = []
+
+    resumed = scorer.score_multi_source_utterances(
+        predictions,
+        suite,
+        references,
+        output_file=str(output_file),
+        io="soundfile",
+        resume=True,
+    )
+
+    assert len(OrderedSourceMetric.calls) == 1
+    assert resumed == complete
+    assert [
+        json.loads(line)
+        for line in output_file.read_text(encoding="utf-8").splitlines()
+    ] == complete
+
+
+def test_multi_source_resume_recomputes_a_changed_source_list(tmp_path):
+    """Swapping a source path changes the input identity and forces rescoring."""
+    registry = MetricRegistry()
+    registry.register(OrderedSourceMetric, OrderedSourceMetric().get_metadata())
+    scorer = VersaScorer(registry)
+    suite = scorer.load_metrics([{"name": "ordered_source"}], use_gt=True)
+    predictions, references = _source_mappings()
+    output_file = tmp_path / "mapss.jsonl"
+    scorer.score_multi_source_utterances(
+        predictions,
+        suite,
+        references,
+        output_file=str(output_file),
+        io="soundfile",
+    )
+
+    relocated = tmp_path / "source-2.wav"
+    relocated.write_bytes(pathlib.Path(predictions[1]["mixture-a"]).read_bytes())
+    predictions[1]["mixture-a"] = str(relocated)
+    OrderedSourceMetric.calls = []
+    scorer.score_multi_source_utterances(
+        predictions,
+        suite,
+        references,
+        output_file=str(output_file),
+        io="soundfile",
+        resume=True,
+    )
+
+    assert len(OrderedSourceMetric.calls) == 1

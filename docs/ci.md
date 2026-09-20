@@ -45,7 +45,13 @@ flake8 versa test scripts *.py
 # Run dependency-light core tests
 pytest -q test/test_metrics/test_definition.py test/test_docstring_check.py \
   test/test_slurm_launcher.py test/test_aggregate_results.py \
-  test/test_result_summary.py test/test_reporting.py
+  test/test_result_summary.py test/test_reporting.py test/test_completion.py
+
+# Run the resume and run-status contracts
+pytest -q test/test_completion.py test/test_pipeline/test_resume_contract.py \
+  test/test_pipeline/test_scorer_entrypoints.py \
+  test/test_pipeline/test_local_workers.py \
+  test/test_pipeline/test_mapss_pipeline.py
 
 # Run specific test modules
 pytest test/test_general.py

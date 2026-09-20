@@ -77,7 +77,7 @@ def test_parallel_matches_serial_and_preserves_input_order(tmp_path):
     assert _read_jsonl(output_file) == parallel_scores
 
 
-def test_parallel_resume_skips_existing_key_and_writes_input_order(tmp_path):
+def test_parallel_resume_trusts_legacy_rows_on_request(tmp_path):
     scorer, metric_suite, gen_files = _scorer_and_files()
     keys = list(gen_files)
     completed_key = keys[-1]
@@ -94,15 +94,42 @@ def test_parallel_resume_skips_existing_key_and_writes_input_order(tmp_path):
         io="soundfile",
         resume=True,
         num_workers=2,
+        legacy_resume="trust",
     )
 
     assert [score["key"] for score in score_info] == keys
     assert score_info[-1] == {"key": completed_key, "constant": 3.0}
-    assert _read_jsonl(output_file) == [
-        {"key": completed_key, "constant": 3.0},
-        {"key": keys[0], "constant": 1.0},
-        {"key": keys[1], "constant": 1.0},
-    ]
+    written = _read_jsonl(output_file)
+    assert [row["key"] for row in written] == [completed_key, keys[0], keys[1]]
+    assert written[0] == {"key": completed_key, "constant": 3.0}
+    assert [row["constant"] for row in written[1:]] == [1.0, 1.0]
+
+
+def test_parallel_resume_recomputes_rows_without_completion_records(tmp_path):
+    scorer, metric_suite, gen_files = _scorer_and_files()
+    keys = list(gen_files)
+    output_file = tmp_path / "scores.jsonl"
+    output_file.write_text(
+        json.dumps({"key": keys[-1], "constant": 3.0}) + "\n",
+        encoding="utf-8",
+    )
+
+    score_info = scorer.score_utterances(
+        gen_files,
+        metric_suite,
+        output_file=str(output_file),
+        io="soundfile",
+        resume=True,
+        num_workers=2,
+    )
+
+    # A legacy row carries no metric identity, so its stale score is replaced.
+    assert [score["key"] for score in score_info] == keys
+    assert [score["constant"] for score in score_info] == [1.0, 1.0, 1.0]
+    # The rewritten row keeps the position it had in the resumed file.
+    written = _read_jsonl(output_file)
+    assert [row["key"] for row in written] == [keys[-1], keys[0], keys[1]]
+    assert [row["constant"] for row in written] == [1.0, 1.0, 1.0]
 
 
 def test_one_worker_uses_existing_serial_path(monkeypatch):

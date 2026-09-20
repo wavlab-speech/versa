@@ -10,6 +10,7 @@ import yaml
 
 from test.audio_utils import generate_fixed_wav
 from versa import scorer_shared
+from versa.completion import COMPLETION_FIELD
 from versa.bin import scorer, scorer_chunk, scoring
 from versa.definition import (
     BaseMetric,
@@ -171,7 +172,15 @@ def test_entrypoint_outputs_inputs_and_resume(
         if mode == "chunks"
         else ["utt.wav"]
     )
-    assert rows == [{"key": key, "test_score": 0.5} for key in keys]
+    scores = [
+        {name: value for name, value in row.items() if name != COMPLETION_FIELD}
+        for row in rows
+    ]
+    assert scores == [{"key": key, "test_score": 0.5} for key in keys]
+    for row in rows:
+        entry = row[COMPLETION_FIELD]["metrics"]["test_utterance"]
+        assert entry["status"] == "success"
+        assert entry["fields"] == ["test_score"]
     assert calls["utterance"] == [(not no_match, "hello world")] * len(keys)
     assert yaml.safe_load(Path(str(output) + ".corpus").read_text()) == {
         "corpus_score": 0.25
@@ -196,8 +205,8 @@ def test_entrypoint_outputs_inputs_and_resume(
     monkeypatch.setattr(sys, "argv", argv + ["--resume"])
     entrypoint.main()
     assert output.read_text() == before
-    # Metric mode intentionally recomputes while merging persisted rows.
-    assert len(calls["utterance"]) == len(keys) * (2 if mode == "metric" else 1)
+    # Completed metrics are never recomputed, including in metric mode.
+    assert len(calls["utterance"]) == len(keys)
     assert calls["closed"] and all(calls["closed"])
     assert bool(calls["released"]) == (mode == "metric")
 
@@ -334,3 +343,74 @@ def test_chunked_corpus_uses_directories_for_scp_inputs(scoring_case, monkeypatc
         p.name for p in Path(gt).glob("*.wav")
     }
     assert all(paired for paired, _ in calls["utterance"])
+
+
+def _failing_compute(self, predictions, references=None, metadata=None):
+    """Raise as a runtime backend failure would during inference."""
+    self.calls["utterance"].append(("failed", metadata["text"]))
+    raise RuntimeError("backend exploded")
+
+
+@pytest.mark.parametrize("entrypoint", [scorer, scorer_chunk])
+def test_strict_run_fails_on_a_failing_metric_but_keeps_results(
+    scoring_case, monkeypatch, entrypoint
+):
+    """Strict mode exits unsuccessfully while retaining the written results."""
+    root, argv, calls = scoring_case
+    monkeypatch.setattr(UtteranceMetric, "compute", _failing_compute)
+    monkeypatch.setattr(sys, "argv", argv + ["--strict"])
+
+    with pytest.raises(SystemExit) as exc:
+        entrypoint.main()
+
+    assert "Strict run did not complete" in str(exc.value)
+    rows = [
+        json.loads(line) for line in (root / "scores.jsonl").read_text().splitlines()
+    ]
+    entry = rows[0][COMPLETION_FIELD]["metrics"]["test_utterance"]
+    assert entry["status"] == "failed"
+    assert entry["error_category"] == "inference"
+    assert "backend exploded" in entry["error"]
+
+
+@pytest.mark.parametrize("entrypoint", [scorer, scorer_chunk])
+def test_tolerant_run_reports_a_failing_metric_without_exiting(
+    scoring_case, monkeypatch, entrypoint
+):
+    """The default tolerant mode records the failure and completes."""
+    root, argv, calls = scoring_case
+    monkeypatch.setattr(UtteranceMetric, "compute", _failing_compute)
+    monkeypatch.setattr(sys, "argv", argv)
+
+    entrypoint.main()
+
+    rows = [
+        json.loads(line) for line in (root / "scores.jsonl").read_text().splitlines()
+    ]
+    assert rows[0][COMPLETION_FIELD]["metrics"]["test_utterance"]["status"] == "failed"
+
+
+@pytest.mark.parametrize("entrypoint", [scorer, scorer_chunk])
+def test_strict_run_succeeds_when_every_metric_completes(
+    scoring_case, monkeypatch, entrypoint
+):
+    """A complete strict run exits normally."""
+    _, argv, _ = scoring_case
+    monkeypatch.setattr(sys, "argv", argv + ["--strict"])
+
+    entrypoint.main()
+
+
+def test_strict_run_writes_the_requested_report_before_exiting(
+    scoring_case, monkeypatch
+):
+    """Every requested artifact is produced even when a strict run fails."""
+    root, argv, _ = scoring_case
+    report = root / "report.md"
+    monkeypatch.setattr(UtteranceMetric, "compute", _failing_compute)
+    monkeypatch.setattr(sys, "argv", argv + ["--strict", "--report", str(report)])
+
+    with pytest.raises(SystemExit):
+        scorer.main()
+
+    assert report.exists()

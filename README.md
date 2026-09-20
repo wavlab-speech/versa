@@ -234,13 +234,44 @@ python versa/bin/scorer.py \
     --scoring_mode metric
 ```
 
-`--resume` reads existing JSONL rows from `--output_file`, skips utterance keys
-that have already been scored, and preserves their results. This is useful for
-long-running evaluations that are interrupted or restarted. With
-`--num_workers > 1`, newly computed rows are appended in input key order, while
-existing rows keep their original positions in the file; the returned scores are
-ordered by input key, but a resumed JSONL file may not be globally sorted by
-input key.
+`--resume` reads existing JSONL rows from `--output_file` and continues the run
+from the per-metric completion records they carry. An utterance is skipped only
+when every configured metric completed successfully, or explicitly abstained,
+under the same metric name, evaluation configuration, and input identity;
+missing and failed metrics are recomputed and merged into the stored row, and
+previously successful metrics are never recomputed. This is useful for
+long-running evaluations that are interrupted or restarted.
+
+Each row carries a `_versa_completion` record with the schema version, the input
+identity, and the status of every attempted metric (`success`, `failed`,
+`skipped`, or `abstained`) together with a short error category for failures.
+The field name starts with an underscore, so it is excluded from score
+summaries, report columns, and rankings; existing score keys are unchanged.
+
+Rows written before this record existed have no identity, so `--resume`
+recomputes them by default. Pass `--legacy_resume trust` to keep the historical
+behavior of trusting any row that already has a value. `--input_identity`
+selects how changed inputs are detected: `path` (the default) compares input
+locations, while `content` also hashes each input file so audio edited in place
+is rescored, at the cost of reading every input once per run.
+
+When resuming, the result file is first rewritten atomically as one record per
+stored key, which collapses repeated keys and drops a truncated final record;
+every readable row is kept, including partially completed utterances and keys
+outside the current input set. Recomputed rows are appended as they finish, and
+a final atomic rewrite keeps only the newest record per utterance. A resumed run
+that is interrupted again therefore loses nothing: the superseded records it
+leaves behind are resolved by the next resume, so aggregate a result file only
+after a run has finished. Retained rows keep their original positions while new
+keys are appended in input key order, so a resumed JSONL file may not be
+globally sorted by input key; the returned scores are ordered by input key.
+
+`--strict` exits unsuccessfully when a metric fails to load, fails to run, or an
+utterance is skipped. The results that did complete are still written, including
+a requested `--report`, because the completeness check runs last. The
+default tolerant mode records the same status counts and exits normally. Both
+modes log a run summary naming requested and loaded metrics, and scored,
+resumed, and skipped utterances.
 
 `--num_workers` runs utterance-level CPU scoring in local worker processes while
 preserving input key order in newly written JSONL output for non-resume runs.

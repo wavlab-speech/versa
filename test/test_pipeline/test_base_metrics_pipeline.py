@@ -111,6 +111,37 @@ def test_score_utterances_resume_skips_completed_keys(tmp_path):
         resume=True,
     )
 
+    # Without a completion record the stored score has no identity, so it is
+    # recomputed rather than trusted.
+    assert score_info[0]["counting"] == 1.0
+    assert CountingMetric.calls == len(gen_files)
+    assert len(score_info) == len(gen_files)
+
+
+def test_score_utterances_resume_can_trust_legacy_rows(tmp_path):
+    gen_files, _ = _sample_files()
+    completed_key = next(iter(gen_files))
+    output_file = tmp_path / "scores.jsonl"
+    output_file.write_text(
+        json.dumps({"key": completed_key, "counting": 3.0}) + "\n",
+        encoding="utf-8",
+    )
+
+    registry = MetricRegistry()
+    registry.register(CountingMetric, CountingMetric().get_metadata())
+    scorer = VersaScorer(registry)
+    metric_suite = scorer.load_metrics([{"name": "counting"}], use_gt=False)
+
+    CountingMetric.calls = 0
+    score_info = scorer.score_utterances(
+        gen_files,
+        metric_suite,
+        output_file=str(output_file),
+        io="soundfile",
+        resume=True,
+        legacy_resume="trust",
+    )
+
     assert score_info[0] == {"key": completed_key, "counting": 3.0}
     assert CountingMetric.calls == max(len(gen_files) - 1, 0)
     assert len(score_info) == len(gen_files)
