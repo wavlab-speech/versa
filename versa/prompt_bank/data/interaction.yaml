@@ -26,7 +26,7 @@ protocols:
         confidence: {type: number, minimum: 0, maximum: 1, required: true}
         abstain: {type: boolean, required: true}
       primary_numeric_field: score
-      output_key: prompt_interaction_turn_taking
+      output_key: prompt_interaction_turn_taking_v1
     protocol:
       zero_shot: |
         Listen to the recording and assess how smoothly the participants take turns.

@@ -24,7 +24,7 @@ protocols:
         confidence: {type: number, minimum: 0, maximum: 1, required: true}
         abstain: {type: boolean, required: true}
       primary_numeric_field: accuracy
-      output_key: prompt_audio_caption_accuracy
+      output_key: prompt_audio_caption_accuracy_v1
     protocol:
       zero_shot: |
         Listen to the audio and judge how accurately the caption below describes it.
@@ -94,7 +94,7 @@ protocols:
         confidence: {type: number, minimum: 0, maximum: 1, required: true}
         abstain: {type: boolean, required: true}
       primary_numeric_field: score
-      output_key: prompt_generation_prompt_alignment
+      output_key: prompt_generation_prompt_alignment_v1
     protocol:
       zero_shot: |
         Listen to the audio and judge how well it satisfies the generation instruction below.

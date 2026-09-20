@@ -7,6 +7,7 @@ VERSA metric module.
 
 import hashlib
 import json
+import math
 import re
 from dataclasses import dataclass
 from typing import Optional, Tuple
@@ -272,6 +273,47 @@ class Protocol:
         return False
 
 
+class DuplicateJsonKeyError(ValueError):
+    """Raised when a JSON response repeats a key instead of declaring it once."""
+
+
+class NonFiniteJsonError(ValueError):
+    """Raised when a JSON response carries NaN or Infinity."""
+
+
+def is_finite_number(value):
+    """Report whether a value is a real, finite number and not a boolean."""
+    return (
+        isinstance(value, (int, float))
+        and not isinstance(value, bool)
+        and math.isfinite(value)
+    )
+
+
+def _reject_json_constant(name):
+    """Reject the JSON extensions NaN, Infinity, and -Infinity."""
+    raise NonFiniteJsonError("must not contain {}".format(name))
+
+
+def _reject_duplicate_keys(pairs):
+    """Build a JSON object, rejecting a repeated key instead of keeping the last."""
+    payload = {}
+    for key, value in pairs:
+        if key in payload:
+            raise DuplicateJsonKeyError("must not repeat the key {!r}".format(key))
+        payload[key] = value
+    return payload
+
+
+def loads_strict_json(value):
+    """Parse JSON, rejecting non-finite constants and repeated object keys."""
+    return json.loads(
+        value,
+        parse_constant=_reject_json_constant,
+        object_pairs_hook=_reject_duplicate_keys,
+    )
+
+
 def scan_placeholders(text):
     """Return (placeholder names, error messages) for one protocol text body.
 
@@ -338,6 +380,11 @@ def canonical_json(payload):
 def compute_digest(payload):
     """Return the SHA-256 digest of the canonical JSON form of a payload."""
     return hashlib.sha256(canonical_json(payload).encode("utf-8")).hexdigest()
+
+
+def digest_text(text):
+    """Return the SHA-256 digest of an exact rendered prompt string."""
+    return hashlib.sha256(text.encode("utf-8")).hexdigest()
 
 
 _PROTOCOL_KEYS = frozenset(
@@ -420,7 +467,9 @@ def parse_protocol(mapping, source, errors):
     status = _choice(mapping, "status", PROTOCOL_STATUSES, source, protocol_id, errors)
     domain = _choice(mapping, "domain", DOMAINS, source, protocol_id, errors)
     input_contract = _parse_input_contract(mapping, source, protocol_id, errors)
-    response_contract = _parse_response_contract(mapping, source, protocol_id, errors)
+    response_contract = _parse_response_contract(
+        mapping, version, source, protocol_id, errors
+    )
     modes = _parse_modes(mapping, response_contract, source, protocol_id, errors)
     if input_contract is not None and response_contract is not None:
         _validate_contract_pair(
@@ -594,7 +643,7 @@ def _parse_input_contract(mapping, source, protocol_id, errors):
     )
 
 
-def _parse_response_contract(mapping, source, protocol_id, errors):
+def _parse_response_contract(mapping, version, source, protocol_id, errors):
     """Parse and validate the ``response_contract`` block for its declared mode."""
     block = mapping.get("response_contract")
     if not isinstance(block, dict):
@@ -633,7 +682,7 @@ def _parse_response_contract(mapping, source, protocol_id, errors):
     else:
         fields = _parse_json_fields(block, source, protocol_id, errors)
         primary_numeric_field, output_key = _parse_primary_field(
-            block, fields, source, protocol_id, errors
+            block, fields, version, source, protocol_id, errors
         )
     if allow_abstain and abstain_label is not None:
         if abstain_label in labels or abstain_label in preference_labels:
@@ -675,12 +724,13 @@ def _parse_range(block, mode, source, protocol_id, errors):
         valid = isinstance(value, int) and not isinstance(value, bool)
         if mode == "scalar":
             valid = valid or isinstance(value, float)
+        valid = valid and is_finite_number(value)
         if not valid:
             errors.add(
                 source,
                 protocol_id,
-                "response_contract.{} must be {} for mode {!r}".format(
-                    key, "a number" if mode == "scalar" else "an integer", mode
+                "response_contract.{} must be a finite {} for mode {!r}".format(
+                    key, "number" if mode == "scalar" else "integer", mode
                 ),
             )
             bounds.append(None)
@@ -711,8 +761,8 @@ def _parse_anchors(block, minimum, maximum, source, protocol_id, errors):
             return ()
         value = entry["value"]
         description = entry["description"]
-        if isinstance(value, bool) or not isinstance(value, (int, float)):
-            errors.add(source, protocol_id, "anchor value must be a number")
+        if not is_finite_number(value):
+            errors.add(source, protocol_id, "anchor value must be a finite number")
             return ()
         if not isinstance(description, str) or not description.strip():
             errors.add(source, protocol_id, "anchor description must be a string")
@@ -796,11 +846,11 @@ def _parse_json_fields(block, source, protocol_id, errors):
                     "field {!r} may not declare {}".format(name, key),
                 )
                 return ()
-            if not isinstance(value, (int, float)):
+            if not is_finite_number(value):
                 errors.add(
                     source,
                     protocol_id,
-                    "field {!r} {} must be numeric".format(name, key),
+                    "field {!r} {} must be a finite number".format(name, key),
                 )
                 return ()
             bounds.append(value)
@@ -822,7 +872,7 @@ def _parse_json_fields(block, source, protocol_id, errors):
     return tuple(fields)
 
 
-def _parse_primary_field(block, fields, source, protocol_id, errors):
+def _parse_primary_field(block, fields, version, source, protocol_id, errors):
     """Validate the optional declared primary numeric field and its output key."""
     primary = block.get("primary_numeric_field")
     output_key = block.get("output_key")
@@ -833,6 +883,9 @@ def _parse_primary_field(block, fields, source, protocol_id, errors):
                 protocol_id,
                 "output_key requires an explicit primary_numeric_field",
             )
+        return None, None
+    if not isinstance(primary, str):
+        errors.add(source, protocol_id, "primary_numeric_field must be a string")
         return None, None
     named = {field.name: field for field in fields}
     field = named.get(primary)
@@ -858,6 +911,15 @@ def _parse_primary_field(block, fields, source, protocol_id, errors):
             source,
             protocol_id,
             "output_key must be a lowercase identifier when a primary field is declared",
+        )
+        return None, None
+    suffix = "_v{}".format(version)
+    if version is not None and not output_key.endswith(suffix):
+        errors.add(
+            source,
+            protocol_id,
+            "output_key {!r} must end in {!r} so successive protocol versions can "
+            "report side by side".format(output_key, suffix),
         )
         return None, None
     return primary, output_key
@@ -936,9 +998,6 @@ def _parse_few_shot(block, response_contract, source, protocol_id, errors):
                     "text-only examples must not reference audio files",
                 )
                 return None
-            if _has_bare_brace(value):
-                errors.add(source, protocol_id, "example text must not contain braces")
-                return None
         if response_contract is not None:
             for message in validate_response(output, response_contract):
                 errors.add(
@@ -987,6 +1046,8 @@ def validate_response(text, contract):
             number = float(value)
         except ValueError:
             return ["must be a single number"]
+        if not math.isfinite(number):
+            return ["must be a finite number"]
         if not contract.minimum <= number <= contract.maximum:
             return [
                 "must be between {} and {}".format(contract.minimum, contract.maximum)
@@ -998,7 +1059,9 @@ def validate_response(text, contract):
 def _validate_json_response(value, contract):
     """Return the reasons a response is not valid under a JSON contract."""
     try:
-        payload = json.loads(value)
+        payload = loads_strict_json(value)
+    except (DuplicateJsonKeyError, NonFiniteJsonError) as error:
+        return [str(error)]
     except ValueError:
         return ["must be valid JSON"]
     if not isinstance(payload, dict):
@@ -1037,8 +1100,8 @@ def _validate_json_value(value, field):
         ):
             return ["field {!r} must be an array of strings".format(field.name)]
         return []
-    if isinstance(value, bool) or not isinstance(value, (int, float)):
-        return ["field {!r} must be numeric".format(field.name)]
+    if not is_finite_number(value):
+        return ["field {!r} must be a finite number".format(field.name)]
     if field.type == "integer" and not isinstance(value, int):
         return ["field {!r} must be an integer".format(field.name)]
     if field.minimum is not None and value < field.minimum:
@@ -1046,6 +1109,20 @@ def _validate_json_value(value, field):
     if field.maximum is not None and value > field.maximum:
         return ["field {!r} is above the declared maximum".format(field.name)]
     return []
+
+
+def mode_bodies(modes, mode):
+    """Return the instruction bodies rendered for one mode, in canonical order.
+
+    Few-shot rendering keeps the zero-shot body so the rubric a model is judged
+    against is identical in both modes; only the demonstrations and the closing
+    target instruction are added.
+    """
+    if mode == "few_shot_text":
+        return (modes.zero_shot, modes.few_shot_text.template)
+    if mode == "pairwise":
+        return (modes.pairwise,)
+    return (modes.zero_shot,)
 
 
 def _validate_contract_pair(
@@ -1075,49 +1152,63 @@ def _validate_placeholders(
     input_contract, response_contract, modes, source, protocol_id, errors
 ):
     """Check every mode body's placeholders against the declared contracts."""
-    required = set(input_contract.required_context_keys())
-    bodies = {"zero_shot": modes.zero_shot}
-    if modes.pairwise is not None:
-        bodies["pairwise"] = modes.pairwise
-    if modes.few_shot_text is not None:
-        bodies["few_shot_text"] = modes.few_shot_text.template
-    for mode, text in sorted(bodies.items()):
-        names, messages = scan_placeholders(text)
-        for message in messages:
-            errors.add(source, protocol_id, "{}: {}".format(mode, message))
-        used = set(names)
-        if "labels" in used and not response_contract.choice_labels():
-            errors.add(
+    names_by_body = {}
+    for mode in modes.available():
+        for body in mode_bodies(modes, mode):
+            if body in names_by_body:
+                continue
+            names, messages = scan_placeholders(body)
+            for message in messages:
+                errors.add(source, protocol_id, "{}: {}".format(mode, message))
+            names_by_body[body] = set(names)
+            _validate_body_placeholders(
+                names_by_body[body],
+                input_contract,
+                response_contract,
+                mode,
                 source,
                 protocol_id,
-                "{}: {{labels}} requires a closed_label or pairwise contract".format(
-                    mode
-                ),
+                errors,
             )
-        for name, attribute in sorted(INPUT_PLACEHOLDERS.items()):
-            if name in used and not getattr(input_contract, attribute):
-                errors.add(
-                    source,
-                    protocol_id,
-                    "{}: {{{}}} requires input_contract.{}".format(
-                        mode, name, attribute
-                    ),
-                )
-        if input_contract.audio_inputs != 2:
-            for name in sorted(OPTIONAL_PLACEHOLDER_DEFAULTS):
-                if name in used:
-                    errors.add(
-                        source,
-                        protocol_id,
-                        "{}: {{{}}} requires two audio inputs".format(mode, name),
-                    )
+    required = set(input_contract.required_context_keys())
+    for mode in modes.available():
+        used = set()
+        for body in mode_bodies(modes, mode):
+            used |= names_by_body.get(body, set())
         missing = sorted(required - used)
         if missing:
             errors.add(
                 source,
                 protocol_id,
-                "{}: body must use the required context {}".format(mode, missing),
+                "{}: rendering must use the required context {}".format(mode, missing),
             )
+
+
+def _validate_body_placeholders(
+    used, input_contract, response_contract, mode, source, protocol_id, errors
+):
+    """Check that one body's placeholders are supported by the contracts."""
+    if "labels" in used and not response_contract.choice_labels():
+        errors.add(
+            source,
+            protocol_id,
+            "{}: {{labels}} requires a closed_label or pairwise contract".format(mode),
+        )
+    for name, attribute in sorted(INPUT_PLACEHOLDERS.items()):
+        if name in used and not getattr(input_contract, attribute):
+            errors.add(
+                source,
+                protocol_id,
+                "{}: {{{}}} requires input_contract.{}".format(mode, name, attribute),
+            )
+    if input_contract.audio_inputs != 2:
+        for name in sorted(OPTIONAL_PLACEHOLDER_DEFAULTS):
+            if name in used:
+                errors.add(
+                    source,
+                    protocol_id,
+                    "{}: {{{}}} requires two audio inputs".format(mode, name),
+                )
 
 
 def _parse_provenance(mapping, source, protocol_id, errors):
@@ -1218,7 +1309,7 @@ def _parse_runner_compatibility(mapping, modes, source, protocol_id, errors):
             return ()
         declared = entry.get("modes", [])
         if not isinstance(declared, list) or any(
-            item not in available for item in declared
+            not isinstance(item, str) or item not in available for item in declared
         ):
             errors.add(
                 source,

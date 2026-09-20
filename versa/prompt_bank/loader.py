@@ -29,6 +29,41 @@ MANIFEST_NAME = "manifest.yaml"
 _CACHED_BANK = None
 
 
+class StrictLoader(yaml.SafeLoader):
+    """A safe YAML loader that rejects duplicate mapping keys.
+
+    Protocol YAML defines executable evaluation behavior, so a repeated key must
+    fail loudly instead of silently discarding the earlier definition.
+    """
+
+
+def _construct_unique_mapping(loader, node, deep=False):
+    """Build a mapping, raising on any key that the node declares twice."""
+    loader.flatten_mapping(node)
+    mapping = {}
+    for key_node, value_node in node.value:
+        key = loader.construct_object(key_node, deep=deep)
+        if key in mapping:
+            raise yaml.constructor.ConstructorError(
+                "while constructing a mapping",
+                node.start_mark,
+                "found duplicate key {!r}".format(key),
+                key_node.start_mark,
+            )
+        mapping[key] = loader.construct_object(value_node, deep=deep)
+    return mapping
+
+
+StrictLoader.add_constructor(
+    yaml.resolver.BaseResolver.DEFAULT_MAPPING_TAG, _construct_unique_mapping
+)
+
+
+def strict_load(text):
+    """Parse one YAML document, rejecting duplicate mapping keys."""
+    return yaml.load(text, Loader=StrictLoader)
+
+
 @dataclass(frozen=True)
 class PromptBank:
     """An immutable, validated view of every bundled protocol."""
@@ -82,7 +117,7 @@ def _read_documents():
     present = {name for name in _resource_names() if name.endswith(".yaml")}
     errors = ErrorCollector()
     try:
-        manifest = yaml.safe_load(documents[0][1])
+        manifest = strict_load(documents[0][1])
     except yaml.YAMLError as error:
         raise BankValidationError(
             ["{}: is not valid YAML: {}".format(MANIFEST_NAME, error)]
@@ -162,7 +197,7 @@ def build_bank(documents):
 def _parse_document(name, text, errors):
     """Return the protocol list of one YAML file, or ``None`` when malformed."""
     try:
-        document = yaml.safe_load(text)
+        document = strict_load(text)
     except yaml.YAMLError as error:
         errors.add(name, None, "is not valid YAML: {}".format(error))
         return None

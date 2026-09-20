@@ -47,7 +47,7 @@ protocols:
               falling intonation at phrase ends.
             output: sad
         template: |
-          Each example above states audible evidence and the label that evidence supports. Use the same standard for the audio you are given: identify the dominant perceived emotion of the speech from pitch contour, loudness, tempo, and voice quality only, and not from assumed speaker identity or from the literal meaning of the words.
+          Each example above states audible evidence and the label that evidence supports. Apply the same label guide to the audio you are given.
     provenance:
       sources:
         - https://github.com/wavlab-speech/versa
@@ -108,15 +108,20 @@ protocols:
               reverberation, stable level.
             output: professional
           - input: >-
-              Audible evidence: steady low-level hiss and light room
-              reverberation, speech otherwise clear throughout.
+              Audible evidence: faint hum audible only between phrases, full
+              bandwidth, no reverberation, stable level.
+            output: good
+          - input: >-
+              Audible evidence: constant hiss over the whole recording, strong
+              room reverberation on every phrase, and audibly narrow bandwidth;
+              the speech is still easy to follow.
             output: fair
           - input: >-
               Audible evidence: loud broadband noise, repeated clipping, and two
               dropouts that remove syllables.
             output: very_poor
         template: |
-          Each example above states audible evidence and the recording-quality label that evidence supports. Rate the audio you are given on the same scale, judging capture quality only: background noise, reverberation, clipping, bandwidth limitation, dropouts, and coding artefacts. Do not rate the speaker's delivery or the content.
+          Each example above states audible evidence and the recording-quality label that evidence supports. Apply the same label guide to the audio you are given.
     provenance:
       sources:
         - https://github.com/wavlab-speech/versa
@@ -235,7 +240,7 @@ protocols:
               recording and individual words are rarely separable.
             output: constant
         template: |
-          Each example above states audible evidence and the overlap label that evidence supports. Judge the audio you are given on the same scale by how much of it contains two or more people speaking simultaneously. Back-channel sounds over a pause, background media, and ambience do not count as overlap.
+          Each example above states audible evidence and the overlap label that evidence supports. Apply the same label guide to the audio you are given.
     provenance:
       sources:
         - https://github.com/wavlab-speech/versa

@@ -36,10 +36,10 @@ validated metrics.
 | `speech.recording_quality.v1` | 1 | — | closed label, ordered 5-point scale | zero-shot, few-shot text |
 | `speech.speaker_count.v1` | 1 | — | integer 0–10 | zero-shot |
 | `speech.overlap.v1` | 1 | — | closed label, ordered 5-point scale | zero-shot, few-shot text |
-| `audio.caption_accuracy.v1` | 1 | `reference_text` | JSON, reports `prompt_audio_caption_accuracy` | zero-shot |
-| `generation.prompt_alignment.v1` | 1 | `target_instruction` | JSON, reports `prompt_generation_prompt_alignment` | zero-shot |
+| `audio.caption_accuracy.v1` | 1 | `reference_text` | JSON, reports `prompt_audio_caption_accuracy_v1` | zero-shot |
+| `generation.prompt_alignment.v1` | 1 | `target_instruction` | JSON, reports `prompt_generation_prompt_alignment_v1` | zero-shot |
 | `generation.pairwise_alignment.v1` | 2 | `target_instruction` | pairwise preference `a`/`b`/`tie` + `unclear` | zero-shot, pairwise |
-| `interaction.turn_taking.v1` | 1 | — | JSON, reports `prompt_interaction_turn_taking` | zero-shot |
+| `interaction.turn_taking.v1` | 1 | — | JSON, reports `prompt_interaction_turn_taking_v1` | zero-shot |
 
 `generation.pairwise_alignment.v1` renders but cannot execute: no current VERSA
 runner supplies two audio inputs. Its `runner_compatibility` says so explicitly,
@@ -61,9 +61,13 @@ or of interruption counts.
 | `validate_response(text, contract)` | Return the reasons a response does not satisfy a contract; an empty list means it does. |
 
 A `RenderedPrompt` carries `text`, `protocol_id`, `protocol_version`, `mode`,
-`protocol_digest`, `bank_schema_version`, and `response_schema`. Record those
-identity fields with any score you keep: a score without its protocol is not
-reproducible.
+`protocol_digest`, `rendered_digest`, `bank_schema_version`, and
+`response_schema`. Record those identity fields with any score you keep: a score
+without its protocol is not reproducible.
+
+`protocol_digest` identifies the protocol, so two renderings with different
+captions share it by design. `rendered_digest` is the SHA-256 of the exact
+rendered text and is what identifies one evaluation.
 
 Protocol records are frozen dataclasses holding tuples, so a caller cannot
 mutate cached bank state, at any nesting depth.
@@ -73,8 +77,11 @@ mutate cached bank state, at any nesting depth.
 | Mode | Meaning |
 | --- | --- |
 | `zero_shot` | The instruction body plus the generated response instructions. |
-| `few_shot_text` | Text-only demonstrations, then the target instruction, then the response instructions. |
+| `few_shot_text` | The same instruction body, then text-only demonstrations, then a closing instruction and the response instructions. |
 | `pairwise` | The two-candidate comparison body. Rendering it does not make it executable. |
+
+`few_shot_text` keeps the zero-shot body, so both modes judge against an
+identical rubric and a mode comparison varies only the demonstrations.
 
 The renderer owns whitespace, section order, label order, demonstration order,
 and structured-output templates. It generates the response instructions from the
@@ -110,6 +117,49 @@ rendered = render_protocol(
 )
 ```
 
+## Judging audio with a protocol
+
+Four bundled protocols are judges: caption accuracy, prompt alignment, pairwise
+alignment, and turn taking. The judged shape is one or two audio inputs, plus an
+optional caption or instruction, plus the protocol's rubric, producing a
+structured score or preference with short audible evidence, a confidence, and an
+explicit abstention.
+
+Two rules matter as soon as you keep judged results:
+
+- **Abstention is not a low score.** The JSON protocols ask for a sentinel score
+  next to `abstain: true` only to keep the response shape fixed. An abstained or
+  unparseable response must contribute no numeric value, and abstention and
+  parse-failure rates belong beside every judged metric with explicit
+  denominators. Never impute a score.
+- **Identity is wider than the protocol.** Reproducing a judged result needs the
+  rendered prompt digest, the resolved context, the judge model and its resolved
+  version, the decoding settings, and how the audio was preprocessed.
+
+`validate_response` is strict on purpose: it rejects non-finite numbers,
+repeated JSON keys, undeclared fields, out-of-range values, and anything
+embedded in prose. It never extracts a number from an explanation.
+
+The design document specifies the full result envelope and the aggregation
+rules; parsing and reporting arrive with a later increment.
+
+## Local and hosted judge models
+
+The same protocol is meant to run against local weights and against hosted APIs
+such as Gemini, Qwen3.5-Omni, and Qwen3.8-Omni-Flash. Where the model runs is
+provenance and cost, not meaning.
+
+The bank stays provider-free: `versa.prompt_bank` imports no provider SDK,
+endpoint, or credential, and an isolation test keeps it that way. Judge adapters
+live with the metric runners, each provider SDK is an optional extra, and a
+hosted adapter — which sends your audio off the machine — requires explicit
+opt-in. Every local check (protocol, mode, context, audio constraints) runs
+before any weight load or request, so a misconfiguration cannot spend a token.
+
+No adapter ships yet. The adapter contract, the per-provider audio constraints,
+and the acceptance criteria for each integration are specified in the design
+document.
+
 ## Versioning, digests, and lifecycle
 
 A protocol ID is an immutable measurement identifier ending in `.vN`, and `N`
@@ -125,6 +175,10 @@ mode bodies, and model-specific rendering notes. Descriptions, citations, metric
 links, status, and runner declarations are excluded. `test/test_prompt_bank.py`
 pins the eight digests so a YAML or JSON library change cannot silently alter
 them.
+
+A JSON contract's `output_key` must end in `_v<version>`. A deprecated `.v1` and
+its `.v2` successor therefore report under distinct keys and can be run side by
+side; consumers of the old key keep reading the old protocol's results.
 
 The bank schema version is `1`; it describes the serialization format and does
 not replace protocol versioning.
@@ -151,7 +205,7 @@ not replace protocol versioning.
 ## Current limitations
 
 - No metric executes a protocol yet; `prompt_id` support in the Qwen wrappers is
-  the next increment.
+  the next increment, and judge adapters for hosted APIs follow it.
 - Response parsing, provenance envelopes, and report integration are not part of
   this release. `validate_response` checks a response against a contract but
   does not parse results into scores.

@@ -1,13 +1,18 @@
 # VERSA Prompt Bank Implementation Plan
 
-Design version: 1 (increment A implemented). Last reconciled: 2026-09-20.
+Design version: 2 (increment A implemented; judging and backend scope added).
+Last reconciled: 2026-09-20.
 
 Status: increment A (bank foundation) is implemented in `versa/prompt_bank/`
 with eight experimental protocols, foundation tests, and package data; see
 [prompt_bank.md](prompt_bank.md) for the user-facing guide. Increments B and C
 below remain plans. The design decisions that increment A locked in are recorded
 in [Locked decisions](#locked-decisions-increment-a-reconciliation); where this
-document and that section disagree, that section is authoritative. This plan is
+document and that section disagree, that section is authoritative.
+[Audio judging as a supported workflow](#audio-judging-as-a-supported-workflow)
+and [Judge backends](#judge-backends-local-weights-and-hosted-apis) define the
+judged evaluation path and the local/hosted adapter contract; the integrations
+they scope land separately. This plan is
 the detailed protocol design referenced by action IDs P0-P4 of the development
 action register maintained with the maintainers' roadmap notes.
 
@@ -58,7 +63,11 @@ introduce a parallel evaluation framework.
 
 - Generating or editing audio.
 - Training reward models or judge models.
-- A generic remote API client, model serving layer, or provider credentials.
+- A generic remote API client, model serving layer, or provider credentials
+  *inside the bank*. `versa.prompt_bank` never imports a provider SDK, endpoint,
+  or credential. Named judge adapters for local weights and hosted APIs are in
+  scope as separate optional integrations; see
+  [Judge backends](#judge-backends-local-weights-and-hosted-apis).
 - Autonomous voice-agent orchestration, tool execution, or real-time sessions.
 - Shipping third-party audio few-shot examples. They create dataset licensing,
   storage, preprocessing, and model-format obligations that are not needed for
@@ -122,6 +131,7 @@ the first increment before committing to the second.
 | A. Bank foundation | Load, validate, list, and render a compact set of protocols. No scorer integration yet. | None beyond existing PyYAML. | Schema grows prematurely. |
 | B. Qwen vertical slice | `prompt_id` runs through existing Qwen metric classes and YAML configs. | Existing optional Qwen dependencies only. | Backward compatibility with Qwen prompt discovery. |
 | C. Evaluation protocols | Structured parsing, prompt result provenance, few-shot mode, pairwise protocols, and reporting. | None required for parsing. | Treating noisy judge outputs as calibrated scores. |
+| D. Judge backends | One adapter contract; the same protocol runs on local weights and on hosted APIs (Gemini, Qwen3.5-Omni, Qwen3.8-Omni-Flash). | Optional per-provider extras only. | Provider coupling leaking into the bank; mutable hosted endpoints. |
 
 Multi-stage audio/text judge pipelines are a future design track. They should
 not block A-C.
@@ -207,6 +217,36 @@ what the code does.
   prefixed with its source file and protocol ID.
 - `manifest.yaml` is authoritative: a missing indexed file, a repeated entry, a
   self-reference, and an unindexed protocol file are all rejected.
+
+### Corrections made during review of the foundation
+
+- `few_shot_text` renders the zero-shot body first, then the demonstrations,
+  then a short closing instruction. Few-shot demonstrations must never replace
+  the rubric: a mode comparison changes the demonstrations only. Each protocol's
+  few-shot template is therefore a closer, not a restatement, and validation
+  checks required context across a mode's whole rendering rather than per body.
+- Demonstration outputs are literal text and are not substituted, so JSON
+  examples with braces are allowed. They are validated against the protocol's
+  own response contract.
+- Response validation rejects non-finite numbers (`NaN`, `Infinity`, and
+  overflow such as `1e400`) and repeated JSON keys instead of silently keeping
+  the last value. Schema bounds must be finite for the same reason: a `NaN`
+  bound makes every range comparison pass.
+- Protocol YAML is parsed with a loader that rejects duplicate mapping keys and
+  reports file, line, and column. YAML here is executable evaluation logic.
+- Generated JSON instructions state one-sided bounds (`<integer, at least 0>`)
+  and name any optional key, so the instructions and the validator describe the
+  same contract.
+- `output_key` must end in `_v<version>`. A deprecated `.v1` and its `.v2`
+  successor then report side by side under distinct keys, which global output-key
+  uniqueness would otherwise forbid. Migration: a new version introduces a new
+  key; consumers of the old key keep reading the old protocol's results.
+- `RenderedPrompt` carries `rendered_digest`, the SHA-256 of the exact rendered
+  text, beside `protocol_digest`. Different captions or instructions share a
+  protocol digest by design, so the rendered digest is what identifies an
+  evaluation.
+- Malformed nested YAML values (a list where a string belongs) are reported
+  through the validation report rather than raised as `TypeError`.
 
 ### Decisions recorded now for increment B
 
@@ -512,7 +552,7 @@ consume. It does not interpret audio or call models.
 | Mode | v0 | Meaning |
 | --- | --- | --- |
 | `zero_shot` | yes | Render the zero-shot instruction and output contract. |
-| `few_shot_text` | yes | Prepend text-only rubric demonstrations, then the target instruction. |
+| `few_shot_text` | yes | Render the zero-shot body, then text-only demonstrations, then the closing target instruction. The rubric is identical to `zero_shot` by construction. |
 | `pairwise` | yes | Render comparison instructions for audio A and audio B. |
 | `rubric` | later in C | Render a fixed scalar rubric with anchors. |
 | `dynamic_rubric` | deferred | Requires a planning stage and a judge pipeline. |
@@ -609,6 +649,228 @@ Two new config examples should use existing named metrics, not create a generic
 
 This keeps VERSA’s model loading and registry logic intact while proving the
 bank is useful.
+
+## Audio judging as a supported workflow
+
+Audio judging is a first-class VERSA evaluation workflow, not a side effect of a
+few protocols. `audio.caption_accuracy.v1`, `generation.prompt_alignment.v1`,
+`generation.pairwise_alignment.v1`, and `interaction.turn_taking.v1` are judge
+protocols today, and most planned evaluation jobs depend on this path.
+
+### The judged evaluation shape
+
+```text
+one or two audio inputs
+  + optional reference text (caption, transcript, lyrics)
+  + optional target instruction
+  + the protocol's rubric, labels, and response contract
+    -> judge model (local weights or hosted API)
+      -> structured result: score or label or preference,
+         short audible evidence, confidence, explicit abstention
+```
+
+The protocol owns the rubric and the response contract. The runner owns input
+resolution and execution. The backend owns model access. None of these layers
+may silently substitute for another: a rubric change is a protocol version, a
+model change is provenance, and neither is a scoring decision.
+
+Judges return text or structured payloads, never calibrated numbers. A judged
+value becomes a reportable metric only through a declared
+`primary_numeric_field` and its versioned `output_key`.
+
+### Result envelope for a judged utterance
+
+Every judged result records the following beside the score. This list is the
+acceptance contract for the increment that implements parsing and reporting; it
+is deliberately wider than the protocol digest, because the digest identifies
+the protocol, not the evaluation.
+
+| Group | Fields |
+| --- | --- |
+| Protocol identity | protocol ID, protocol version, protocol digest, bank schema version, prompt mode |
+| Prompt identity | rendered prompt digest, and a digest of the resolved context mapping |
+| Judge identity | model family, requested model ID, resolved model version reported by the provider, weights revision for local models, adapter name and version |
+| Inference settings | temperature, top_p, max output tokens, seed when supported, whether provider-native structured output was used, retry count |
+| Audio handling | input sample rate, channel handling, duration, any truncation or re-encoding the adapter applied |
+| Outcome | status (scored, abstained, parse_failed, backend_error, invalid_input), raw response subject to the retention policy, parsed payload, normalization flag |
+
+Two renderings of one protocol with different captions share a protocol digest
+by design. The rendered prompt digest and the context digest are what make a
+judged result reproducible, so neither is optional.
+
+### Abstention, parse failure, and aggregation
+
+Abstention is a valid measurement outcome and must never be scored:
+
+- A response with `abstain: true`, or the abstention label of a label, integer,
+  scalar, or preference contract, produces **no numeric value**. The sentinel
+  score the prompts request alongside `abstain: true` exists only to keep the
+  response shape fixed; parsing must discard it, and a reader must never see it
+  as a genuine lowest-quality judgment.
+- A response that fails contract validation produces no numeric value either.
+  The raw text is retained under the retention policy and the row is counted as
+  `parse_failed`.
+- Aggregation reports explicit denominators per judged metric: requested,
+  attempted, scored, abstained, parse_failed, and backend_error. The mean is
+  taken over `scored` rows only.
+- Abstention rate and parse-failure rate are reported beside every judged
+  metric. A high abstention rate invalidates a comparison even when the mean of
+  the remaining rows looks reasonable.
+- No imputation. A failed or abstained utterance is never replaced by a default,
+  a neutral value, or the mean.
+- Preference protocols report win, loss, and tie counts with the candidate order
+  and seed retained. Preference labels are not averaged into a scalar without a
+  documented aggregation method and a position-bias check.
+
+This reconciles with the shared result-summary policy: judged provenance fields
+are metadata and must stay outside generic numeric means.
+
+## Judge backends: local weights and hosted APIs
+
+The same protocol must be usable against local weights and against hosted,
+commercial APIs. A protocol is a measurement specification; where the model runs
+is provenance and cost, not meaning. The bank itself stays provider-free: no
+provider SDK, credential, endpoint, or HTTP client may be imported by
+`versa.prompt_bank`, and the foundation's import-isolation test keeps that true.
+
+### Adapter contract
+
+A judge backend is a small adapter that lives with the metric runners, not in
+the bank. It exposes four operations:
+
+```text
+describe()    -> backend identity: family, requested model ID, resolved model
+                 version, weights revision or endpoint, adapter version,
+                 provider SDK version
+constraints() -> declared limits: max audio inputs, max audio seconds, max
+                 request bytes, accepted containers and codecs, sample-rate and
+                 channel policy, whether provider-native structured output is
+                 supported, whether log-probabilities are available
+judge(request)-> raw response text, optional provider-parsed structured payload,
+                 provider metadata (resolved model version, response ID, finish
+                 reason, usage counts), latency, and an error category on failure
+close()       -> release sessions, files, or loaded weights
+```
+
+`request` carries the `RenderedPrompt` (text, protocol identity, response
+schema), the ordered audio inputs, and the inference settings. An adapter never
+edits prompt text, never chooses a protocol, and never decides a score.
+
+Execution order is fixed, and every step before the last one is local:
+
+1. Resolve the protocol, mode, and context; fail on any bank-level error.
+2. Check runner and backend compatibility, including audio-input count.
+3. Check the audio inputs against `constraints()`: duration, size, container,
+   channels, sample rate.
+4. Render the prompt and compute its digest.
+5. Only then load weights or issue the request.
+
+A configuration, context, or constraint failure must therefore never download a
+checkpoint, upload audio, or spend a token. Failures map onto the existing
+error taxonomy: configuration error, backend setup failure, invalid input,
+inference error, or valid abstention.
+
+### Provider dependencies and consent
+
+- Every provider SDK is an optional extra in `pyproject.toml`
+  (for example `versa[gemini]`), never a core dependency, and is imported inside
+  the adapter at setup time.
+- Credentials come from the environment or an explicit config field. They are
+  never written to results, logs, or provenance records.
+- A hosted adapter sends audio off the machine. It requires explicit opt-in in
+  the metric configuration, and its documentation states what is transmitted and
+  points to the provider's retention terms. Local-only users must be able to run
+  every bundled protocol without any hosted adapter installed.
+- Offline CI never contacts a provider: hosted adapters are exercised with
+  recorded fixtures and mocks, and live runs are manual and recorded.
+
+### Model and version identification
+
+Hosted endpoints are mutable, so identity needs more than a model name:
+
+- Record the requested model ID exactly as configured, and the resolved model
+  version the provider reports in its response when one is available.
+- For local weights, record the repository ID and the exact commit SHA.
+- Record the adapter version and provider SDK version; a client-side change can
+  alter request construction.
+- `model_compatibility: tested` already requires a model ID, a revision, and a
+  validation record. For a hosted model, the validation record must also carry
+  the run date, because the endpoint behind the name can change without notice.
+  Treat hosted evidence as dated, and re-verify before citing it in a release.
+
+### Audio-input constraints
+
+Adapters declare limits and validate against them before sending anything. The
+values below come from each provider's published documentation at the time of
+writing and must be re-read at implementation time rather than trusted here.
+
+| Target | Availability | Documented audio handling |
+| --- | --- | --- |
+| Qwen2-Audio, Qwen2.5-Omni | Local weights, already in VERSA | Existing wrappers resample to the processor rate without channel mixing; one audio input. |
+| [Gemini](https://ai.google.dev/gemini-api/docs/audio) | Hosted API | Documents `audio/wav`, `mp3`, `aiff`, `aac`, `ogg`, `flac`, `mpeg`, `m4a`, `l16`, `opus`, `alaw`, `mulaw`, and `webm`; up to 9.5 hours of audio per prompt; audio billed at 32 tokens per second; inline requests capped at 20 MB total, with the Files API above that; audio downsampled to 16 Kbps and multi-channel audio combined to a single channel; JSON-schema structured output supported; `gemini-3.8-flash` documented for audio understanding. |
+| [Qwen3.5-Omni](https://qwen.ai/blog?id=qwen3.5-omni) | Offline API and Realtime API; Plus, Flash, and Light instruct variants | 256k-token context; more than 10 hours of audio input; ASR across 113 languages and dialects. |
+| [Qwen3.8-Omni-Flash](https://qwen.ai/blog?id=qwen3.8-omni-flash) | Hosted API on the Qianwen AI Platform, plus a realtime API | 1M-token context; text, image, audio, and video input; substantially lower audio input pricing than Qwen3.5-Omni-Plus. |
+
+Two rules follow from those differences:
+
+- The adapter, not the protocol, owns transport-level audio handling. If a
+  provider downmixes or re-encodes, that behavior is recorded in the result
+  envelope so a channel-sensitive or bandwidth-sensitive protocol is not
+  silently evaluated on altered audio.
+- Batch evaluation uses the offline or standard request path. Realtime and
+  streaming interfaces are out of scope for metric scoring; they belong to a
+  separate interaction-evaluation track if one is ever pursued.
+
+### Structured-response handling
+
+- When `constraints().supports_structured_output` is true, the adapter may send
+  the response contract as a provider-native schema. The rendered JSON template
+  stays in the prompt regardless, so the two transports produce comparable text.
+- Whether native structured output was used is recorded per result. Results
+  produced with and without it are comparable only when that flag is reported.
+- Both paths are validated by the same `validate_response` contract check. There
+  is one validator, and it rejects non-finite numbers, repeated keys, undeclared
+  fields, and out-of-range values.
+- Permitted normalization before validation is limited to stripping surrounding
+  whitespace and a fenced code block. Any normalization is flagged. Repairing
+  malformed JSON, extracting a number from prose, or retrying until a response
+  parses are all forbidden; a retry that changes sampling is a new observation
+  and is recorded as such.
+
+### Integration scope and acceptance criteria
+
+Each backend lands as its own change. The acceptance criteria are identical, so
+a new provider is a known quantity rather than a negotiation:
+
+1. No new mandatory dependency; `versa.prompt_bank` import isolation unchanged;
+   the core CI lane passes with the provider package absent.
+2. Preflight proven: a test shows that an invalid protocol, mode, context, or
+   audio input fails before any network call or weight load.
+3. Identity proven: a mocked run asserts every field of the result envelope is
+   populated, including the resolved model version when the provider returns it.
+4. Contract coverage: at least one protocol per applicable response mode runs
+   end to end against recorded fixtures, including a malformed response and an
+   abstention, neither of which produces a score.
+5. Repeatability characterized, not assumed: fixed decoding settings, and a
+   recorded run-to-run agreement rate on a small fixed sample. Hosted judges are
+   not deterministic and must not be described as such.
+6. Consent and egress documented; opt-in configuration enforced.
+7. Cost and latency recorded per utterance on the smoke set.
+8. Cross-backend parity for at least one protocol against the existing local
+   Qwen path on the same files, reporting agreement, abstention rate, and
+   parse-failure rate. Parity evidence does not by itself promote a protocol to
+   `stable`; that still needs human-grounded validation.
+
+| Action | Scope | Depends on |
+| --- | --- | --- |
+| J1 | Judge backend adapter contract, result envelope, and conformance tests; wrap the existing local Qwen path as the reference adapter | P2, P3 |
+| J2 | Gemini hosted adapter behind `versa[gemini]` | J1 |
+| J3 | Qwen3.5-Omni hosted adapter (offline API), Plus/Flash/Light selectable | J1 |
+| J4 | Qwen3.8-Omni-Flash hosted adapter | J1, J3 |
+| J5 | Cross-backend protocol parity report on a fixed public sample | J2, J3 or J4 |
+
+None of these blocks the bank or the local Qwen slice. A provider that becomes
+unavailable is recorded as a release gap rather than worked around.
 
 ## Results and Parsing: Increment C
 

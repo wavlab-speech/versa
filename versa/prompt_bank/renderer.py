@@ -10,6 +10,8 @@ from typing import Optional
 
 from versa.prompt_bank.schema import (
     BANK_SCHEMA_VERSION,
+    digest_text,
+    mode_bodies,
     OPTIONAL_PLACEHOLDER_DEFAULTS,
     RENDER_MODES,
     RENDERER_PLACEHOLDERS,
@@ -24,13 +26,19 @@ from versa.prompt_bank.schema import (
 
 @dataclass(frozen=True)
 class RenderedPrompt:
-    """One rendered protocol text together with its reproducibility identity."""
+    """One rendered protocol text together with its reproducibility identity.
+
+    ``protocol_digest`` identifies the protocol; two renderings with different
+    captions or instructions share it. ``rendered_digest`` identifies this exact
+    text, so a result record can prove which prompt produced it.
+    """
 
     text: str
     protocol_id: str
     protocol_version: int
     mode: str
     protocol_digest: str
+    rendered_digest: str = ""
     bank_schema_version: int = BANK_SCHEMA_VERSION
     response_schema: Optional[ResponseContract] = None
 
@@ -56,20 +64,22 @@ def render_protocol(protocol, mode="zero_shot", context=None):
                 protocol.id, mode, list(available)
             )
         )
-    bodies = _mode_bodies(protocol, mode)
+    bodies = mode_bodies(protocol.modes, mode)
     values = _resolve_context(protocol, mode, bodies, context or {})
-    sections = []
+    sections = [substitute(bodies[0], values)]
     if mode == "few_shot_text":
         sections.append(_examples_section(protocol.modes.few_shot_text.examples))
-    for body in bodies:
+    for body in bodies[1:]:
         sections.append(substitute(body, values))
     sections.append(response_instructions(protocol.response_contract))
+    rendered = _canonical_text(sections)
     return RenderedPrompt(
-        text=_canonical_text(sections),
+        text=rendered,
         protocol_id=protocol.id,
         protocol_version=protocol.version,
         mode=mode,
         protocol_digest=protocol.digest,
+        rendered_digest=digest_text(rendered),
         bank_schema_version=BANK_SCHEMA_VERSION,
         response_schema=protocol.response_contract,
     )
@@ -84,15 +94,6 @@ def _resolve(protocol):
 
         return get_protocol(protocol)
     raise RenderError("protocol must be a Protocol record or a protocol ID string")
-
-
-def _mode_bodies(protocol, mode):
-    """Return the ordered instruction bodies rendered for one mode."""
-    if mode == "few_shot_text":
-        return (protocol.modes.few_shot_text.template,)
-    if mode == "pairwise":
-        return (protocol.modes.pairwise,)
-    return (protocol.modes.zero_shot,)
 
 
 def _resolve_context(protocol, mode, bodies, context):
@@ -182,8 +183,9 @@ def response_instructions(contract):
     else:
         return "\n".join(
             [
-                "Return valid JSON only, with exactly these keys and no other text:",
+                "Return valid JSON only, with no other text and no keys beyond these:",
                 _json_template(contract),
+                _json_requirement_note(contract),
             ]
         )
     if contract.allow_abstain:
@@ -210,19 +212,37 @@ def _json_template(contract):
     return "{" + ", ".join(parts) + "}"
 
 
+def _json_requirement_note(contract):
+    """State which declared keys are required, so optional keys are unambiguous."""
+    optional = [field.name for field in contract.fields if not field.required]
+    if not optional:
+        return "Every key is required."
+    return "Every key is required except {}, which may be omitted.".format(
+        ", ".join('"{}"'.format(name) for name in optional)
+    )
+
+
 def _json_placeholder(field):
-    """Return the placeholder shown for one declared JSON field."""
+    """Return the placeholder shown for one declared JSON field.
+
+    One-sided bounds are rendered as stated bounds rather than dropped, so the
+    instructions describe the same contract the validator enforces.
+    """
     if field.type == "boolean":
         return "<true|false>"
     if field.type == "string":
         return "<string>"
     if field.type == "array":
         return "[<string>]"
-    if field.minimum is None or field.maximum is None:
-        return "<{}>".format(field.type)
-    return "<{} {}-{}>".format(
-        field.type, _number(field.minimum), _number(field.maximum)
-    )
+    if field.minimum is not None and field.maximum is not None:
+        return "<{} {}-{}>".format(
+            field.type, _number(field.minimum), _number(field.maximum)
+        )
+    if field.minimum is not None:
+        return "<{}, at least {}>".format(field.type, _number(field.minimum))
+    if field.maximum is not None:
+        return "<{}, at most {}>".format(field.type, _number(field.maximum))
+    return "<{}>".format(field.type)
 
 
 def _number(value):

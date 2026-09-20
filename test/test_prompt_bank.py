@@ -30,7 +30,11 @@ from versa.prompt_bank import (
     validate_response,
 )
 from versa.prompt_bank.loader import MANIFEST_NAME, build_bank, _manifest_files
-from versa.prompt_bank.schema import PLACEHOLDER_ALLOWLIST, ErrorCollector
+from versa.prompt_bank.schema import (
+    PLACEHOLDER_ALLOWLIST,
+    ErrorCollector,
+    digest_text,
+)
 
 SNAPSHOT_PATH = Path(__file__).with_name("prompt_bank_snapshots.json")
 
@@ -38,25 +42,25 @@ SNAPSHOT_PATH = Path(__file__).with_name("prompt_bank_snapshots.json")
 # in the YAML or JSON libraries. Update them only with a protocol version bump.
 EXPECTED_DIGESTS = {
     "audio.caption_accuracy.v1": (
-        "c6307772d83c99c1e77c620be592efef337d6c12ec3644b1ae5360c60c2e66af"
+        "916a8fbe1a6e2d078ac475f27e0c5cff603c2da64c83b6c0a031dbd4097ab7ca"
     ),
     "generation.pairwise_alignment.v1": (
         "5594813455716d4fb08fd94da6bc04dc96da9b351ccbd3d02c1117df2c23e722"
     ),
     "generation.prompt_alignment.v1": (
-        "5294f6cd5e4aa7cff7d61dcf978c86a25d9ca71154f541c8b41fdaddb6eb4edb"
+        "77184dfcf7c3e4366b9b6aca417a240fac0df25d0be0f21115ad9da83bb0352c"
     ),
     "interaction.turn_taking.v1": (
-        "678164bf619f6ceec41c4f261f2e104f31c18ef655258bdd8feb9c274dd499aa"
+        "ed55824ef524e405968e18ea10aca4bfc3894692a3ab6acf681ade14d392827c"
     ),
     "speech.emotion.v1": (
-        "2bc9c79b1824eb4acce7d653c9af3ff62a55308f0c4330c2c1cfa2411863bc69"
+        "bac1a2788d830e87fd4e8ef750c77d015ce90d7d731b43e7c9493c8779d2bf51"
     ),
     "speech.overlap.v1": (
-        "58e82a9d6e4076aa52a77c38ef1d32768f0aa52995e524685726a487a5a46749"
+        "12629c5e725c4c1ddf5d04168fba5ca712823c07b54c0a75971e959a4f5c3365"
     ),
     "speech.recording_quality.v1": (
-        "d7cea33d0e9872150985fce0bb64def2be35c694563dc380cbfc4b8bf1b56655"
+        "c15d9e578652bd156b68d0507311902a6708470666a7d5ac0048980dce5b5d57"
     ),
     "speech.speaker_count.v1": (
         "9eef89948de3950681aeb5249a1be538fac6c6d157f723ac909ab10303a7c2fc"
@@ -136,6 +140,7 @@ def _rendered_snapshots():
             )
             snapshots["{}::{}".format(protocol.id, mode)] = {
                 "digest": rendered.protocol_digest,
+                "rendered_digest": rendered.rendered_digest,
                 "bank_schema_version": rendered.bank_schema_version,
                 "text": rendered.text,
             }
@@ -174,9 +179,9 @@ def test_declared_output_keys_are_unique_and_explicit():
         assert contract.mode == "json"
         keys.append(contract.output_key)
     assert sorted(keys) == [
-        "prompt_audio_caption_accuracy",
-        "prompt_generation_prompt_alignment",
-        "prompt_interaction_turn_taking",
+        "prompt_audio_caption_accuracy_v1",
+        "prompt_generation_prompt_alignment_v1",
+        "prompt_interaction_turn_taking_v1",
     ]
 
 
@@ -506,25 +511,43 @@ def test_validation_reports_every_error_at_once():
     assert len(messages) == 3
 
 
-def test_required_context_must_appear_in_every_mode_body():
-    """A declared text input that no body uses would be silently ignored."""
+def test_required_context_must_appear_in_every_render_mode():
+    """A declared text input that no mode renders would be silently ignored."""
     protocol = _base_protocol()
     protocol["input_contract"] = {
         "audio_inputs": 1,
         "requires_reference_text": True,
     }
-    protocol["protocol"] = {
-        "zero_shot": "Judge the caption {reference_text}.",
-        "few_shot_text": {
-            "examples": [
-                {"input": "Audible evidence: one bark.", "output": "yes"},
-                {"input": "Audible evidence: silence.", "output": "no"},
-            ],
-            "template": "Judge the audio.",
-        },
-    }
+    protocol["protocol"] = {"zero_shot": "Judge the audio."}
     messages = _errors(protocol)
-    assert any("body must use the required context" in entry for entry in messages)
+    assert any("must use the required context" in entry for entry in messages)
+
+
+def test_few_shot_rendering_keeps_the_zero_shot_rubric():
+    """Both modes judge against the same rubric, so only demonstrations differ."""
+    zero_shot = render_protocol("speech.recording_quality.v1", mode="zero_shot")
+    few_shot = render_protocol("speech.recording_quality.v1", mode="few_shot_text")
+    guide = "- fair: audible defects that do not prevent comfortable listening"
+    assert guide in zero_shot.text and guide in few_shot.text
+    assert few_shot.text.startswith(zero_shot.text.split("\n\n")[0])
+    assert "Examples:" in few_shot.text
+    for label in get_protocol("speech.recording_quality.v1").response_contract.labels:
+        assert "- {}:".format(label) in few_shot.text
+    assert zero_shot.protocol_digest == few_shot.protocol_digest
+    assert zero_shot.rendered_digest != few_shot.rendered_digest
+
+
+def test_rendered_digest_separates_identical_protocols():
+    """The protocol digest is shared; the rendered digest identifies the text."""
+    first = render_protocol(
+        "audio.caption_accuracy.v1", context={"reference_text": "A dog barks."}
+    )
+    second = render_protocol(
+        "audio.caption_accuracy.v1", context={"reference_text": "A door closes."}
+    )
+    assert first.protocol_digest == second.protocol_digest
+    assert first.rendered_digest != second.rendered_digest
+    assert first.rendered_digest == digest_text(first.text)
 
 
 def test_pairwise_contracts_require_two_audio_inputs_and_a_body():
@@ -565,13 +588,6 @@ def test_pairwise_contracts_require_two_audio_inputs_and_a_body():
             ],
             "must not reference audio files",
         ),
-        (
-            [
-                {"input": "Audible evidence: {labels}.", "output": "yes"},
-                {"input": "Audible evidence: silence.", "output": "no"},
-            ],
-            "must not contain braces",
-        ),
     ],
 )
 def test_few_shot_examples_are_validated(examples, message):
@@ -583,6 +599,76 @@ def test_few_shot_examples_are_validated(examples, message):
     }
     messages = _errors(protocol)
     assert any(message in entry for entry in messages), messages
+
+
+def _json_protocol():
+    """Return a synthetic JSON-contract protocol with few-shot demonstrations."""
+    protocol = _base_protocol()
+    protocol["response_contract"] = {
+        "mode": "json",
+        "fields": {
+            "score": {"type": "integer", "minimum": 1, "maximum": 5},
+            "note": {"type": "string", "required": False},
+            "abstain": {"type": "boolean"},
+        },
+        "primary_numeric_field": "score",
+        "output_key": "prompt_example_score_v1",
+    }
+    protocol["protocol"] = {
+        "zero_shot": "Rate the audio.",
+        "few_shot_text": {
+            "examples": [
+                {
+                    "input": "Audible evidence: clean speech.",
+                    "output": '{"score": 5, "abstain": false}',
+                },
+                {
+                    "input": "Audible evidence: heavy distortion.",
+                    "output": '{"score": 2, "note": "clipping", "abstain": false}',
+                },
+            ],
+            "template": "Rate the audio you are given on the same scale.",
+        },
+    }
+    return protocol
+
+
+def test_json_protocols_support_few_shot_demonstrations():
+    """JSON example outputs are literal text, so their braces are not templates."""
+    bank = _build(_json_protocol())
+    protocol = bank.protocols[0]
+    assert protocol.available_modes() == ("zero_shot", "few_shot_text")
+    rendered = render_protocol(protocol, mode="few_shot_text")
+    assert 'Output: {"score": 5, "abstain": false}' in rendered.text
+    assert '{"score": <integer 1-5>, "note": <string>, "abstain": <true|false>}' in (
+        rendered.text
+    )
+
+
+def test_json_instructions_describe_the_validated_contract():
+    """One-sided bounds and optional keys are stated, not silently dropped."""
+    protocol = _json_protocol()
+    protocol["protocol"] = {"zero_shot": "Rate the audio."}
+    protocol["response_contract"] = {
+        "mode": "json",
+        "fields": {
+            "score": {"type": "integer", "minimum": 0},
+            "ratio": {"type": "number", "maximum": 1},
+            "free": {"type": "number", "required": False},
+            "abstain": {"type": "boolean"},
+        },
+    }
+    rendered = render_protocol(_build(protocol).protocols[0])
+    assert '"score": <integer, at least 0>' in rendered.text
+    assert '"ratio": <number, at most 1>' in rendered.text
+    assert '"free": <number>' in rendered.text
+    assert 'Every key is required except "free", which may be omitted.' in rendered.text
+    contract = _build(protocol).protocols[0].response_contract
+    assert validate_response('{"score": -1, "ratio": 0.5, "abstain": false}', contract)
+    assert (
+        validate_response('{"score": 3, "ratio": 0.5, "abstain": false}', contract)
+        == []
+    )
 
 
 def test_duplicate_ids_and_output_keys_are_rejected():
@@ -600,7 +686,7 @@ def test_duplicate_ids_and_output_keys_are_rejected():
             "abstain": {"type": "boolean"},
         },
         "primary_numeric_field": "score",
-        "output_key": "prompt_example_score",
+        "output_key": "prompt_example_score_v1",
     }
     other = copy.deepcopy(scored)
     other["id"] = "speech.other_example.v1"
@@ -692,6 +778,181 @@ def test_validate_response_never_extracts_values_from_prose(
     """Responses are accepted only when they match the declared contract exactly."""
     contract = get_protocol(protocol_id).response_contract
     assert (validate_response(response, contract) == []) is expected
+
+
+@pytest.mark.parametrize(
+    "response,message",
+    [
+        (
+            '{"score": 4, "evidence": [], "disruptions": [],'
+            ' "confidence": NaN, "abstain": false}',
+            "must not contain NaN",
+        ),
+        (
+            '{"score": 4, "evidence": [], "disruptions": [],'
+            ' "confidence": Infinity, "abstain": false}',
+            "must not contain Infinity",
+        ),
+        (
+            '{"score": 4, "evidence": [], "disruptions": [],'
+            ' "confidence": 1e400, "abstain": false}',
+            "must be a finite number",
+        ),
+        (
+            '{"score": 1, "score": 5, "evidence": [], "disruptions": [],'
+            ' "confidence": 0.5, "abstain": false}',
+            "must not repeat the key 'score'",
+        ),
+    ],
+)
+def test_json_responses_reject_non_finite_and_duplicate_keys(response, message):
+    """An ambiguous or non-finite response is rejected, never silently resolved."""
+    contract = get_protocol("interaction.turn_taking.v1").response_contract
+    assert any(
+        message in entry for entry in validate_response(response, contract)
+    ), validate_response(response, contract)
+
+
+@pytest.mark.parametrize("value", ["nan", "inf", "-inf"])
+def test_scalar_and_integer_responses_reject_non_finite_text(value):
+    """Python's float parser accepts nan and inf; the contract must not."""
+    integer_contract = get_protocol("speech.speaker_count.v1").response_contract
+    assert validate_response(value, integer_contract)
+    protocol = _base_protocol()
+    protocol["response_contract"] = {
+        "mode": "scalar",
+        "minimum": 1,
+        "maximum": 5,
+        "anchors": [
+            {"value": 1, "description": "lowest"},
+            {"value": 5, "description": "highest"},
+        ],
+    }
+    protocol["protocol"] = {"zero_shot": "Rate the audio."}
+    contract = _build(protocol).protocols[0].response_contract
+    assert validate_response(value, contract)
+
+
+@pytest.mark.parametrize(
+    "contract,message",
+    [
+        (
+            {"mode": "integer", "minimum": ".nan", "maximum": 10},
+            "must be a finite integer",
+        ),
+        (
+            {
+                "mode": "scalar",
+                "minimum": 1,
+                "maximum": ".inf",
+                "anchors": [
+                    {"value": 1, "description": "lowest"},
+                    {"value": 2, "description": "higher"},
+                ],
+            },
+            "must be a finite number",
+        ),
+        (
+            {
+                "mode": "json",
+                "fields": {
+                    "score": {"type": "integer", "minimum": ".nan", "maximum": 5},
+                    "abstain": {"type": "boolean"},
+                },
+            },
+            "must be a finite number",
+        ),
+    ],
+)
+def test_non_finite_schema_bounds_are_rejected(contract, message):
+    """A NaN bound would make every range comparison silently pass."""
+    protocol = _base_protocol()
+    protocol["response_contract"] = yaml.safe_load(yaml.safe_dump(contract))
+    protocol["protocol"] = {"zero_shot": "Rate the audio."}
+    messages = _errors(protocol)
+    assert any(message in entry for entry in messages), messages
+
+
+def test_duplicate_yaml_keys_are_rejected():
+    """A repeated key would discard evaluation logic before validation sees it."""
+    document = """
+schema_version: 1
+protocols:
+  - id: speech.example.v1
+    version: 999
+    version: 1
+    title: Example protocol
+    status: experimental
+    domain: speech
+    task: example_task
+    description: A synthetic protocol.
+    input_contract: {audio_inputs: 1}
+    response_contract: {mode: closed_label, labels: [yes, no]}
+    protocol: {zero_shot: "Answer the question about the audio."}
+    model_compatibility: [{family: qwen2_audio, status: expected}]
+    runner_compatibility: [{runner: qwen2_audio, status: planned, modes: [zero_shot]}]
+"""
+    with pytest.raises(BankValidationError, match="duplicate key"):
+        build_bank([(MANIFEST_NAME, ""), ("duplicated.yaml", document)])
+
+
+@pytest.mark.parametrize(
+    "mutation",
+    [
+        {
+            "response_contract": {
+                "mode": "json",
+                "fields": {
+                    "score": {"type": "integer", "minimum": 1, "maximum": 5},
+                    "abstain": {"type": "boolean"},
+                },
+                "primary_numeric_field": ["score"],
+                "output_key": "prompt_example_score_v1",
+            }
+        },
+        {
+            "runner_compatibility": [
+                {"runner": "qwen2_audio", "status": "planned", "modes": [[]]}
+            ]
+        },
+        {"status": ["experimental"]},
+        {"metric_links": [{"metric": ["dnsmos"], "role": "companion"}]},
+        {"model_compatibility": [{"family": {"a": 1}, "status": "expected"}]},
+    ],
+)
+def test_malformed_nested_values_are_reported_not_raised(mutation):
+    """Unhashable and mistyped values must not escape the validation report."""
+    protocol = _base_protocol()
+    protocol.update(mutation)
+    messages = _errors(protocol)
+    assert all(entry.startswith("synthetic.yaml") for entry in messages), messages
+
+
+def test_output_keys_are_versioned_so_protocol_versions_coexist():
+    """A deprecated .v1 and its .v2 successor report under distinct keys."""
+    first = _json_protocol()
+    first["id"] = "speech.scored.v1"
+    first["status"] = "deprecated"
+    second = copy.deepcopy(first)
+    second["id"] = "speech.scored.v2"
+    second["version"] = 2
+    second["status"] = "experimental"
+    second["response_contract"]["output_key"] = "prompt_example_score_v2"
+    bank = _build(first, second)
+    assert [protocol.id for protocol in bank.protocols] == [
+        "speech.scored.v1",
+        "speech.scored.v2",
+    ]
+    assert [protocol.response_contract.output_key for protocol in bank.protocols] == [
+        "prompt_example_score_v1",
+        "prompt_example_score_v2",
+    ]
+    assert bank.get("speech.scored.v1").digest != bank.get("speech.scored.v2").digest
+
+    mismatched = copy.deepcopy(second)
+    mismatched["response_contract"]["output_key"] = "prompt_example_score_v1"
+    messages = _errors(mismatched)
+    assert any("must end in '_v2'" in entry for entry in messages), messages
 
 
 def test_bank_loads_without_model_or_metric_imports():
