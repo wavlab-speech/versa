@@ -114,6 +114,18 @@ class FlakyMetric(BaseMetric):
         return _metadata("flaky")
 
 
+class BrokenSetupMetric(StableMetric):
+    """Fail while constructing, as an unavailable backend would."""
+
+    def _setup(self):
+        """Raise so the metric can never be loaded."""
+        raise RuntimeError("backend unavailable")
+
+    def get_metadata(self):
+        """Expose the metric under its registered name."""
+        return _metadata("broken")
+
+
 class ReferenceMetric(StableMetric):
     """A metric that cannot load without paired references."""
 
@@ -136,6 +148,7 @@ def scorer(monkeypatch):
     registry = MetricRegistry()
     for cls in (StableMetric, SecondMetric, FlakyMetric, ReferenceMetric):
         registry.register(cls, cls().get_metadata())
+    registry.register(BrokenSetupMetric, _metadata("broken"))
     return VersaScorer(registry)
 
 
@@ -575,3 +588,45 @@ def test_metric_oriented_status_counts_partition_the_inputs(
     assert resumed_counts["scored_utterances"] == 0
     assert resumed_counts["resumed_utterances"] == 2
     assert resumed_counts["skipped_utterances"] == 1
+
+
+def test_metric_that_never_loads_leaves_its_utterances_unscored(
+    scorer, gen_files, tmp_path
+):
+    """Utterances of a metric whose backend failed are not reported as resumed."""
+    status = RunStatus()
+    scorer.score_utterances_by_metric(
+        gen_files,
+        [{"name": "broken"}],
+        output_file=str(tmp_path / "scores.jsonl"),
+        io="soundfile",
+        run_status=status,
+    )
+
+    counts = status.as_dict()
+    assert counts["failed_metric_loads"] == ["broken"]
+    assert counts["total_utterances"] == 3
+    assert counts["scored_utterances"] == 0
+    assert counts["resumed_utterances"] == 0
+    assert counts["skipped_utterances"] == 3
+    assert status.has_failures
+
+
+def test_a_scored_utterance_outranks_another_metric_failing_to_load(
+    scorer, gen_files, tmp_path
+):
+    """An utterance one metric scored counts as scored, not skipped."""
+    status = RunStatus()
+    scorer.score_utterances_by_metric(
+        gen_files,
+        [{"name": "stable"}, {"name": "broken"}],
+        output_file=str(tmp_path / "scores.jsonl"),
+        io="soundfile",
+        run_status=status,
+    )
+
+    counts = status.as_dict()
+    assert counts["scored_utterances"] == 3
+    assert counts["skipped_utterances"] == 0
+    assert counts["resumed_utterances"] == 0
+    assert counts["failed_metric_loads"] == ["broken"]

@@ -1197,6 +1197,7 @@ class VersaScorer:
         }
         scored_keys = set()
         attempted_keys = set()
+        unevaluated_keys = set()
         if run_status is not None:
             run_status.total_utterances += len(gen_files)
 
@@ -1214,9 +1215,10 @@ class VersaScorer:
             # here and it is loaded before the check below decides. Skipping it
             # on a configuration match alone would ignore a changed checkpoint.
             planned = {metric_name: metric_signature(metric_name, config)}
-            if not _pending_files(
+            planned_files = _pending_files(
                 gen_files, score_by_key, planned, input_signatures, legacy_resume
-            ):
+            )
+            if not planned_files:
                 self.logger.info(
                     "Metric %s already completed every utterance; skipping",
                     metric_name,
@@ -1225,6 +1227,9 @@ class VersaScorer:
                     run_status.record_load(1, 0)
                 continue
 
+            load_failures = (
+                len(run_status.failed_metric_loads) if run_status is not None else 0
+            )
             metric_suite = self.load_metrics(
                 [config],
                 use_gt=use_gt,
@@ -1242,6 +1247,13 @@ class VersaScorer:
 
             if len(metric_suite.metrics) == 0:
                 self.logger.info("Skipping %s for utterance-level scoring", metric_name)
+                if (
+                    run_status is not None
+                    and len(run_status.failed_metric_loads) > load_failures
+                ):
+                    # The backend never loaded, so these utterances were not
+                    # evaluated and must not be reported as resumed work.
+                    unevaluated_keys.update(planned_files)
                 _release_metric_resources()
                 continue
 
@@ -1297,9 +1309,9 @@ class VersaScorer:
 
         if run_status is not None:
             # Every input is counted once: scored when a metric pass produced a
-            # record, skipped when each pass that wanted it dropped its audio,
-            # and resumed when no pass needed it at all.
-            skipped_keys = attempted_keys - scored_keys
+            # record, skipped when each pass that wanted it dropped its audio or
+            # could not load its backend, and resumed when no pass needed it.
+            skipped_keys = (attempted_keys | unevaluated_keys) - scored_keys
             run_status.scored_utterances += len(scored_keys)
             run_status.skipped_utterances += len(skipped_keys)
             run_status.resumed_utterances += len(
