@@ -414,3 +414,31 @@ def test_strict_run_writes_the_requested_report_before_exiting(
         scorer.main()
 
     assert report.exists()
+
+
+def test_chunking_failure_is_reported_as_a_skipped_input(scoring_case, monkeypatch):
+    """An input dropped while chunking cannot pass as a complete strict run."""
+    root, argv, _ = scoring_case
+    chunk_argv = argv + [
+        "--enable_chunking",
+        "--chunk_duration",
+        "0.5",
+        "--hop_duration",
+        "0.5",
+    ]
+
+    def failing_chunk(*args, **kwargs):
+        """Fail the way an unreadable or malformed input would."""
+        raise RuntimeError("cannot chunk")
+
+    monkeypatch.setattr(scorer_chunk, "_chunk_pair_to_tmp", failing_chunk)
+    monkeypatch.setattr(sys, "argv", chunk_argv)
+
+    # Tolerant mode records the dropped input and finishes.
+    scorer_chunk.main()
+
+    monkeypatch.setattr(sys, "argv", chunk_argv + ["--strict"])
+    with pytest.raises(SystemExit) as exc:
+        scorer_chunk.main()
+
+    assert "skipped_utterances" in str(exc.value)

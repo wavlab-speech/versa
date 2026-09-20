@@ -216,11 +216,14 @@ def _maybe_chunk_filelists(
     gen_files: dict,
     gt_files: dict | None,
     text_info: dict | None,
+    run_status=None,
 ) -> tuple[dict, dict | None, dict | None, Path | None]:
     """
     If chunking is enabled, create on-disk chunked wavs and return updated mappings.
     Also replicates text_info per chunk key. Reject missing reference keys before
-    writing any chunks.
+    writing any chunks. An input whose chunking fails is dropped from the
+    returned mappings and counted once as skipped in ``run_status``, so a strict
+    run cannot report a complete result while inputs went unscored.
     """
     if not args.enable_chunking:
         return gen_files, gt_files, text_info, None
@@ -268,6 +271,8 @@ def _maybe_chunk_filelists(
             )
         except Exception as e:
             logging.warning(f"Chunking failed for key={key}: {e}")
+            if run_status is not None:
+                run_status.record_skipped_utterance()
             continue
 
         # Merge into global dicts
@@ -313,8 +318,9 @@ def main():
     logging.info("The number of utterances (pre-chunk) = %d", len(gen_files))
 
     # Optional: build chunked filelists and override maps
+    run_status = RunStatus()
     gen_files, gt_files, text_info, chunk_tmp_dir = _maybe_chunk_filelists(
-        args, gen_files, gt_files, text_info
+        args, gen_files, gt_files, text_info, run_status=run_status
     )
 
     if args.enable_chunking:
@@ -328,7 +334,6 @@ def main():
         logging.info(f"Corpus scoring over chunk directory: {pred_for_corpus}")
         gt_for_corpus = str(chunk_tmp_dir / "gt") if gt_files is not None else None
 
-    run_status = RunStatus()
     has_metrics, _ = run_scoring(
         args,
         scorer,

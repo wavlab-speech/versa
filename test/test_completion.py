@@ -63,6 +63,16 @@ def test_metric_signature_is_stable_across_key_order_and_value_types():
     )
 
 
+def test_metric_signature_separates_adjacent_large_integers():
+    """Exact integers keep their identity beyond the exact float range."""
+    assert metric_signature("m", {"seed": 2**53}) != metric_signature(
+        "m", {"seed": 2**53 + 1}
+    )
+    assert metric_signature("m", {"threshold": 0.1}) != metric_signature(
+        "m", {"threshold": 0.2}
+    )
+
+
 def test_metric_signatures_include_the_metric_identity_hook():
     """A metric that reports a checkpoint revision changes its identity."""
     signatures = metric_signatures(
@@ -146,6 +156,17 @@ def test_legacy_rows_recompute_by_default_and_can_be_trusted():
     assert pending_metrics(empty, {"a": "sig-a"}, None, LEGACY_TRUST) == ["a"]
 
 
+def test_missing_stored_input_identity_is_not_trusted():
+    """A record that cannot prove which inputs produced it is recomputed."""
+    row = {"key": "utt", "a": 1.0}
+    ensure_completion(row)
+    record_metric_status(row, "a", "sig-a", STATUS_SUCCESS, ["a"])
+
+    assert pending_metrics(row, {"a": "sig-a"}, "inputs-1") == ["a"]
+    # Without a current identity to compare against, the record still stands.
+    assert pending_metrics(row, {"a": "sig-a"}) == []
+
+
 def test_unknown_schema_version_is_treated_as_legacy():
     """A record from a future contract is not silently trusted."""
     row = {"key": "utt", COMPLETION_FIELD: {"schema": 99, "metrics": {}}}
@@ -225,8 +246,8 @@ def test_run_status_reports_denominators_and_failures():
     assert "utterances 1 scored" in status.describe()
 
 
-def test_run_status_merges_metric_passes_without_double_counting_skips():
-    """One invalid utterance is dropped by every metric pass, but counts once."""
+def test_run_status_merges_metric_outcomes_only():
+    """Merging metric passes accumulates outcomes and leaves utterances alone."""
     status = RunStatus()
     for _ in range(3):
         one_pass = RunStatus()
@@ -235,7 +256,8 @@ def test_run_status_merges_metric_passes_without_double_counting_skips():
         status.merge_metric_counts(one_pass)
 
     assert status.metric_status_counts[STATUS_SUCCESS] == 3
-    assert status.skipped_utterances == 1
+    # The caller counts each utterance once after every pass has finished.
+    assert status.skipped_utterances == 0
 
 
 def test_run_status_without_failures_is_complete():

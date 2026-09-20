@@ -1196,6 +1196,7 @@ class VersaScorer:
             key: dict(existing_scores.get(key, {"key": key})) for key in gen_files
         }
         scored_keys = set()
+        attempted_keys = set()
         if run_status is not None:
             run_status.total_utterances += len(gen_files)
 
@@ -1207,7 +1208,11 @@ class VersaScorer:
                 continue
 
             # Plan from the configured identity first so a metric whose work is
-            # already complete never loads its backend.
+            # already complete never loads its backend. A metric that extends
+            # its identity through evaluation_identity() cannot be resolved
+            # without constructing it, so its stored signature will not match
+            # here and it is loaded before the check below decides. Skipping it
+            # on a configuration match alone would ignore a changed checkpoint.
             planned = {metric_name: metric_signature(metric_name, config)}
             if not _pending_files(
                 gen_files, score_by_key, planned, input_signatures, legacy_resume
@@ -1274,6 +1279,7 @@ class VersaScorer:
                 )
                 if run_status is not None:
                     run_status.merge_metric_counts(metric_status)
+                attempted_keys.update(pending_files)
                 for utt_score in metric_scores:
                     key = utt_score.get("key")
                     if key is None:
@@ -1290,9 +1296,18 @@ class VersaScorer:
             )
 
         if run_status is not None:
+            # Every input is counted once: scored when a metric pass produced a
+            # record, skipped when each pass that wanted it dropped its audio,
+            # and resumed when no pass needed it at all.
+            skipped_keys = attempted_keys - scored_keys
             run_status.scored_utterances += len(scored_keys)
+            run_status.skipped_utterances += len(skipped_keys)
             run_status.resumed_utterances += len(
-                [key for key in gen_files if key not in scored_keys]
+                [
+                    key
+                    for key in gen_files
+                    if key not in scored_keys and key not in skipped_keys
+                ]
             )
         score_info = [score_by_key[key] for key in gen_files if key in score_by_key]
         self.logger.info(

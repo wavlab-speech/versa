@@ -14,7 +14,7 @@ summaries, rankings, and report score columns.
 import hashlib
 import json
 import os
-from numbers import Real
+from numbers import Integral, Real
 
 COMPLETION_SCHEMA_VERSION = 1
 COMPLETION_FIELD = "_versa_completion"
@@ -57,8 +57,13 @@ def _canonical(value):
         return [_canonical(item) for item in value]
     if value is None or isinstance(value, (str, bool)):
         return value
+    if isinstance(value, Integral):
+        # Exact, so two large adjacent integers cannot share one identity.
+        return int(value)
     if isinstance(value, Real):
-        return float(value)
+        number = float(value)
+        # An integral float and the same integer describe one configuration.
+        return int(number) if number.is_integer() else number
     return repr(value)
 
 
@@ -250,7 +255,9 @@ def pending_metrics(row, signatures, inputs=None, legacy=LEGACY_RECOMPUTE):
         return sorted(signatures)
 
     recorded_inputs = envelope.get("input", {}).get("signature")
-    if inputs is not None and recorded_inputs is not None and recorded_inputs != inputs:
+    if inputs is not None and recorded_inputs != inputs:
+        # A record with a missing or different input identity cannot be shown
+        # to describe these inputs, so everything is recomputed.
         return sorted(signatures)
 
     pending = []
@@ -368,11 +375,12 @@ class RunStatus:
         self.skipped_utterances += 1
 
     def merge_metric_counts(self, other):
-        """Fold one metric pass of the same utterances into this status.
+        """Fold the metric outcomes of one metric pass into this status.
 
-        Metric outcomes accumulate because each pass evaluates different
-        metrics. Skipped utterances do not: the same invalid input is dropped
-        again by every pass, so the largest single-pass count is kept."""
+        Only metric-level counts are merged, because each pass evaluates
+        different metrics. Utterance counters are not: the same invalid input
+        is dropped again by every pass, so the caller counts each utterance
+        once after all passes finish."""
         for status, count in other.metric_status_counts.items():
             self.metric_status_counts[status] = (
                 self.metric_status_counts.get(status, 0) + count
@@ -381,7 +389,6 @@ class RunStatus:
             self.metric_error_counts[category] = (
                 self.metric_error_counts.get(category, 0) + count
             )
-        self.skipped_utterances = max(self.skipped_utterances, other.skipped_utterances)
 
     @property
     def has_failures(self):

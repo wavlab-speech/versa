@@ -517,3 +517,61 @@ def test_interrupted_resume_keeps_stored_work_and_recovers(
     written = _read_jsonl(output_file)
     assert [row["key"] for row in written] == list(gen_files)
     assert written == recovered
+
+
+def _drop_one_utterance(monkeypatch, dropped_key):
+    """Make audio validation reject one utterance, as bad input would."""
+    real_validate = scorer_shared.VersaScorer._validate_audio
+
+    def validate(self, wav, sr, key, audio_type, metric_names=None):
+        """Reject the selected key and validate every other one normally."""
+        if key == dropped_key:
+            return False
+        return real_validate(self, wav, sr, key, audio_type, metric_names)
+
+    monkeypatch.setattr(scorer_shared.VersaScorer, "_validate_audio", validate)
+
+
+def test_metric_oriented_status_counts_partition_the_inputs(
+    scorer, gen_files, tmp_path, monkeypatch
+):
+    """Each input is counted once even though every metric pass revisits it."""
+    output_file = tmp_path / "scores.jsonl"
+    configs = [{"name": "stable"}, {"name": "second"}]
+    _drop_one_utterance(monkeypatch, list(gen_files)[0])
+
+    status = RunStatus()
+    scorer.score_utterances_by_metric(
+        gen_files,
+        configs,
+        output_file=str(output_file),
+        io="soundfile",
+        run_status=status,
+    )
+
+    counts = status.as_dict()
+    assert counts["total_utterances"] == 3
+    assert counts["scored_utterances"] == 2
+    assert counts["skipped_utterances"] == 1
+    assert counts["resumed_utterances"] == 0
+    assert (
+        counts["scored_utterances"]
+        + counts["resumed_utterances"]
+        + counts["skipped_utterances"]
+        == counts["total_utterances"]
+    )
+
+    resumed_status = RunStatus()
+    scorer.score_utterances_by_metric(
+        gen_files,
+        configs,
+        output_file=str(output_file),
+        io="soundfile",
+        resume=True,
+        run_status=resumed_status,
+    )
+
+    resumed_counts = resumed_status.as_dict()
+    assert resumed_counts["scored_utterances"] == 0
+    assert resumed_counts["resumed_utterances"] == 2
+    assert resumed_counts["skipped_utterances"] == 1

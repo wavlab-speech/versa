@@ -26,8 +26,10 @@ def add_resume_arguments(parser):
         help=(
             "Resume utterance scoring from an existing output_file. An "
             "utterance is skipped only when every configured metric completed "
-            "successfully under the same metric, configuration, and input "
-            "identity; missing and failed metrics are recomputed and merged."
+            "successfully, or explicitly abstained, under the same metric, "
+            "configuration, and input identity; an abstention is a "
+            "reproducible outcome and is not retried, while missing and failed "
+            "metrics are recomputed and merged."
         ),
     )
     parser.add_argument(
