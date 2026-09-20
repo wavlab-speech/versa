@@ -8,6 +8,7 @@ import gc
 import json
 import logging
 import os
+from collections.abc import Mapping
 from concurrent.futures import ProcessPoolExecutor
 
 import kaldiio
@@ -309,6 +310,33 @@ def _load_existing_jsonl_scores(
     return existing_scores
 
 
+class _InputSubset(Mapping):
+    """Keep an ordered selection of input keys without loading their audio."""
+
+    def __init__(self, source, keys):
+        """Retain the source mapping and selected keys, never its values."""
+        self.source = source
+        self._keys = dict.fromkeys(keys)
+
+    def __getitem__(self, key):
+        """Load one selected input only when the scorer requests it."""
+        if key not in self._keys:
+            raise KeyError(key)
+        return self.source[key]
+
+    def __iter__(self):
+        """Iterate selected keys in their original input order."""
+        return iter(self._keys)
+
+    def __len__(self):
+        """Return the number of selected inputs."""
+        return len(self._keys)
+
+    def __contains__(self, key):
+        """Test membership without triggering the source audio loader."""
+        return key in self._keys
+
+
 def _input_reference(mapping: Any, key: str) -> Any:
     """Describe one mapped input without loading its audio.
 
@@ -318,6 +346,8 @@ def _input_reference(mapping: Any, key: str) -> Any:
     degrades to that entry for Kaldi inputs."""
     if mapping is None or key not in mapping:
         return None
+    if isinstance(mapping, _InputSubset):
+        return _input_reference(mapping.source, key)
     lazy_entries = getattr(mapping, "_dict", None)
     if isinstance(lazy_entries, dict):
         return lazy_entries[key]
@@ -436,12 +466,14 @@ def _pending_files(
     signatures: Dict[str, str],
     input_signatures: Dict[str, str],
     legacy_resume: str = LEGACY_RECOMPUTE,
-) -> Dict[str, str]:
-    """Select the input mapping restricted to utterances with pending work."""
+) -> Mapping:
+    """Select pending inputs lazily, preserving their original identity."""
     _, completed_keys = _plan_utterance_work(
         gen_files, existing_scores, signatures, input_signatures, legacy_resume
     )
-    return {key: path for key, path in gen_files.items() if key not in completed_keys}
+    return _InputSubset(
+        gen_files, (key for key in gen_files if key not in completed_keys)
+    )
 
 
 def _record_skip(run_status: Optional[RunStatus]) -> None:
@@ -846,7 +878,9 @@ class VersaScorer:
         if run_status is not None:
             for key in gen_files:
                 if key in completed_keys:
-                    run_status.record_row(existing_scores[key], resumed=True)
+                    run_status.record_row(
+                        existing_scores[key], resumed=True, metric_names=signatures
+                    )
         cache_info = []
 
         try:
@@ -990,7 +1024,9 @@ class VersaScorer:
             run_status.total_utterances += len(keys)
             for key in keys:
                 if key in completed_keys:
-                    run_status.record_row(existing_scores[key], resumed=True)
+                    run_status.record_row(
+                        existing_scores[key], resumed=True, metric_names=signatures
+                    )
 
         file_handle = None
         if output_file:
@@ -1153,7 +1189,9 @@ class VersaScorer:
         if run_status is not None:
             for key in gen_files:
                 if key in completed_keys:
-                    run_status.record_row(existing_scores[key], resumed=True)
+                    run_status.record_row(
+                        existing_scores[key], resumed=True, metric_names=signatures
+                    )
         score_info = [
             new_scores.get(key, existing_scores.get(key))
             for key in gen_files
