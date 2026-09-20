@@ -11,6 +11,8 @@ from pathlib import Path
 
 import numpy as np
 import soundfile as sf
+from versa.bin.cli_options import add_resume_arguments, enforce_run_status
+from versa.completion import RunStatus
 from versa.bin.scoring import (
     configure_runtime,
     load_inputs,
@@ -78,14 +80,7 @@ def get_parser() -> argparse.Namespace:
         action="store_true",
         help="Do not match the groundtruth and generated files.",
     )
-    parser.add_argument(
-        "--resume",
-        action="store_true",
-        help=(
-            "Resume utterance scoring from an existing output_file by skipping "
-            "keys already present in the JSONL results."
-        ),
-    )
+    add_resume_arguments(parser)
 
     # ---------- NEW: chunking options ----------
     parser.add_argument(
@@ -221,11 +216,14 @@ def _maybe_chunk_filelists(
     gen_files: dict,
     gt_files: dict | None,
     text_info: dict | None,
+    run_status=None,
 ) -> tuple[dict, dict | None, dict | None, Path | None]:
     """
     If chunking is enabled, create on-disk chunked wavs and return updated mappings.
     Also replicates text_info per chunk key. Reject missing reference keys before
-    writing any chunks.
+    writing any chunks. An input whose chunking fails is dropped from the
+    returned mappings and counted once as skipped in ``run_status``, so a strict
+    run cannot report a complete result while inputs went unscored.
     """
     if not args.enable_chunking:
         return gen_files, gt_files, text_info, None
@@ -273,6 +271,8 @@ def _maybe_chunk_filelists(
             )
         except Exception as e:
             logging.warning(f"Chunking failed for key={key}: {e}")
+            if run_status is not None:
+                run_status.record_skipped_utterance()
             continue
 
         # Merge into global dicts
@@ -318,8 +318,9 @@ def main():
     logging.info("The number of utterances (pre-chunk) = %d", len(gen_files))
 
     # Optional: build chunked filelists and override maps
+    run_status = RunStatus()
     gen_files, gt_files, text_info, chunk_tmp_dir = _maybe_chunk_filelists(
-        args, gen_files, gt_files, text_info
+        args, gen_files, gt_files, text_info, run_status=run_status
     )
 
     if args.enable_chunking:
@@ -344,8 +345,10 @@ def main():
         parser=parser,
         corpus_defaults={"io": "dir" if args.enable_chunking else args.io},
         corpus_use_gt=gt_for_corpus is not None,
+        run_status=run_status,
     )
     assert has_metrics, "no scoring function is provided"
+    enforce_run_status(args, run_status)
 
 
 if __name__ == "__main__":

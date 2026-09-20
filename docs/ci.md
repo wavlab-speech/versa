@@ -45,7 +45,13 @@ flake8 versa test scripts *.py
 # Run dependency-light core tests
 pytest -q test/test_metrics/test_definition.py test/test_docstring_check.py \
   test/test_slurm_launcher.py test/test_aggregate_results.py \
-  test/test_result_summary.py test/test_reporting.py
+  test/test_result_summary.py test/test_reporting.py test/test_completion.py
+
+# Run the resume and run-status contracts
+pytest -q test/test_completion.py test/test_pipeline/test_resume_contract.py \
+  test/test_pipeline/test_scorer_entrypoints.py \
+  test/test_pipeline/test_local_workers.py \
+  test/test_pipeline/test_mapss_pipeline.py
 
 # Run specific test modules
 pytest test/test_general.py
@@ -59,10 +65,11 @@ small fake metrics and mocked backends; passing these checks is not numerical
 validation of MAPSS or a neural evaluator. The JUnit check rejects empty suites,
 skips, failures, and errors. CI retains the report as an artifact.
 
-Existing resume tests cover the current behavior, including metric-oriented
-recomputation. They do not establish R1's planned configuration-aware completion
-contract. Add the R1/R3 regression files to `ci/pytest-core.ini` as those features
-are implemented; add prompt-resource checks when the bank exists.
+The resume tests cover the configuration-aware completion contract:
+`test/test_completion.py` checks the record and status vocabulary, and
+`test/test_pipeline/test_resume_contract.py` exercises resume, strict runs, and
+run-status counters through the real scorer. Add prompt-resource checks to
+`ci/pytest-core.ini` when the bank exists.
 
 ### Installed-wheel checks
 

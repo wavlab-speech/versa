@@ -8,6 +8,8 @@
 import argparse
 import logging
 
+from versa.bin.cli_options import add_resume_arguments, enforce_run_status
+from versa.completion import RunStatus
 from versa.metric_discovery import (
     create_metric_discovery_registry,
     describe_metric,
@@ -100,14 +102,7 @@ def get_parser() -> argparse.Namespace:
         action="store_true",
         help="Do not match the groundtruth and generated files.",
     )
-    parser.add_argument(
-        "--resume",
-        action="store_true",
-        help=(
-            "Resume utterance scoring from an existing output_file by skipping "
-            "keys already present in the JSONL results."
-        ),
-    )
+    add_resume_arguments(parser)
     parser.add_argument(
         "--scoring_mode",
         type=str,
@@ -342,11 +337,13 @@ def main():
         gt_source_files = [
             audio_loader_setup(path, args.io) for path in args.gt_sources
         ]
+        run_status = RunStatus()
         multi_source_metrics = scorer.load_metrics(
             multi_source_score_config,
             use_gt=True,
             use_gt_text=False,
             use_gpu=args.use_gpu,
+            run_status=run_status,
         )
         if not multi_source_metrics.metrics:
             raise ValueError("No multi-source scoring function is available")
@@ -357,6 +354,9 @@ def main():
             output_file=args.output_file,
             io=args.io,
             resume=args.resume,
+            legacy_resume=args.legacy_resume,
+            input_identity=args.input_identity,
+            run_status=run_status,
         )
         logging.info("Summary: %s", compute_summary(score_info))
         if args.report:
@@ -370,6 +370,7 @@ def main():
                 outlier_limit=args.report_outlier_limit,
                 registry=scorer.registry,
             )
+        enforce_run_status(args, run_status)
         return
 
     if multi_source_score_config:
@@ -379,6 +380,7 @@ def main():
 
     gen_files, gt_files, text_info = load_inputs(args)
     logging.info("The number of utterances = %d", len(gen_files))
+    run_status = RunStatus()
     has_metrics, score_info = run_scoring(
         args,
         scorer,
@@ -387,6 +389,7 @@ def main():
         gt_files,
         text_info,
         parser=parser,
+        run_status=run_status,
     )
     if not has_metrics:
         raise ValueError("No scoring function is provided")
@@ -402,6 +405,9 @@ def main():
             outlier_limit=args.report_outlier_limit,
             registry=scorer.registry,
         )
+    # Report run completeness last so a strict failure still leaves every
+    # requested artifact behind.
+    enforce_run_status(args, run_status)
 
 
 def _write_report(

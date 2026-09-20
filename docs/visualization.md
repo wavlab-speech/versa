@@ -115,6 +115,14 @@ protocol metadata, and the selected report grouping field are excluded from
 score discovery. Store new provenance fields in `_metadata` or another private
 envelope to keep them out of summaries.
 
+Scoring writes one such envelope itself: `_versa_completion` records the
+completion-contract schema version, the input identity, and the status of every
+attempted metric. It exists so resume can tell a successful evaluation from a
+failed or missing one, and it is never discovered as a score, ranked, or
+averaged. A metric that failed or abstained still stores its usual null value,
+so an all-invalid field keeps appearing in reports with its invalid count
+rather than silently disappearing.
+
 Job aggregation writes genuine JSONL to `utt_result.txt`, recursively replacing
 nonfinite numbers with JSON null. It keeps `avg_result.txt` in its existing
 `name: value` format. Report input mode continues to read historical Python dictionary records;
