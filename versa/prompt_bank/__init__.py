@@ -10,8 +10,10 @@ Example:
     >>> rendered.protocol_id
     'speech.emotion.v1'
 
-All bundled protocols are ``experimental``: they are executable, but they do not
-yet carry human-grounded validation evidence.
+All bundled protocols are ``experimental``: they load, validate, list, and
+render, but no metric executes them yet, and they do not carry human-grounded
+validation evidence. ``generation.pairwise_alignment.v1`` renders and stays
+unexecutable until a runner supplies two audio inputs.
 """
 
 from versa.prompt_bank.loader import (
