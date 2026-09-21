@@ -29,9 +29,11 @@ from versa.prompt_bank import (
     validate_bank,
     validate_response,
 )
+from versa.prompt_bank import loader
 from versa.prompt_bank.loader import MANIFEST_NAME, build_bank, _manifest_files
 from versa.prompt_bank.schema import (
     PLACEHOLDER_ALLOWLIST,
+    PROTOCOL_STATUSES,
     ErrorCollector,
     digest_text,
 )
@@ -215,22 +217,26 @@ def test_list_protocols_filters(filters, expected):
     assert list(selected) == sorted(selected, key=lambda protocol: protocol.id)
 
 
-def test_list_protocols_hides_draft_and_deprecated_by_default():
-    """Draft and deprecated records are returned only when named explicitly."""
+def test_list_protocols_hides_draft_and_deprecated_by_default(monkeypatch):
+    """The public API applies the default status view; the caller never filters."""
     draft = _base_protocol()
     draft["status"] = "draft"
     retired = copy.deepcopy(_base_protocol())
     retired["id"] = "speech.retired.v1"
     retired["status"] = "deprecated"
-    bank = _build(draft, retired)
-    assert len(bank.protocols) == 2
-    listed = [
-        protocol
-        for protocol in bank.protocols
-        if protocol.status in ("experimental", "stable")
+    live = copy.deepcopy(_base_protocol())
+    live["id"] = "speech.live.v1"
+    monkeypatch.setattr(loader, "_CACHED_BANK", _build(draft, retired, live))
+    assert [protocol.id for protocol in list_protocols()] == ["speech.live.v1"]
+    assert [protocol.id for protocol in list_protocols(status="draft")] == [
+        "speech.example.v1"
     ]
-    assert listed == []
-    assert list_protocols(status=["draft", "deprecated"]) == ()
+    assert [
+        protocol.id for protocol in list_protocols(status=["draft", "deprecated"])
+    ] == ["speech.example.v1", "speech.retired.v1"]
+    assert [
+        protocol.id for protocol in list_protocols(status=list(PROTOCOL_STATUSES))
+    ] == ["speech.example.v1", "speech.live.v1", "speech.retired.v1"]
 
 
 def test_list_protocols_rejects_an_unknown_status():
@@ -837,14 +843,14 @@ def test_scalar_and_integer_responses_reject_non_finite_text(value):
     "contract,message",
     [
         (
-            {"mode": "integer", "minimum": ".nan", "maximum": 10},
+            {"mode": "integer", "minimum": float("nan"), "maximum": 10},
             "must be a finite integer",
         ),
         (
             {
                 "mode": "scalar",
                 "minimum": 1,
-                "maximum": ".inf",
+                "maximum": float("inf"),
                 "anchors": [
                     {"value": 1, "description": "lowest"},
                     {"value": 2, "description": "higher"},
@@ -854,9 +860,25 @@ def test_scalar_and_integer_responses_reject_non_finite_text(value):
         ),
         (
             {
+                "mode": "scalar",
+                "minimum": 1,
+                "maximum": 5,
+                "anchors": [
+                    {"value": float("nan"), "description": "lowest"},
+                    {"value": 2, "description": "higher"},
+                ],
+            },
+            "anchor value must be a finite number",
+        ),
+        (
+            {
                 "mode": "json",
                 "fields": {
-                    "score": {"type": "integer", "minimum": ".nan", "maximum": 5},
+                    "score": {
+                        "type": "integer",
+                        "minimum": float("nan"),
+                        "maximum": 5,
+                    },
                     "abstain": {"type": "boolean"},
                 },
             },
@@ -865,9 +887,13 @@ def test_scalar_and_integer_responses_reject_non_finite_text(value):
     ],
 )
 def test_non_finite_schema_bounds_are_rejected(contract, message):
-    """A NaN bound would make every range comparison silently pass."""
+    """A NaN bound would make every range comparison silently pass.
+
+    The values are real floats: PyYAML round-trips them through ``.nan`` and
+    ``.inf``, so this exercises the finiteness check rather than a type check.
+    """
     protocol = _base_protocol()
-    protocol["response_contract"] = yaml.safe_load(yaml.safe_dump(contract))
+    protocol["response_contract"] = contract
     protocol["protocol"] = {"zero_shot": "Rate the audio."}
     messages = _errors(protocol)
     assert any(message in entry for entry in messages), messages
@@ -894,6 +920,33 @@ def test_unbounded_integers_do_not_crash_validation():
     bank = _build(protocol)
     assert bank.protocols[0].response_contract.maximum == int(huge)
     assert validate_response(huge, bank.protocols[0].response_contract) == []
+
+
+def test_mixed_type_unknown_keys_are_reported_not_raised():
+    """Integer and null keys cannot be ordered against strings while reporting."""
+    document = """
+schema_version: 1
+protocols:
+  - id: speech.example.v1
+    1: stray
+    null: stray
+    version: 1
+    title: Example protocol
+    status: experimental
+    domain: speech
+    task: example_task
+    description: A synthetic protocol.
+    input_contract: {audio_inputs: 1, 2: stray}
+    response_contract: {mode: closed_label, labels: [yes, no]}
+    protocol: {zero_shot: "Answer the question about the audio."}
+    model_compatibility: [{family: qwen2_audio, status: expected}]
+    runner_compatibility: [{runner: qwen2_audio, status: planned, modes: [zero_shot]}]
+"""
+    with pytest.raises(BankValidationError) as failure:
+        build_bank([(MANIFEST_NAME, ""), ("mixed.yaml", document)])
+    messages = failure.value.messages
+    assert any("unknown protocol fields" in entry for entry in messages), messages
+    assert any("unknown input_contract fields" in entry for entry in messages), messages
 
 
 def test_unhashable_yaml_keys_are_reported_not_raised():

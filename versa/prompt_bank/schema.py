@@ -9,7 +9,7 @@ import hashlib
 import json
 import math
 import re
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from typing import Optional, Tuple
 
 BANK_SCHEMA_VERSION = 1
@@ -319,6 +319,16 @@ def loads_strict_json(value):
     )
 
 
+def sorted_keys(keys):
+    """Sort mapping keys deterministically without comparing mixed types.
+
+    YAML allows integer, null, and boolean keys, which cannot be ordered
+    against strings. Sorting by representation keeps a stable message order
+    while leaving the failure inside the validation report.
+    """
+    return sorted(keys, key=repr)
+
+
 def scan_placeholders(text):
     """Return (placeholder names, error messages) for one protocol text body.
 
@@ -455,7 +465,7 @@ def parse_protocol(mapping, source, errors):
         )
         return None
     before = len(errors)
-    unknown = sorted(set(mapping) - _PROTOCOL_KEYS)
+    unknown = sorted_keys(set(mapping) - _PROTOCOL_KEYS)
     if unknown:
         errors.add(source, protocol_id, "unknown protocol fields: {}".format(unknown))
 
@@ -536,26 +546,15 @@ def digest_payload(
     return {
         "id": protocol_id,
         "version": version,
-        "input_contract": _asdict(input_contract),
-        "response_contract": _asdict(response_contract),
-        "modes": _asdict(modes),
+        "input_contract": asdict(input_contract),
+        "response_contract": asdict(response_contract),
+        "modes": asdict(modes),
         "rendering_notes": [
             {"family": entry.family, "notes": entry.rendering_notes}
             for entry in model_compatibility
             if entry.rendering_notes
         ],
     }
-
-
-def _asdict(record):
-    """Convert a nested frozen record into plain JSON-serializable containers."""
-    if isinstance(record, tuple):
-        return [_asdict(item) for item in record]
-    if hasattr(record, "__dataclass_fields__"):
-        return {
-            name: _asdict(getattr(record, name)) for name in record.__dataclass_fields__
-        }
-    return record
 
 
 def _text(mapping, key, source, protocol_id, errors, required=True):
@@ -625,7 +624,7 @@ def _parse_input_contract(mapping, source, protocol_id, errors):
     if not isinstance(block, dict):
         errors.add(source, protocol_id, "input_contract must be a mapping")
         return None
-    unknown = sorted(set(block) - _INPUT_CONTRACT_KEYS)
+    unknown = sorted_keys(set(block) - _INPUT_CONTRACT_KEYS)
     if unknown:
         errors.add(
             source, protocol_id, "unknown input_contract fields: {}".format(unknown)
@@ -657,7 +656,7 @@ def _parse_response_contract(mapping, version, source, protocol_id, errors):
     mode = _choice(block, "mode", RESPONSE_MODES, source, protocol_id, errors)
     if mode is None:
         return None
-    unknown = sorted(set(block) - _RESPONSE_CONTRACT_KEYS[mode])
+    unknown = sorted_keys(set(block) - _RESPONSE_CONTRACT_KEYS[mode])
     if unknown:
         errors.add(
             source,
@@ -801,7 +800,7 @@ def _parse_json_fields(block, source, protocol_id, errors):
         if not isinstance(spec, dict):
             errors.add(source, protocol_id, "field {!r} must be a mapping".format(name))
             return ()
-        unknown = sorted(set(spec) - _JSON_FIELD_KEYS)
+        unknown = sorted_keys(set(spec) - _JSON_FIELD_KEYS)
         if unknown:
             errors.add(
                 source,

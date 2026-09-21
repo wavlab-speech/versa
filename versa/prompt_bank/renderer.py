@@ -20,6 +20,7 @@ from versa.prompt_bank.schema import (
     RenderError,
     ResponseContract,
     scan_placeholders,
+    sorted_keys,
     substitute,
 )
 
@@ -106,7 +107,7 @@ def _resolve_context(protocol, mode, bodies, context):
     caller_keys = [
         name for name in dict.fromkeys(used) if name not in RENDERER_PLACEHOLDERS
     ]
-    unknown = sorted(set(context) - set(caller_keys))
+    unknown = sorted_keys(set(context) - set(caller_keys))
     if unknown:
         raise RenderError(
             "unknown context keys {} for {} in mode {!r}; this rendering accepts {}".format(

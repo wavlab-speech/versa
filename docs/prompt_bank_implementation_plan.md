@@ -153,11 +153,11 @@ what the code does.
 ### Rendering
 
 - `few_shot_text` renders the zero-shot body, then the demonstrations, then the
-  `template` body as a closing instruction, so both modes judge against an
-  identical rubric. See
-  [the review corrections](#corrections-made-during-review-of-the-foundation)
-  for why the demonstrations do not replace the rubric. Benchmarking still
-  reports the two modes separately.
+  `template` body as a closing instruction. Demonstrations never replace the
+  rubric, so a mode comparison changes the demonstrations only and each
+  protocol's few-shot template is a closer rather than a restatement. Required
+  context is checked across a mode's whole rendering rather than per body.
+  Benchmarking still reports the two modes separately.
 - Every protocol must define `zero_shot`, including a pairwise protocol, whose
   `pairwise` body adds candidate naming. A `pairwise` body requires the pairwise
   response contract and two audio inputs, and two audio inputs require the
@@ -177,7 +177,9 @@ what the code does.
 - Response instructions are generated from the response contract, including the
   compact JSON template in declared field order. Protocols do not hand-write
   JSON templates. Abstention wording differs by contract mode: label contracts
-  say "any of those labels", numeric contracts say "an answer".
+  say "any of those labels", numeric contracts say "an answer". One-sided bounds
+  render as stated bounds (`<integer, at least 0>`) and optional keys are named,
+  so the instructions and the validator describe the same contract.
 - Canonical text: each section is stripped, per-line trailing whitespace is
   removed, blank-line runs collapse to one, sections join with one blank line,
   and the prompt ends with exactly one newline. Authored YAML paragraphs are
@@ -191,13 +193,25 @@ what the code does.
   every response label.
 - `output_key` requires an explicit `primary_numeric_field`; that field must be
   numeric, required, and carry an explicit range. Output keys are unique across
-  the bank. No score key is inferred from arbitrary JSON.
+  the bank and must end in `_v<version>`, so a deprecated `.v1` and its `.v2`
+  successor report side by side. Migration: a new version introduces a new key,
+  and consumers of the old key keep reading the old protocol's results. No score
+  key is inferred from arbitrary JSON.
 - Array fields carry `items: string` in v0.
 - Unknown keys are rejected at every level (protocol, input contract, response
   contract, JSON field, provenance, compatibility entry) so a typo fails loudly.
+- Numeric bounds must be finite. A `NaN` bound would make every range comparison
+  pass. Integers are unbounded in Python and always finite; only floats are
+  checked, so a large integer literal is validated rather than overflowing.
+- Protocol YAML is parsed with a loader that rejects duplicate mapping keys and
+  reports file, line, and column, and that rejects unhashable keys the same way.
+  YAML here is executable evaluation logic. Malformed nested values reach the
+  validation report rather than raising `TypeError`, including mixed-type keys
+  that cannot be ordered against each other.
 - Few-shot demonstrations must be text-only: at least two of them, no audio file
-  references, no braces, and every output must pass `validate_response` against
-  the protocol's own contract.
+  references, and every output must pass `validate_response` against the
+  protocol's own contract. Demonstration text is rendered literally and is never
+  substituted, so JSON examples containing braces are allowed.
 - `model_compatibility` describes the model family and `runner_compatibility`
   describes VERSA execution; they are separate, and a `tested` model entry
   requires a model ID, a revision, and a validation record. All bundled runner
@@ -215,40 +229,17 @@ what the code does.
   bodies, and model entries' `rendering_notes`. Titles, descriptions, status,
   provenance, metric links, and runner declarations are excluded. The bank
   schema version is carried beside the digest rather than inside it.
+- `RenderedPrompt` also carries `rendered_digest`, the SHA-256 of the exact
+  rendered text. Two renderings of one protocol with different captions share a
+  protocol digest by design, so the rendered digest is what identifies an
+  evaluation.
+- Response validation is strict: non-finite numbers (`NaN`, `Infinity`, and
+  overflow such as `1e400`) and repeated JSON keys are rejected rather than
+  silently resolved to the last value.
 - Validation collects every error in one `BankValidationError`, each message
   prefixed with its source file and protocol ID.
 - `manifest.yaml` is authoritative: a missing indexed file, a repeated entry, a
   self-reference, and an unindexed protocol file are all rejected.
-
-### Corrections made during review of the foundation
-
-- `few_shot_text` renders the zero-shot body first, then the demonstrations,
-  then a short closing instruction. Few-shot demonstrations must never replace
-  the rubric: a mode comparison changes the demonstrations only. Each protocol's
-  few-shot template is therefore a closer, not a restatement, and validation
-  checks required context across a mode's whole rendering rather than per body.
-- Demonstration outputs are literal text and are not substituted, so JSON
-  examples with braces are allowed. They are validated against the protocol's
-  own response contract.
-- Response validation rejects non-finite numbers (`NaN`, `Infinity`, and
-  overflow such as `1e400`) and repeated JSON keys instead of silently keeping
-  the last value. Schema bounds must be finite for the same reason: a `NaN`
-  bound makes every range comparison pass.
-- Protocol YAML is parsed with a loader that rejects duplicate mapping keys and
-  reports file, line, and column. YAML here is executable evaluation logic.
-- Generated JSON instructions state one-sided bounds (`<integer, at least 0>`)
-  and name any optional key, so the instructions and the validator describe the
-  same contract.
-- `output_key` must end in `_v<version>`. A deprecated `.v1` and its `.v2`
-  successor then report side by side under distinct keys, which global output-key
-  uniqueness would otherwise forbid. Migration: a new version introduces a new
-  key; consumers of the old key keep reading the old protocol's results.
-- `RenderedPrompt` carries `rendered_digest`, the SHA-256 of the exact rendered
-  text, beside `protocol_digest`. Different captions or instructions share a
-  protocol digest by design, so the rendered digest is what identifies an
-  evaluation.
-- Malformed nested YAML values (a list where a string belongs) are reported
-  through the validation report rather than raised as `TypeError`.
 
 ### Decisions recorded now for increment B
 
@@ -343,7 +334,8 @@ Required behavior:
   `deprecated`, and returns records sorted by ID.
 - `render_protocol(protocol_or_id, mode, context)` returns a `RenderedPrompt`
   object with `text`, `protocol_id`, `protocol_version`, `mode`, and optional
-  `response_schema`, plus `protocol_digest` and `bank_schema_version`.
+  `response_schema`, plus `protocol_digest`, `rendered_digest`, and
+  `bank_schema_version`.
 - `validate_bank()` validates every bundled record and reports all errors in one
   exception, including source filename and protocol ID.
 
@@ -432,8 +424,9 @@ Lifecycle status has a narrow meaning:
 
 - `draft`: incomplete or under contributor review; excluded from default
   listings and runner integration.
-- `experimental`: complete and executable, but without sufficient
-  human-grounded validation. All eight initial protocols start here.
+- `experimental`: complete and renderable, but without sufficient
+  human-grounded validation, and not yet executed by any metric. All eight
+  initial protocols start here.
 - `stable`: rendering is frozen within the version and validation evidence is
   documented. Promotion follows Phase 4 criteria.
 - `deprecated`: still retrievable and renderable by exact ID for
@@ -463,45 +456,33 @@ response_contract:
     confidence: {type: number, minimum: 0, maximum: 1, required: true}
     abstain: {type: boolean, required: true}
   primary_numeric_field: score
-  output_key: prompt_generation_prompt_alignment_score
+  output_key: prompt_generation_prompt_alignment_v1
 ```
 
-Validation rules:
+Validation rules below are the structural rules this example illustrates. The
+complete and authoritative rule set, including everything added during review,
+is [Locked decisions](#locked-decisions-increment-a-reconciliation); do not
+restate a rule in both places.
 
-- `id` matches `^[a-z][a-z0-9_]*(\.[a-z][a-z0-9_]*)+\.v[1-9][0-9]*$`.
-- The ID is globally unique and its required trailing version matches
-  `version`.
+- `id` matches `^[a-z][a-z0-9_]*(\.[a-z][a-z0-9_]*)+\.v[1-9][0-9]*$`, is globally
+  unique, and its trailing version matches `version`.
 - `input_contract.audio_inputs` is one or two; pairwise protocols require two.
 - `response_contract.mode` determines mandatory fields: labels for
   `closed_label`, integer range for `integer`, numeric range and anchors for
   `scalar`, typed fields for `json`, and `preference_labels` for `pairwise`.
-- A JSON response contract may declare one `primary_numeric_field` and its
-  stable `output_key`. The named field must exist, be numeric, and have an
-  explicit range. No score key is inferred from arbitrary JSON.
-- `few_shot_text` demonstrations contain no audio paths and have outputs valid
-  under the response contract.
 - `zero_shot` must exist. A requested optional mode must exist before rendering.
 - All `{placeholder}` tokens are allow-listed: `labels`, `target_instruction`,
-  `reference_text`, `candidate_a_name`, `candidate_b_name`, and
-  `rubric_items`. Rendering fails clearly for missing required context.
-- Placeholders are simple names only. Attribute access, indexing, conversion
-  flags, and format specifications are rejected. Literal JSON braces must be
-  escaped or appended by the renderer rather than interpreted as placeholders.
-- Required text context follows `input_contract`; extra context keys are
-  rejected by default so misspellings cannot silently change an evaluation.
-- `metric_links.metric` is a known VERSA metric only when registry validation is
-  explicitly requested. The loader itself remains backend-independent.
+  `reference_text`, `candidate_a_name`, `candidate_b_name`, and `rubric_items`.
+  They are simple names only; attribute access, indexing, conversion flags, and
+  format specifications are rejected, and literal braces are escaped.
 - `model_compatibility` describes the underlying model family. Executability
-  through VERSA is declared separately in `runner_compatibility`; a model may
-  understand a protocol that the current wrapper cannot supply inputs for.
-- Model compatibility status is `expected`, `tested`, or `unsupported`;
-  `tested` requires an exact model ID/revision and a recorded smoke or
-  validation run. Runner status is `planned`, `supported`, or `unsupported`;
-  Phase 2 promotes the one-audio Qwen entries from `planned` to `supported`.
-- When `allow_abstain` is true, closed-label, integer, scalar, and pairwise
-  contracts declare an unambiguous abstention label. JSON contracts instead
-  require a boolean `abstain` field and define whether other fields may be null
-  when it is true.
+  through VERSA is declared separately in `runner_compatibility`: a model may
+  understand a protocol whose inputs the current wrapper cannot supply.
+- A model entry's `rendering_notes` documents how that family needs a protocol
+  presented, for example the order two audio inputs arrive in. The renderer does
+  not read it, but it participates in the protocol digest because a change to it
+  changes how the protocol must be presented to that family. It is compatibility
+  documentation, not rendering logic.
 
 `few_shot_audio` is deliberately absent from this schema. Revisit it after a
 licensed example package and a model-specific multi-audio contract are agreed.
@@ -574,17 +555,12 @@ evidence, which is useful for audit and can be independently checked.
 ### Canonical rendering rules
 
 Rendered prompt text is executable evaluation logic and receives exact snapshot
-coverage. The renderer owns whitespace normalization, section headings, label
-ordering, demonstration ordering, and structured-output templates. It must not
-depend on dictionary iteration order, locale, current working directory, or
-runtime model imports. Context values are substituted verbatim after key
-validation; the renderer does not treat context values as templates.
-
-For JSON contracts, generate the response template from the typed field
-definition using deterministic key ordering rather than duplicating JSON text
-inside each protocol. End rendered text with exactly one newline. Tests compare
-the complete string for every bundled protocol and supported mode so accidental
-prompt changes are visible in review.
+coverage: tests compare the complete string for every bundled protocol and
+supported mode, so an accidental prompt change is visible in review. The
+rendering rules themselves — section order, whitespace, label and demonstration
+ordering, contract-generated response templates, and verbatim context
+substitution — are stated once under
+[Locked decisions](#locked-decisions-increment-a-reconciliation).
 
 ## Qwen Integration: Increment B
 
@@ -913,7 +889,7 @@ Rules:
 - Flatten one declared numeric field into a stable score key only when the
   protocol explicitly names both `primary_numeric_field` and `output_key`, for
   example
-  `prompt_generation_prompt_alignment_score`.
+  `prompt_generation_prompt_alignment_v1`.
 - Validate bundled `output_key` values for global uniqueness and reserve the
   `prompt_` prefix for Prompt Bank structured results.
 - Keep raw evidence and protocol metadata in JSONL result records. Numeric
@@ -961,12 +937,18 @@ calibration. They must not pretend to be audio examples.
 
 - Examples must describe audible evidence rather than demographic assumptions,
   medical diagnoses, or unverifiable intent.
-- A protocol needs at least two examples before offering `few_shot_text`.
-- Include boundary cases when a label scale has ordered categories.
+- Include boundary cases when a label scale has ordered categories, and keep the
+  demonstrations consistent with the rubric they illustrate. A demonstration
+  that contradicts the label guide changes the scoring standard, not just the
+  examples.
 - Keep examples short enough that they do not dominate the target prompt.
-- Tests should confirm every example output passes response validation.
 - Benchmarking must compare zero-shot and few-shot separately. Never report a
   blended result as a single protocol score.
+
+The mechanical rules — minimum count, text-only content, and validation of every
+example output against the protocol's own contract — are enforced by the loader
+and stated under
+[Locked decisions](#locked-decisions-increment-a-reconciliation).
 
 ## Future Multi-Stage Judge Track
 
@@ -1010,22 +992,14 @@ facts; links should point to the paper or official project page.
 
 ## Test Plan
 
-### Increment A tests (`test/test_prompt_bank.py`)
+### Increment A tests — implemented
 
-- Load every bundled YAML file via package resources.
-- Validate the manifest, schema version, global uniqueness, IDs, versions,
-  placeholders, contracts, examples, model compatibility entries, runner
-  compatibility entries, and output-key uniqueness.
-- Verify filtering in `list_protocols`.
-- Snapshot the exact zero-shot, few-shot, and pairwise rendering for every
-  supported protocol/mode, including the digest.
-- Verify invalid ID, unknown mode, missing context, malformed YAML, duplicate
-  ID, invalid label, unsupported placeholder expression, extra context, and
-  incompatible contract fail with useful messages.
-- Verify nested mutation of a returned protocol cannot mutate cached bank
-  state; a frozen outer dataclass containing mutable lists is not sufficient.
-- Build a wheel and smoke-test package-resource loading from the installed
-  artifact so missing YAML package-data rules fail before release.
+`test/test_prompt_bank.py` is the authoritative list. It covers package-resource
+loading, manifest rules, every schema rule, strict context, response validation,
+nested immutability, exact rendering snapshots with pinned digests, and
+backend-free import isolation. Installed-wheel resource loading is checked by
+`ci/check_installed_wheel.py` on every supported Python version, so a missing
+package-data rule fails before release rather than after it.
 
 ### Increment B tests (`test/test_metrics/test_qwen_prompt_bank.py`)
 
@@ -1069,58 +1043,21 @@ test.
 
 ## Implementation Sequence
 
-### Phase 0: Lock the contract (documentation-only) — done
+### Phases 0 and 1: contract and foundation — done
 
-Every item below was decided and is recorded in
-[Locked decisions](#locked-decisions-increment-a-reconciliation). The original
-checklist follows.
+Both phases are complete and shipped. The decisions Phase 0 had to reach are
+recorded in [Locked decisions](#locked-decisions-increment-a-reconciliation),
+which is the authoritative statement of the contract; the increment table in
+[Release Shape](#release-shape) is the authoritative statement of scope.
 
-1. Adopt `protocol` as the public record term and `Prompt Bank` as the feature
-   name. Reserve `prompt` for raw rendered text and the legacy override.
-2. Confirm the initial eight versioned IDs. Start all eight as `experimental`;
-   do not use `stable` until human-grounded validation is documented.
-3. Approve schema version 1, the manifest/file shape, protocol digest inputs,
-   status semantics, and the exact response modes.
-4. Agree that v0 supports one-audio protocols through Qwen only; pairwise
-   records may exist in the bank but are not executable until a two-audio runner
-   is intentionally added.
-5. Create `docs/prompt_bank.md` as a concise user guide only after the API is
-   implemented, so it describes reality rather than intent.
-
-Exit criterion: terminology, schema, ID/version policy, lifecycle status,
-manifest shape, digest policy, and runner compatibility policy are agreed.
-
-### Phase 1: Build the bank foundation — done
-
-Delivered as `versa/prompt_bank/{schema,loader,renderer}.py`, the packaged
+Phase 1 delivered `versa/prompt_bank/{schema,loader,renderer}.py`, the packaged
 manifest and three protocol files, `docs/prompt_bank.md`,
 `test/test_prompt_bank.py` with `test/prompt_bank_snapshots.json`, package-data
 rules in `pyproject.toml`, and installed-wheel coverage in
-`ci/check_installed_wheel.py`. The exit criterion was verified two ways: an
+`ci/check_installed_wheel.py`. Its exit criterion was verified two ways: an
 isolated interpreter renders a protocol while importing no Torch, Transformers,
 or metric module, and the same rendering works from a wheel installed outside
-the checkout. The original checklist follows.
-
-
-1. Add `versa/prompt_bank/schema.py` with typed records, validation errors, and
-   response-contract validation.
-2. Add `loader.py` using `importlib.resources`, `yaml.safe_load`, the manifest,
-   aggregate error reporting, immutable/copy-safe returns, and deterministic
-   protocol digests.
-3. Add `renderer.py` with strict placeholder handling, contract-generated
-   response instructions, canonical text rules, and the three v0 modes.
-4. Author the manifest and three content YAML files containing the initial
-   eight experimental protocols.
-5. Expose the four public API functions and `RenderedPrompt` value type from
-   `versa/prompt_bank/__init__.py` without importing metric or model modules.
-6. Add foundation tests, exact rendering snapshots, and explicit package-data
-   configuration in `pyproject.toml`.
-7. Build and install a wheel in an isolated test environment, then verify all
-   package resources load and render.
-
-Exit criterion: all protocols load and render in a base environment without
-importing `transformers`, `torch`, or any metric module; the same behavior works
-from an installed wheel.
+the checkout.
 
 ### Phase 2: Integrate the existing Qwen wrappers
 
@@ -1185,20 +1122,12 @@ coverage.
 
 ## Definition of Done by Pull Request
 
-### Foundation pull request (Increment A)
+### Foundation pull request (Increment A) — met
 
-The first implementation pull request is complete when all of the following
-are true:
-
-- `versa.prompt_bank` can load, validate, list, and render eight bundled
-  experimental protocols from source and installed package data.
-- Zero-shot, text-only few-shot, and pairwise rendering work without any model
-  or metric import.
-- Manifest validation, version/digest rules, immutable returns, strict context,
-  exact rendering snapshots, and wheel resource loading are tested.
-- Documentation describes scope, IDs, lifecycle status, modes, expected output
-  contracts, runner compatibility, and current limitations.
-- No Qwen, scorer, discovery, or legacy prompt code changes are included.
+Every criterion was met and is enforced by the tests and CI lanes listed under
+[Test Plan](#test-plan). Do not restate it here; use the increment table in
+[Release Shape](#release-shape) for scope and
+[Locked decisions](#locked-decisions-increment-a-reconciliation) for the rules.
 
 ### Qwen vertical-slice pull request (Increment B)
 
