@@ -162,6 +162,11 @@ what the code does.
   `pairwise` body adds candidate naming. A `pairwise` body requires the pairwise
   response contract and two audio inputs, and two audio inputs require the
   pairwise contract.
+- Placeholders are simple names from a fixed allow-list: `labels`,
+  `target_instruction`, `reference_text`, `candidate_a_name`,
+  `candidate_b_name`, and `rubric_items`. Attribute access, indexing, conversion
+  flags, and format specifications are rejected, and a literal brace must be
+  escaped.
 - `{labels}` is supplied by the renderer from the response contract and is
   rejected as caller context. It is only valid in a `closed_label` or `pairwise`
   protocol.
@@ -193,11 +198,25 @@ what the code does.
   every response label.
 - `output_key` requires an explicit `primary_numeric_field`; that field must be
   numeric, required, and carry an explicit range. Output keys are unique across
-  the bank and must end in `_v<version>`, so a deprecated `.v1` and its `.v2`
-  successor report side by side. Migration: a new version introduces a new key,
-  and consumers of the old key keep reading the old protocol's results. No score
+  the bank and must end in `_v<version>`. Protocol IDs and output keys use
+  different spellings of the same version: protocol `speech.example.v2` reports
+  under `prompt_example_score_v2`, so it can run beside a deprecated
+  `speech.example.v1` reporting under `prompt_example_score_v1`. Migration: a new
+  protocol version introduces a new output key, and consumers of the old key keep
+  reading the old protocol's results. No score
   key is inferred from arbitrary JSON.
 - Array fields carry `items: string` in v0.
+- `id` matches `^[a-z][a-z0-9_]*(\.[a-z][a-z0-9_]*)+\.v[1-9][0-9]*$`, is globally
+  unique, and its trailing version matches the `version` field.
+- `response_contract.mode` determines the mandatory fields: `labels` for
+  `closed_label`, an integer range for `integer`, a numeric range and anchors
+  for `scalar`, typed `fields` for `json`, and `preference_labels` for
+  `pairwise`.
+- A model entry's `rendering_notes` documents how that family needs a protocol
+  presented, for example the order two audio inputs arrive in. The renderer does
+  not read it; it participates in the digest because changing it changes how the
+  protocol must be presented. It is compatibility documentation, not rendering
+  logic.
 - Unknown keys are rejected at every level (protocol, input contract, response
   contract, JSON field, provenance, compatibility entry) so a typo fails loudly.
 - Numeric bounds must be finite. A `NaN` bound would make every range comparison
@@ -459,30 +478,12 @@ response_contract:
   output_key: prompt_generation_prompt_alignment_v1
 ```
 
-Validation rules below are the structural rules this example illustrates. The
-complete and authoritative rule set, including everything added during review,
-is [Locked decisions](#locked-decisions-increment-a-reconciliation); do not
-restate a rule in both places.
-
-- `id` matches `^[a-z][a-z0-9_]*(\.[a-z][a-z0-9_]*)+\.v[1-9][0-9]*$`, is globally
-  unique, and its trailing version matches `version`.
-- `input_contract.audio_inputs` is one or two; pairwise protocols require two.
-- `response_contract.mode` determines mandatory fields: labels for
-  `closed_label`, integer range for `integer`, numeric range and anchors for
-  `scalar`, typed fields for `json`, and `preference_labels` for `pairwise`.
-- `zero_shot` must exist. A requested optional mode must exist before rendering.
-- All `{placeholder}` tokens are allow-listed: `labels`, `target_instruction`,
-  `reference_text`, `candidate_a_name`, `candidate_b_name`, and `rubric_items`.
-  They are simple names only; attribute access, indexing, conversion flags, and
-  format specifications are rejected, and literal braces are escaped.
-- `model_compatibility` describes the underlying model family. Executability
-  through VERSA is declared separately in `runner_compatibility`: a model may
-  understand a protocol whose inputs the current wrapper cannot supply.
-- A model entry's `rendering_notes` documents how that family needs a protocol
-  presented, for example the order two audio inputs arrive in. The renderer does
-  not read it, but it participates in the protocol digest because a change to it
-  changes how the protocol must be presented to that family. It is compatibility
-  documentation, not rendering logic.
+Every validation rule for this schema is stated once, under
+[Locked decisions](#locked-decisions-increment-a-reconciliation): ID format and
+uniqueness, the mandatory fields each response mode implies, abstention,
+`output_key` versioning, finite bounds, placeholders, unknown keys, demonstration
+content, and the separation of `model_compatibility` from `runner_compatibility`.
+The example above illustrates those rules; it does not restate them.
 
 `few_shot_audio` is deliberately absent from this schema. Revisit it after a
 licensed example package and a model-specific multi-audio contract are agreed.
