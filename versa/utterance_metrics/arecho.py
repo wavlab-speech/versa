@@ -136,7 +136,13 @@ def arecho_metric(model, pred_x, fs):
         arecho_scores = {
             "arecho_" + key: value[0]
             for key, value in results.items()
-            if key not in {"encoded_feat", "token_seq"}
+            if key
+            not in {
+                "encoded_feat",
+                "token_seq",
+                "use_tokenizer_metrics",
+                "sequential_metrics",
+            }
         }
     else:
         # If results is a tensor or other format, convert to dictionary

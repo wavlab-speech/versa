@@ -141,7 +141,12 @@ def universa_metric_noref(audio_data, original_sr=None, cache_dir=None):
     # Convert to float values with universa_ prefix
     formatted_result = {}
     for key, value in result.items():
-        if key in {"encoded_feat", "token_seq"}:
+        if key in {
+            "encoded_feat",
+            "token_seq",
+            "use_tokenizer_metrics",
+            "sequential_metrics",
+        }:
             continue
         if isinstance(value, (torch.Tensor, np.ndarray)):
             formatted_result[f"universa_{key}"] = float(
@@ -183,7 +188,12 @@ def universa_metric_audioref(
     # Convert to float values with universa_ prefix
     formatted_result = {}
     for key, value in result.items():
-        if key in {"encoded_feat", "token_seq"}:
+        if key in {
+            "encoded_feat",
+            "token_seq",
+            "use_tokenizer_metrics",
+            "sequential_metrics",
+        }:
             continue
         if isinstance(value, (torch.Tensor, np.ndarray)):
             formatted_result[f"universa_{key}"] = float(
@@ -216,7 +226,12 @@ def universa_metric_textref(audio_data, ref_text, original_sr=None, cache_dir=No
     # Convert to float values with universa_ prefix
     formatted_result = {}
     for key, value in result.items():
-        if key in {"encoded_feat", "token_seq"}:
+        if key in {
+            "encoded_feat",
+            "token_seq",
+            "use_tokenizer_metrics",
+            "sequential_metrics",
+        }:
             continue
         if isinstance(value, (torch.Tensor, np.ndarray)):
             formatted_result[f"universa_{key}"] = float(
@@ -265,7 +280,12 @@ def universa_metric_fullref(
     # Convert to float values with universa_ prefix
     formatted_result = {}
     for key, value in result.items():
-        if key in {"encoded_feat", "token_seq"}:
+        if key in {
+            "encoded_feat",
+            "token_seq",
+            "use_tokenizer_metrics",
+            "sequential_metrics",
+        }:
             continue
         if isinstance(value, (torch.Tensor, np.ndarray)):
             formatted_result[f"universa_{key}"] = float(

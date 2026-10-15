@@ -87,6 +87,8 @@ def test_universa_scores_exclude_aqa_features(monkeypatch, mode):
         "mos": np.array([3.5]),
         "encoded_feat": torch.zeros(1, 8),
         "token_seq": [[2, 4, 6]],
+        "use_tokenizer_metrics": True,
+        "sequential_metrics": True,
     }
     monkeypatch.setattr(
         universa, "get_universa_model", lambda *a, **kw: lambda *a, **kw: prediction
@@ -116,6 +118,8 @@ def test_arecho_scores_exclude_aqa_features():
                 "language": ["eng"],
                 "encoded_feat": torch.zeros(1, 8),
                 "token_seq": [[2, 4, 6]],
+                "use_tokenizer_metrics": True,
+                "sequential_metrics": True,
             }
 
     assert arecho.arecho_metric(Predictor(), np.zeros(256), 16000) == {
