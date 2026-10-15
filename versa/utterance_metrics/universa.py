@@ -5,6 +5,7 @@
 #  Apache 2.0  (http://www.apache.org/licenses/LICENSE-2.0)
 
 """Uni-VERSA speech evaluation with optional audio and text references."""
+
 import numpy as np
 import torch
 import soundfile
@@ -26,9 +27,9 @@ def _ensure_torchaudio_legacy_backend_api():
 _ensure_torchaudio_legacy_backend_api()
 
 try:
-    from espnet2.bin.universa_inference import UniversaInference
+    from espnet2.bin.aqa_inference import AqaInference
 except ImportError:
-    UniversaInference = None
+    AqaInference = None
 
 from versa.definition import BaseMetric, MetricCategory, MetricMetadata, MetricType
 
@@ -44,7 +45,7 @@ def get_universa_model(model_type="noref", cache_dir=None):
         model_type (str): One of "noref", "audioref", "textref", "fullref"
 
     Returns:
-        UniversaInference: Loaded model instance
+        AqaInference: Loaded model instance
     """
     model_mapping = {
         "noref": "espnet/universa-wavlm_base_urgent24_multi-metric_noref",
@@ -53,7 +54,7 @@ def get_universa_model(model_type="noref", cache_dir=None):
         "fullref": "espnet/universa-wavlm_base_urgent24_multi-metric_fullref",
     }
 
-    if UniversaInference is None:
+    if AqaInference is None:
         raise ImportError("universa requires espnet. Please install espnet and retry")
 
     cache_key = (model_type, cache_dir)
@@ -66,7 +67,7 @@ def get_universa_model(model_type="noref", cache_dir=None):
 
         print(f"Loading Universa model: {model_mapping[model_type]}")
         if cache_dir is None:
-            _universa_models[cache_key] = UniversaInference.from_pretrained(
+            _universa_models[cache_key] = AqaInference.from_pretrained(
                 model_mapping[model_type]
             )
         else:
@@ -79,7 +80,7 @@ def get_universa_model(model_type="noref", cache_dir=None):
             model_kwargs = ModelDownloader(cachedir=cache_dir).download_and_unpack(
                 model_mapping[model_type]
             )
-            _universa_models[cache_key] = UniversaInference(**model_kwargs)
+            _universa_models[cache_key] = AqaInference(**model_kwargs)
 
     return _universa_models[cache_key]
 
@@ -140,6 +141,8 @@ def universa_metric_noref(audio_data, original_sr=None, cache_dir=None):
     # Convert to float values with universa_ prefix
     formatted_result = {}
     for key, value in result.items():
+        if key in {"encoded_feat", "token_seq"}:
+            continue
         if isinstance(value, (torch.Tensor, np.ndarray)):
             formatted_result[f"universa_{key}"] = float(
                 value.item() if hasattr(value, "item") else value.flatten()[0]
@@ -180,6 +183,8 @@ def universa_metric_audioref(
     # Convert to float values with universa_ prefix
     formatted_result = {}
     for key, value in result.items():
+        if key in {"encoded_feat", "token_seq"}:
+            continue
         if isinstance(value, (torch.Tensor, np.ndarray)):
             formatted_result[f"universa_{key}"] = float(
                 value.item() if hasattr(value, "item") else value.flatten()[0]
@@ -211,6 +216,8 @@ def universa_metric_textref(audio_data, ref_text, original_sr=None, cache_dir=No
     # Convert to float values with universa_ prefix
     formatted_result = {}
     for key, value in result.items():
+        if key in {"encoded_feat", "token_seq"}:
+            continue
         if isinstance(value, (torch.Tensor, np.ndarray)):
             formatted_result[f"universa_{key}"] = float(
                 value.item() if hasattr(value, "item") else value.flatten()[0]
@@ -258,6 +265,8 @@ def universa_metric_fullref(
     # Convert to float values with universa_ prefix
     formatted_result = {}
     for key, value in result.items():
+        if key in {"encoded_feat", "token_seq"}:
+            continue
         if isinstance(value, (torch.Tensor, np.ndarray)):
             formatted_result[f"universa_{key}"] = float(
                 value.item() if hasattr(value, "item") else value.flatten()[0]

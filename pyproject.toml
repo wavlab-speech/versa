@@ -112,7 +112,7 @@ external = [
     "Cython",
     "cdpam",
     "discrete-speech-metrics @ git+https://github.com/ftshijt/DiscreteSpeechMetrics.git@v1.0.2",
-    "espnet @ git+https://github.com/ftshijt/espnet.git@espnet_inference",
+    "espnet @ git+https://github.com/espnet/espnet.git@e6d26103ee3173978f3e07acf471befbbd99e311",
     "espnet-tts-frontend",
     "espnet_model_zoo",
     "kaggle",

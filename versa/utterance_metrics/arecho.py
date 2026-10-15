@@ -4,6 +4,7 @@
 #  Apache 2.0  (http://www.apache.org/licenses/LICENSE-2.0)
 
 """ARECHO speech-quality model loading and utterance scoring."""
+
 import numpy as np
 import torch
 import librosa
@@ -28,10 +29,10 @@ def arecho_model_setup(
         use_gpu (bool): Whether to use GPU for inference
 
     Returns:
-        UniversaInference: Loaded ARECHO model for inference
+        AqaInference: Loaded ARECHO model for inference
     """
     try:
-        from espnet2.bin.universa_inference import UniversaInference
+        from espnet2.bin.aqa_inference import AqaInference
     except ImportError:
         raise ImportError(
             "Please install espnet and espnet_model_zoo to use ARECHO metric: "
@@ -64,7 +65,7 @@ def arecho_model_setup(
             "arecho requires espnet_model_zoo. Please install it and retry"
         )
     model_kwargs = ModelDownloader(cachedir=cache_dir).download_and_unpack(model_name)
-    model = UniversaInference(device=device, **model_kwargs)
+    model = AqaInference(device=device, **model_kwargs)
 
     return model
 
@@ -132,7 +133,11 @@ def arecho_metric(model, pred_x, fs):
     # Convert results to dictionary format
     if isinstance(results, dict):
         # If results is already a dictionary, use it directly
-        arecho_scores = {"arecho_" + key: value[0] for key, value in results.items()}
+        arecho_scores = {
+            "arecho_" + key: value[0]
+            for key, value in results.items()
+            if key not in {"encoded_feat", "token_seq"}
+        }
     else:
         # If results is a tensor or other format, convert to dictionary
         arecho_scores = {"arecho_score": float(results.cpu().numpy())}
