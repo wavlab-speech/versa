@@ -290,7 +290,9 @@ def merge_rows(existing, fresh):
     """Merge freshly computed metric results into a previously stored row.
 
     Values of recomputed metrics are replaced rather than accumulated, so a
-    metric that stops reporting a field does not leave a stale one behind."""
+    metric that stops reporting a field does not leave a stale one behind.
+    Changed inputs invalidate all old metric entries and their score fields,
+    including metrics that have not yet run in a metric-oriented pass."""
     if existing is None:
         return dict(fresh)
 
@@ -301,6 +303,12 @@ def merge_rows(existing, fresh):
 
     merged_envelope = dict(ensure_completion(merged))
     merged_envelope["metrics"] = dict(merged_envelope["metrics"])
+    if merged_envelope["input"].get("signature") != fresh_envelope["input"].get(
+        "signature"
+    ):
+        for name in merged_envelope["metrics"]:
+            drop_metric_fields(merged, name)
+        merged_envelope["metrics"] = {}
     merged.pop(COMPLETION_FIELD, None)
     for field, value in fresh.items():
         if field != COMPLETION_FIELD:
@@ -357,8 +365,11 @@ class RunStatus:
                 self.metric_error_counts.get(category, 0) + 1
             )
 
-    def record_row(self, row, resumed=False):
-        """Count one utterance row and every metric outcome it records."""
+    def record_row(self, row, resumed=False, metric_names=None):
+        """Count a row, optionally restricting outcomes to the current metrics.
+
+        Resumed rows may retain failures from metrics no longer requested.
+        Those historical entries must not make the current strict run fail."""
         if resumed:
             self.resumed_utterances += 1
         else:
@@ -366,7 +377,9 @@ class RunStatus:
         envelope = get_completion(row)
         if envelope is None:
             return
-        for entry in envelope["metrics"].values():
+        for name, entry in envelope["metrics"].items():
+            if metric_names is not None and name not in metric_names:
+                continue
             if isinstance(entry, dict):
                 self.record_metric_entry(entry)
 

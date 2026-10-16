@@ -470,7 +470,7 @@ class _LazyMapping(dict):
     """Mimic a Kaldi mapping whose indexing loads the audio array."""
 
     def __init__(self, entries):
-        """Store archive entries and expose them the way kaldiio does."""
+        """Store archive entries and expose them the way OmniIO does."""
         super().__init__(entries)
         self._dict = dict(entries)
 
@@ -630,3 +630,137 @@ def test_a_scored_utterance_outranks_another_metric_failing_to_load(
     assert counts["skipped_utterances"] == 0
     assert counts["resumed_utterances"] == 0
     assert counts["failed_metric_loads"] == ["broken"]
+
+
+@pytest.mark.parametrize("interrupt", [False, True])
+def test_metric_resume_changed_inputs_recomputes_every_metric(
+    scorer, gen_files, tmp_path, monkeypatch, interrupt
+):
+    """Changed transcripts invalidate later metric passes, even across a crash."""
+    configs = [{"name": "stable"}, {"name": "second"}]
+    output = str(tmp_path / "scores.jsonl")
+    options = {"output_file": output, "io": "soundfile"}
+    scorer.score_utterances_by_metric(
+        gen_files, configs, text_info={k: "old" for k in gen_files}, **options
+    )
+    StableMetric.calls = SecondMetric.calls = 0
+    options.update(resume=True, text_info={k: "new" for k in gen_files})
+    if interrupt:
+        original_load = scorer.load_metrics
+
+        def interrupt_second_pass(configs, **kwargs):
+            """Interrupt after the first metric has checkpointed its new results."""
+            if configs[0]["name"] == "second":
+                raise RuntimeError("interrupted between metrics")
+            return original_load(configs, **kwargs)
+
+        with monkeypatch.context() as patch:
+            patch.setattr(scorer, "load_metrics", interrupt_second_pass)
+            with pytest.raises(RuntimeError, match="interrupted between metrics"):
+                scorer.score_utterances_by_metric(gen_files, configs, **options)
+        assert StableMetric.calls == 3
+        assert SecondMetric.calls == 0
+        assert all(
+            "second_score" not in row for row in _read_jsonl(pathlib.Path(output))
+        )
+
+    resumed = scorer.score_utterances_by_metric(gen_files, configs, **options)
+    assert (StableMetric.calls, SecondMetric.calls) == (3, 3)
+    reference = scorer.score_utterances_by_metric(
+        gen_files, configs, text_info=options["text_info"], io="soundfile"
+    )
+    assert resumed == reference
+
+
+@pytest.mark.parametrize("policy", ["path", "content"])
+@pytest.mark.parametrize("storage", ["wav", "ark"])
+@pytest.mark.parametrize(
+    "first_mode,last_mode",
+    [("metric", "metric"), ("utterance", "metric"), ("metric", "utterance")],
+)
+def test_kaldi_resume_keeps_identity_and_loads_only_pending_inputs(
+    scorer, gen_files, tmp_path, monkeypatch, policy, storage, first_mode, last_mode
+):
+    """Real lazy Kaldi mappings retain identity across partial and full resumes."""
+    scp = tmp_path / "wav.scp"
+    output = tmp_path / "scores.jsonl"
+    configs = [{"name": "stable"}]
+    keys = list(gen_files)
+    if storage == "ark":
+        from omniio import kaldi as kaldi_io
+        import soundfile as sf
+
+        archive_scp = tmp_path / "archive.scp"
+        kaldi_io.save_ark(
+            str(tmp_path / "audio.ark"),
+            {key: sf.read(gen_files[key], dtype="int16")[::-1] for key in keys},
+            scp=str(archive_scp),
+        )
+        gen_files = dict(
+            line.split(maxsplit=1) for line in archive_scp.read_text().splitlines()
+        )
+    scp.write_text("".join(f"{key} {gen_files[key]}\n" for key in keys[:2]))
+
+    def run(mapping, mode, resume=False):
+        """Score with either execution order using the same identity policy."""
+        options = dict(
+            output_file=str(output), io="kaldi", input_identity=policy, resume=resume
+        )
+        if mode == "metric":
+            return scorer.score_utterances_by_metric(mapping, configs, **options)
+        return scorer.score_utterances(
+            mapping, scorer.load_metrics(configs, use_gt=False), **options
+        )
+
+    run(scorer_shared.audio_loader_setup(str(scp), "kaldi"), first_mode)
+    scp.write_text("".join(f"{key} {gen_files[key]}\n" for key in keys))
+    mapping = scorer_shared.audio_loader_setup(str(scp), "kaldi")
+    # Patch the function used by the real reader, preserving its lazy mapping.
+    import sys
+
+    reader_module = sys.modules[type(mapping).__module__]
+    original_loader = reader_module.load_mat
+    loads = []
+
+    def record_load(entry, *args, **kwargs):
+        """Track every waveform materialized by the actual Kaldi loader."""
+        loads.append(entry)
+        return original_loader(entry, *args, **kwargs)
+
+    monkeypatch.setattr(reader_module, "load_mat", record_load)
+    StableMetric.calls = 0
+    resumed = run(mapping, last_mode, resume=True)
+    assert len(resumed) == 3
+    assert StableMetric.calls == 1
+    assert loads == [gen_files[keys[2]]]
+    loads.clear()
+    StableMetric.calls = 0
+    assert run(mapping, last_mode, resume=True) == resumed
+    assert StableMetric.calls == 0
+    assert loads == []
+
+
+@pytest.mark.parametrize("num_workers", [1, 2])
+def test_strict_resume_ignores_removed_failed_metrics(
+    scorer, gen_files, tmp_path, num_workers
+):
+    """Removing a failed metric lets a completed current configuration pass strict mode."""
+    from types import SimpleNamespace
+    from versa.bin.cli_options import enforce_run_status
+
+    output = tmp_path / "scores.jsonl"
+    _score(scorer, gen_files, [{"name": "stable"}, {"name": "flaky"}], output)
+    status = RunStatus()
+    _score(
+        scorer,
+        gen_files,
+        [{"name": "stable"}],
+        output,
+        resume=True,
+        run_status=status,
+        num_workers=num_workers,
+    )
+    assert status.resumed_utterances == 3
+    assert status.metric_status_counts[STATUS_SUCCESS] == 3
+    assert not status.has_failures
+    enforce_run_status(SimpleNamespace(strict=True), status)

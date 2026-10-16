@@ -38,6 +38,11 @@ Try our interactive demo from the Interspeech 2024 Tutorial:
 
 ### Basic Installation
 
+Python 3.10 or newer is required. Kaldi `ark`/`scp` audio input uses
+[OmniIO](https://github.com/wavlab-speech/omniio)'s Kaldi interface
+(`omniio>=0.1.2`, installed automatically). Existing `--io kaldi` commands,
+archive offsets, and `wav.scp` command pipes keep the same format.
+
 ```bash
 git clone https://github.com/wavlab-speech/versa.git
 cd versa
