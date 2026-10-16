@@ -829,7 +829,7 @@ def test_register_universa_metric():
 
 
 def test_universa_missing_dependency(monkeypatch):
-    monkeypatch.setattr("versa.utterance_metrics.universa.UniversaInference", None)
+    monkeypatch.setattr("versa.utterance_metrics.universa.AqaInference", None)
 
     with pytest.raises(ImportError, match="universa requires espnet"):
         UniversaMetric({"model_type": "noref"}).compute(np.zeros(16000))
