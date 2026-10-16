@@ -470,7 +470,7 @@ class _LazyMapping(dict):
     """Mimic a Kaldi mapping whose indexing loads the audio array."""
 
     def __init__(self, entries):
-        """Store archive entries and expose them the way kaldiio does."""
+        """Store archive entries and expose them the way OmniIO does."""
         super().__init__(entries)
         self._dict = dict(entries)
 
@@ -673,18 +673,32 @@ def test_metric_resume_changed_inputs_recomputes_every_metric(
 
 
 @pytest.mark.parametrize("policy", ["path", "content"])
+@pytest.mark.parametrize("storage", ["wav", "ark"])
 @pytest.mark.parametrize(
     "first_mode,last_mode",
     [("metric", "metric"), ("utterance", "metric"), ("metric", "utterance")],
 )
 def test_kaldi_resume_keeps_identity_and_loads_only_pending_inputs(
-    scorer, gen_files, tmp_path, policy, first_mode, last_mode
+    scorer, gen_files, tmp_path, monkeypatch, policy, storage, first_mode, last_mode
 ):
     """Real lazy Kaldi mappings retain identity across partial and full resumes."""
     scp = tmp_path / "wav.scp"
     output = tmp_path / "scores.jsonl"
     configs = [{"name": "stable"}]
     keys = list(gen_files)
+    if storage == "ark":
+        from omniio import kaldi as kaldi_io
+        import soundfile as sf
+
+        archive_scp = tmp_path / "archive.scp"
+        kaldi_io.save_ark(
+            str(tmp_path / "audio.ark"),
+            {key: sf.read(gen_files[key], dtype="int16")[::-1] for key in keys},
+            scp=str(archive_scp),
+        )
+        gen_files = dict(
+            line.split(maxsplit=1) for line in archive_scp.read_text().splitlines()
+        )
     scp.write_text("".join(f"{key} {gen_files[key]}\n" for key in keys[:2]))
 
     def run(mapping, mode, resume=False):
@@ -701,15 +715,19 @@ def test_kaldi_resume_keeps_identity_and_loads_only_pending_inputs(
     run(scorer_shared.audio_loader_setup(str(scp), "kaldi"), first_mode)
     scp.write_text("".join(f"{key} {gen_files[key]}\n" for key in keys))
     mapping = scorer_shared.audio_loader_setup(str(scp), "kaldi")
-    original_loader = mapping._loader
+    # Patch the function used by the real reader, preserving its lazy mapping.
+    import sys
+
+    reader_module = sys.modules[type(mapping).__module__]
+    original_loader = reader_module.load_mat
     loads = []
 
-    def record_load(entry):
+    def record_load(entry, *args, **kwargs):
         """Track every waveform materialized by the actual Kaldi loader."""
         loads.append(entry)
-        return original_loader(entry)
+        return original_loader(entry, *args, **kwargs)
 
-    mapping._loader = record_load
+    monkeypatch.setattr(reader_module, "load_mat", record_load)
     StableMetric.calls = 0
     resumed = run(mapping, last_mode, resume=True)
     assert len(resumed) == 3

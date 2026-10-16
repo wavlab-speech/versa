@@ -11,7 +11,7 @@ import os
 from collections.abc import Mapping
 from concurrent.futures import ProcessPoolExecutor
 
-import kaldiio
+from omniio import kaldi as kaldi_io
 import soundfile as sf
 import yaml
 from pathlib import Path
@@ -106,7 +106,7 @@ def audio_loader_setup(audio, io):
     Kaldi entries load lazily. Soundfile SCP values are paths; command pipes
     raise ValueError and require the Kaldi interface instead."""
     if io == "kaldi":
-        audio_files = kaldiio.load_scp(audio)
+        audio_files = kaldi_io.load_scp(audio)
     elif io == "dir":
         audio_files = find_files(audio)
     elif io == "soundfile":
