@@ -251,6 +251,11 @@ METRIC_MODULES = (
         "Please install SigMOS dependencies and retry",
     ),
     MetricModuleSpec(
+        "versa.utterance_metrics.distill_mos",
+        ("DistillMosMetric", "register_distill_mos_metric"),
+        "Please install Distill-MOS following tools/install_distill_mos.sh",
+    ),
+    MetricModuleSpec(
         "versa.utterance_metrics.wvmos",
         ("WvmosMetric", "register_wvmos_metric"),
         "Please install WVMOS following tools/install_wvmos.sh",

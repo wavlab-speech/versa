@@ -29,6 +29,7 @@ METRIC_CATEGORIES = {
         "singmos",
         "sheet_ssqa",
         "utmosv2",
+        "distill_mos",
         "scoreq_nr",
         "scoreq_ref",
         "noresqa",
