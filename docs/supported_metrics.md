@@ -58,6 +58,8 @@ We include x mark if the metric is auto-installed in versa.
 | 51 | x | DNSMOS Pro: A Reduced-Size DNN for Probabilistic MOS of Speech  | pseudo_mos | dnsmos_pro_nisqa | [DNSMOSPro](https://github.com/fcumlin/DNSMOSPro/tree/main) | [paper](https://www.isca-archive.org/interspeech_2024/cumlin24_interspeech.html) |
 | 52 | x | DNSMOS Pro: A Reduced-Size DNN for Probabilistic MOS of Speech  | pseudo_mos | dnsmos_pro_vcc2018 | [DNSMOSPro](https://github.com/fcumlin/DNSMOSPro/tree/main) | [paper](https://www.isca-archive.org/interspeech_2024/cumlin24_interspeech.html) |
 | 53 |   | WV-MOS (MOS score prediction by fine-tuned wav2vec2.0 model) | wvmos | wvmos | [wvmos](https://github.com/AndreevP/wvmos) | [paper](https://arxiv.org/abs/2203.13086) |
+| New |   | WhiSQA single/multi-head (checkpoint parity pending) | whisqa | whisqa_mos; optional quality dimensions | [Setup and validation](pretrained_mos.md) | [paper](https://arxiv.org/abs/2508.02210) |
+| New |   | DNSMOS-C dataset-specific (checkpoint parity pending) | dnsmos_c | dnsmos_c_mean, dnsmos_c_variance | [Setup and validation](pretrained_mos.md) | [paper](https://arxiv.org/abs/2606.26903) |
 | 54 |   |SIG-MOS | sigmos | {SIGMOS_COL, SIGMOS_DISC, SIGMOS_LOUD, SIGMOS_REVERB, SIGMOS_SIG, SIGMOS_OVRL} | [sigmos](https://github.com/microsoft/SIG-Challenge/tree/main/ICASSP2024/sigmos) |[paper](https://arxiv.org/pdf/2309.07385) |
 | 55 | x | VQScore (Self-Supervised Speech Quality Estimation and Enhancement Using Only Clean Speech)  | vqscore | vqscore | [VQScore](https://github.com/JasonSWFu/VQscore) | [paper](https://arxiv.org/abs/2402.16321) |
 | 56 | x | Singing voice MOS  | pseudo_mos | singmos_pro |[singmos](https://github.com/South-Twilight/SingMOS) | [paper](https://arxiv.org/abs/2510.01812) |
