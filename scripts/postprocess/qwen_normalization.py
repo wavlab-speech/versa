@@ -267,6 +267,39 @@ def translate_non_english(text, translation_dict=TRANSLATION_DICT):
     return text
 
 
+def _contains_phrase(text, phrase):
+    """Whether `phrase` occurs in `text` as whole words (case-insensitive).
+
+    Plain substring tests confuse overlapping labels, e.g. "male" inside
+    "female" or "one" inside "someone"."""
+    pattern = r"(?<!\w)" + re.escape(phrase.lower()) + r"(?!\w)"
+    return re.search(pattern, text.lower()) is not None
+
+
+def _match_category(text, categories):
+    """Return the category named in `text`, or None.
+
+    Categories are matched as whole words. A match lying inside a longer
+    matched category is ignored ("low" inside "very low"); among the rest,
+    the earliest mention wins."""
+    text_lower = text.lower()
+    spans = []
+    for category in categories:
+        pattern = r"(?<!\w)" + re.escape(category.lower()) + r"(?!\w)"
+        for match in re.finditer(pattern, text_lower):
+            spans.append((match.start(), match.end(), category))
+    outer = [
+        (start, end, category)
+        for start, end, category in spans
+        if not any(
+            s <= start and end <= e and (e - s) > (end - start) for s, e, _ in spans
+        )
+    ]
+    if not outer:
+        return None
+    return min(outer, key=lambda span: span[0])[2]
+
+
 def process_llm_output(metric_name, llm_output, expected_formats=EXPECTED_FORMATS):
     """
     Process the output from the text-only LLM.
@@ -345,9 +378,9 @@ def rules_based_standardize(
 
     # Handle special case for language
     if metric_name == "qwen_language":
-        for cat in format_info["categories"]:
-            if cat.lower() in translated_output.lower():
-                return cat
+        matched = _match_category(translated_output, format_info["categories"])
+        if matched is not None:
+            return matched
         # Extract language name from common phrases
         match = re.search(
             r"(language|spoken) (?:is|in) ([\w\s]+)",
@@ -367,9 +400,9 @@ def rules_based_standardize(
     if metric_name == "qwen_overlapping_speech":
         if "no overlap" in translated_output.lower():
             return "No overlap"
-        for cat in format_info["categories"]:
-            if cat.lower() in translated_output.lower():
-                return cat
+        matched = _match_category(translated_output, format_info["categories"])
+        if matched is not None:
+            return matched
         return "No overlap"  # Default
 
     # Handle numeric values (speaker count)
@@ -394,17 +427,17 @@ def rules_based_standardize(
             "ten": 10,
         }
         for word, num in number_words.items():
-            if word in translated_output.lower():
+            if _contains_phrase(translated_output, word):
                 return num
 
         return 1  # Default to 1
 
     # For regular categories
     if format_info["type"] == "category":
-        # First check exact match
-        for category in format_info["categories"]:
-            if category.lower() in translated_output.lower():
-                return category
+        # First check for a category named in full (whole words)
+        matched = _match_category(translated_output, format_info["categories"])
+        if matched is not None:
+            return matched
 
         # If no exact match, try to find the best match
         best_match = None
@@ -416,7 +449,9 @@ def rules_based_standardize(
             words = category_lower.split()
 
             # Count how many words from the category appear in the output
-            score = sum(1 for word in words if word in translated_output.lower())
+            score = sum(
+                1 for word in words if _contains_phrase(translated_output, word)
+            )
 
             if score > best_score:
                 best_score = score

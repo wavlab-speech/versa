@@ -97,3 +97,34 @@ def test_direct_script_import(script, tmp_path):
         check=True,
     )
     assert "usage:" in result.stdout
+
+
+@pytest.mark.parametrize(
+    "metric_name,raw,expected",
+    [
+        ("qwen_speaker_gender", "female", "Female"),
+        ("qwen_speaker_gender", "The speaker is female.", "Female"),
+        ("qwen_speaker_gender", "male", "Male"),
+        ("qwen_voice_pitch", "very low", "Very low"),
+        ("qwen_voice_pitch", "The pitch is very low.", "Very low"),
+        ("qwen_voice_pitch", "low", "Low"),
+        ("qwen_voice_pitch", "Very high", "Very high"),
+        ("qwen_voice_pitch", "high", "High"),
+    ],
+)
+def test_categories_match_whole_words(metric_name, raw, expected):
+    """A category must not match inside another word or a longer category."""
+    assert rules.rules_based_standardize(metric_name, raw) == expected
+
+
+def test_number_words_match_whole_words():
+    """'one' inside 'someone' must not be read as a speaker count of 1."""
+    number_key = next(
+        key
+        for key, schema in rules.EXPECTED_FORMATS.items()
+        if schema["type"] == "number"
+    )
+    assert (
+        rules.rules_based_standardize(number_key, "two speakers, maybe someone else")
+        == 2
+    )
