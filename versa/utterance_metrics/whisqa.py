@@ -73,12 +73,14 @@ def whisqa_calculate(model, pred_x, gen_sr, head="single"):
 
 class WhisqaMetric(BaseMetric):
     def _setup(self):
+        """Load the configured optional WhiSQA backend and select its device."""
         self.head = self.config.get("head", "single")
         self.model = whisqa_setup(
             self.config.get("repo_path"), self.head, self.config.get("use_gpu", False)
         )
 
     def compute(self, predictions, references=None, metadata=None):
+        """Score mono audio using the metadata sample rate, defaulting to 16 kHz."""
         return whisqa_calculate(
             self.model,
             predictions,
@@ -87,10 +89,12 @@ class WhisqaMetric(BaseMetric):
         )
 
     def get_metadata(self):
+        """Return WhiSQA input requirements and backend provenance."""
         return _whisqa_metadata()
 
 
 def _whisqa_metadata():
+    """Describe WhiSQA for discovery without loading model assets."""
     return MetricMetadata(
         name="whisqa",
         category=MetricCategory.INDEPENDENT,
@@ -107,4 +111,5 @@ def _whisqa_metadata():
 
 
 def register_whisqa_metric(registry):
+    """Register the optional WhiSQA metric class and its metadata."""
     registry.register(WhisqaMetric, _whisqa_metadata())

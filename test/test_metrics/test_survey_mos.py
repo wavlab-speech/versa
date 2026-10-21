@@ -10,11 +10,13 @@ from versa.utterance_metrics import dnsmos_c, whisqa
 
 class WhisperModel(torch.nn.Module):
     def __init__(self, values):
+        """Store fixed predictions and a parameter for device selection."""
         super().__init__()
         self.weight = torch.nn.Parameter(torch.zeros(1))
         self.values = values
 
     def forward(self, waveform):
+        """Record the waveform and emit fixed scores with gradients disabled."""
         assert not torch.is_grad_enabled()
         self.waveform = waveform
         return torch.tensor([self.values])
@@ -24,6 +26,7 @@ class WhisperModel(torch.nn.Module):
     "head,values", [("single", [0.6]), ("multi", [0.6, 0.2, 0.4, 0.8, 1.0])]
 )
 def test_whisqa_heads(head, values):
+    """Check resampling, times-five scaling, and named head ordering."""
     model = WhisperModel(values)
     result = whisqa.whisqa_calculate(model, np.zeros(8000), 8000, head)
     assert result["whisqa_mos"] == pytest.approx(3)
@@ -48,6 +51,7 @@ def test_whisqa_heads(head, values):
 @pytest.mark.parametrize("length", [1, 8000, 159999, 160000, 160001, 320000])
 @pytest.mark.parametrize("tuple_output", [False, True])
 def test_dnsmos_features_match_upstream(length, tuple_output):
+    """Compare repeat/crop and log-STFT features with the upstream recipe."""
     import librosa
 
     samples = np.random.default_rng(0).normal(size=length).astype(np.float32)
@@ -67,6 +71,7 @@ def test_dnsmos_features_match_upstream(length, tuple_output):
     )
 
     def model(features):
+        """Validate inference features before returning synthetic Gaussian outputs."""
         assert not torch.is_grad_enabled()
         assert features.shape == (1, 1, 1001, 161)
         np.testing.assert_allclose(features[0, 0].numpy(), expected)
@@ -84,6 +89,7 @@ def test_dnsmos_features_match_upstream(length, tuple_output):
     "backend", [whisqa.whisqa_calculate, dnsmos_c.dnsmos_c_calculate]
 )
 def test_invalid_audio(backend, audio):
+    """Reject empty, multichannel, and nonfinite audio before inference."""
     with pytest.raises(ValueError, match="mono waveform"):
         backend(None, audio, 16000)
 
@@ -93,11 +99,13 @@ def test_invalid_audio(backend, audio):
     "backend", [whisqa.whisqa_calculate, dnsmos_c.dnsmos_c_calculate]
 )
 def test_invalid_rate(backend, rate):
+    """Reject invalid sample rates before preprocessing."""
     with pytest.raises(ValueError, match="sample rate"):
         backend(None, [0.0], rate)
 
 
 def test_bad_output():
+    """Reject inconsistent head dimensions and negative uncertainty."""
     with pytest.raises(ValueError, match="head shape"):
         whisqa.whisqa_calculate(WhisperModel([1, 2]), [0.0], 16000)
     with pytest.raises(ValueError, match="negative variance"):
@@ -105,6 +113,7 @@ def test_bad_output():
 
 
 def test_setup_requirements():
+    """Require explicit backend assets and supported variants."""
     with pytest.raises(ValueError, match="head"):
         whisqa.whisqa_setup(None, "bad")
     with pytest.raises(ValueError, match="repo_path"):
@@ -123,6 +132,7 @@ def test_setup_requirements():
     ],
 )
 def test_discovery(module, symbol, name):
+    """Resolve metric classes through lightweight registry discovery."""
     from versa.metric_registry import load_metric_symbol
 
     registry = MetricRegistry()
@@ -133,11 +143,13 @@ def test_discovery(module, symbol, name):
 
 
 def test_dnsmos_setup(tmp_path, monkeypatch):
+    """Load the configured TorchScript checkpoint on CPU in evaluation mode."""
     checkpoint = tmp_path / "model.pt"
     checkpoint.touch()
     model = WhisperModel([0.6])
 
     def load(path, map_location):
+        """Check the checkpoint path and device passed to the TorchScript loader."""
         assert path == str(checkpoint)
         assert map_location == "cpu"
         return model
@@ -149,6 +161,7 @@ def test_dnsmos_setup(tmp_path, monkeypatch):
 
 
 def test_whisqa_setup(tmp_path, monkeypatch):
+    """Load local WhiSQA weights without interfering with dependency imports."""
     from types import SimpleNamespace
 
     (tmp_path / "checkpoints").mkdir()
@@ -159,7 +172,18 @@ def test_whisqa_setup(tmp_path, monkeypatch):
         __file__=str(tmp_path / "models" / "whisper_ni_predictors.py"),
         whisperMetricPredictorEncoderLayersTransformerSmall=lambda: model,
     )
-    monkeypatch.setattr(whisqa.importlib, "import_module", lambda _: backend)
+    original_import = whisqa.importlib.import_module
+
+    def import_module(name, *args, **kwargs):
+        """Stub the author backend while preserving unrelated lazy imports."""
+        if name == "models.whisper_ni_predictors":
+            return backend
+        return original_import(name, *args, **kwargs)
+
+    monkeypatch.setattr(whisqa.importlib, "import_module", import_module)
+    assert whisqa.importlib.import_module(".path", package="os") is original_import(
+        ".path", package="os"
+    )
     metric = whisqa.WhisqaMetric({"repo_path": str(tmp_path)})
     assert metric.model is model
     assert not model.training
@@ -167,12 +191,14 @@ def test_whisqa_setup(tmp_path, monkeypatch):
 
 
 def test_dnsmos_resampling(monkeypatch):
+    """Pass the input rate and 16-kHz target to the default resampler."""
     import librosa
 
     original = librosa.resample
     calls = []
 
     def resample(samples, **kwargs):
+        """Record resampler arguments while preserving real preprocessing."""
         calls.append(kwargs)
         return original(samples, **kwargs)
 

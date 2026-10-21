@@ -53,6 +53,7 @@ def dnsmos_c_calculate(model, pred_x, gen_sr, device="cpu"):
 
 class DnsmosCMetric(BaseMetric):
     def _setup(self):
+        """Load the configured optional DNSMOS-C backend and select its device."""
         self.device = "cuda" if self.config.get("use_gpu", False) else "cpu"
         self.model = dnsmos_c_setup(
             self.config.get("checkpoint"),
@@ -61,6 +62,7 @@ class DnsmosCMetric(BaseMetric):
         )
 
     def compute(self, predictions, references=None, metadata=None):
+        """Score mono audio using the metadata sample rate, defaulting to 16 kHz."""
         return dnsmos_c_calculate(
             self.model,
             predictions,
@@ -69,10 +71,12 @@ class DnsmosCMetric(BaseMetric):
         )
 
     def get_metadata(self):
+        """Return DNSMOS-C input requirements and backend provenance."""
         return _dnsmos_c_metadata()
 
 
 def _dnsmos_c_metadata():
+    """Describe DNSMOS-C for discovery without loading model assets."""
     return MetricMetadata(
         name="dnsmos_c",
         category=MetricCategory.INDEPENDENT,
@@ -89,4 +93,5 @@ def _dnsmos_c_metadata():
 
 
 def register_dnsmos_c_metric(registry):
+    """Register the optional DNSMOS-C metric class and its metadata."""
     registry.register(DnsmosCMetric, _dnsmos_c_metadata())
