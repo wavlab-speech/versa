@@ -276,3 +276,39 @@ def test_multi_source_resume_recomputes_a_changed_source_list(tmp_path):
     )
 
     assert len(OrderedSourceMetric.calls) == 1
+
+
+def test_multi_source_resume_ignores_removed_metric_failures(tmp_path):
+    """Historical failures outside the requested suite do not fail strict resume."""
+    from versa.completion import RunStatus, STATUS_FAILED, record_metric_status
+
+    registry = MetricRegistry()
+    registry.register(OrderedSourceMetric, OrderedSourceMetric().get_metadata())
+    scorer = VersaScorer(registry)
+    suite = scorer.load_metrics([{"name": "ordered_source"}], use_gt=True)
+    predictions, references = _source_mappings()
+    output = tmp_path / "scores.jsonl"
+    rows = scorer.score_multi_source_utterances(
+        predictions, suite, references, output_file=str(output), io="soundfile"
+    )
+    for row in rows:
+        record_metric_status(
+            row, "removed", "old-signature", STATUS_FAILED, error="old failure"
+        )
+    output.write_text("".join(json.dumps(row) + "\n" for row in rows))
+    status = RunStatus()
+    OrderedSourceMetric.calls = []
+    resumed = scorer.score_multi_source_utterances(
+        predictions,
+        suite,
+        references,
+        output_file=str(output),
+        io="soundfile",
+        resume=True,
+        run_status=status,
+    )
+    assert resumed == rows
+    assert OrderedSourceMetric.calls == []
+    assert status.resumed_utterances == len(rows)
+    assert status.metric_status_counts[STATUS_SUCCESS] == len(rows)
+    assert not status.has_failures
