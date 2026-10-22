@@ -205,25 +205,26 @@ def pseudo_mos_metric(pred, fs, predictor_dict, predictor_fs, use_gpu=False):
             scores.update(utmosv2=sum(score_info) / NUM_REPETITIONS)
 
         elif predictor == "dnsmos":
-            if fs != predictor_fs["dnsmos"]:
-                pred_dnsmos = resample_audio(pred, fs, predictor_fs["dnsmos"])
-                fs = predictor_fs["dnsmos"]
+            # Keep `fs` untouched: later predictors in this loop resample from it.
+            dnsmos_fs = predictor_fs["dnsmos"]
+            if fs != dnsmos_fs:
+                pred_dnsmos = resample_audio(pred, fs, dnsmos_fs)
             else:
                 pred_dnsmos = pred
 
             max_val = np.max(np.abs(pred_dnsmos))
-            score = predictor_dict["dnsmos"].run(pred_dnsmos / max_val, sr=fs)
+            score = predictor_dict["dnsmos"].run(pred_dnsmos / max_val, sr=dnsmos_fs)
 
             scores.update(dns_overall=score["ovrl_mos"], dns_p808=score["p808_mos"])
         elif predictor == "plcmos":
-            if fs != predictor_fs["plcmos"]:
-                pred_plcmos = resample_audio(pred, fs, predictor_fs["plcmos"])
-                fs = predictor_fs["plcmos"]
+            plcmos_fs = predictor_fs["plcmos"]
+            if fs != plcmos_fs:
+                pred_plcmos = resample_audio(pred, fs, plcmos_fs)
             else:
                 pred_plcmos = pred
 
             max_val = np.max(np.abs(pred_plcmos))
-            score = predictor_dict["plcmos"].run(pred_plcmos / max_val, sr=fs)
+            score = predictor_dict["plcmos"].run(pred_plcmos / max_val, sr=plcmos_fs)
             scores.update(plcmos=score["plcmos"])
         elif predictor in ("singmos", "singmos_v1", "singmos_pro"):
             if fs != predictor_fs[predictor]:
