@@ -110,6 +110,10 @@ def test_direct_script_import(script, tmp_path):
         ("qwen_voice_pitch", "low", "Low"),
         ("qwen_voice_pitch", "Very high", "Very high"),
         ("qwen_voice_pitch", "high", "High"),
+        # Translated labels next to CJK characters ("Female性", "Low。")
+        ("qwen_speaker_gender", "女性", "Female"),
+        ("qwen_speaker_gender", "男声", "Male"),
+        ("qwen_voice_pitch", "音调低。", "Low"),
     ],
 )
 def test_categories_match_whole_words(metric_name, raw, expected):

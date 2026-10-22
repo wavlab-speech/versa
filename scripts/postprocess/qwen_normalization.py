@@ -267,13 +267,21 @@ def translate_non_english(text, translation_dict=TRANSLATION_DICT):
     return text
 
 
+def _phrase_pattern(phrase):
+    """Regex for `phrase` as whole words (lowercase).
+
+    Word boundaries are ASCII-only: translated labels can sit right next to
+    CJK characters ("Female性"), which Unicode word matching would treat as
+    part of the same word."""
+    return re.compile(r"(?<!\w)" + re.escape(phrase.lower()) + r"(?!\w)", re.ASCII)
+
+
 def _contains_phrase(text, phrase):
     """Whether `phrase` occurs in `text` as whole words (case-insensitive).
 
     Plain substring tests confuse overlapping labels, e.g. "male" inside
     "female" or "one" inside "someone"."""
-    pattern = r"(?<!\w)" + re.escape(phrase.lower()) + r"(?!\w)"
-    return re.search(pattern, text.lower()) is not None
+    return _phrase_pattern(phrase).search(text.lower()) is not None
 
 
 def _match_category(text, categories):
@@ -285,8 +293,7 @@ def _match_category(text, categories):
     text_lower = text.lower()
     spans = []
     for category in categories:
-        pattern = r"(?<!\w)" + re.escape(category.lower()) + r"(?!\w)"
-        for match in re.finditer(pattern, text_lower):
+        for match in _phrase_pattern(category).finditer(text_lower):
             spans.append((match.start(), match.end(), category))
     outer = [
         (start, end, category)
