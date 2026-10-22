@@ -1,5 +1,6 @@
 """Optional DNSMOS-C TorchScript Gaussian quality predictor."""
 
+import numbers
 from pathlib import Path
 
 from versa.definition import BaseMetric, MetricCategory, MetricMetadata, MetricType
@@ -29,8 +30,13 @@ def dnsmos_c_calculate(model, pred_x, gen_sr, device="cpu"):
     import numpy as np
     import torch
 
-    if isinstance(gen_sr, bool) or not isinstance(gen_sr, int) or gen_sr <= 0:
+    if (
+        isinstance(gen_sr, bool)
+        or not isinstance(gen_sr, numbers.Integral)
+        or gen_sr <= 0
+    ):
         raise ValueError("DNSMOS-C requires a positive integer sample rate")
+    gen_sr = int(gen_sr)
     samples = np.asarray(pred_x, dtype=np.float32)
     if samples.ndim != 1 or samples.size == 0 or not np.isfinite(samples).all():
         raise ValueError("DNSMOS-C requires a nonempty finite mono waveform")
@@ -52,13 +58,14 @@ def dnsmos_c_calculate(model, pred_x, gen_sr, device="cpu"):
 
 
 class DnsmosCMetric(BaseMetric):
+    """Reference-free DNSMOS-C MOS mean and predictive variance."""
+
     def _setup(self):
         """Load the configured optional DNSMOS-C backend and select its device."""
-        self.device = "cuda" if self.config.get("use_gpu", False) else "cpu"
+        use_gpu = self.config.get("use_gpu", False)
+        self.device = "cuda" if use_gpu else "cpu"
         self.model = dnsmos_c_setup(
-            self.config.get("checkpoint"),
-            self.config.get("dataset"),
-            self.config.get("use_gpu", False),
+            self.config.get("checkpoint"), self.config.get("dataset"), use_gpu
         )
 
     def compute(self, predictions, references=None, metadata=None):

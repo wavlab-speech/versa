@@ -181,13 +181,30 @@ def test_whisqa_setup(tmp_path, monkeypatch):
         return original_import(name, *args, **kwargs)
 
     monkeypatch.setattr(whisqa.importlib, "import_module", import_module)
-    assert whisqa.importlib.import_module(".path", package="os") is original_import(
-        ".path", package="os"
-    )
     metric = whisqa.WhisqaMetric({"repo_path": str(tmp_path)})
     assert metric.model is model
     assert not model.training
     assert metric.compute([0.0])["whisqa_mos"] == pytest.approx(3)
+
+
+def test_numpy_integer_rate():
+    """Accept NumPy integer sample rates such as those read via NumPy."""
+    audio = np.zeros(8000, dtype=np.float32)
+    whisqa.whisqa_calculate(WhisperModel([0.6]), audio, np.int64(8000))
+    dnsmos_c.dnsmos_c_calculate(
+        lambda _: torch.tensor([[3.0, 0.1]]), audio, np.int64(8000)
+    )
+
+
+def test_reporting_semantics():
+    """Group new keys with audio quality and leave variance undirected."""
+    from versa.reporting import metric_category, metric_direction
+
+    for key in ["whisqa_mos", "whisqa_noisiness", "dnsmos_c_mean"]:
+        assert metric_category(key) == "audio_quality"
+        assert metric_direction(key) is True
+    assert metric_category("dnsmos_c_variance") == "audio_quality"
+    assert metric_direction("dnsmos_c_variance") is None
 
 
 def test_dnsmos_resampling(monkeypatch):

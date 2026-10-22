@@ -253,10 +253,12 @@ METRIC_MODULES = (
     MetricModuleSpec(
         "versa.utterance_metrics.whisqa",
         ("WhisqaMetric", "register_whisqa_metric"),
+        "Please set up WhiSQA following docs/pretrained_mos.md",
     ),
     MetricModuleSpec(
         "versa.utterance_metrics.dnsmos_c",
         ("DnsmosCMetric", "register_dnsmos_c_metric"),
+        "Please set up DNSMOS-C following docs/pretrained_mos.md",
     ),
     MetricModuleSpec(
         "versa.utterance_metrics.wvmos",

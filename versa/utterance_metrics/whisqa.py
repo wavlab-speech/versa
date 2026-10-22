@@ -1,6 +1,7 @@
 """Optional WhiSQA single- and multi-head pretrained quality prediction."""
 
 import importlib
+import numbers
 from pathlib import Path
 import sys
 
@@ -19,7 +20,9 @@ def whisqa_setup(repo_path, head="single", use_gpu=False):
     checkpoint = root / "checkpoints" / f"{head}_head_model.pt"
     if not checkpoint.is_file():
         raise FileNotFoundError(f"Missing WhiSQA checkpoint: {checkpoint}")
-    # Upstream uses absolute imports from its models package.
+    # Upstream uses absolute imports from its models package. The generic
+    # ``models`` name stays in sys.modules for the rest of this process, so an
+    # unrelated ``models`` package cannot be imported afterwards.
     sys.path.insert(0, str(root))
     try:
         backend = importlib.import_module("models.whisper_ni_predictors")
@@ -47,8 +50,13 @@ def whisqa_calculate(model, pred_x, gen_sr, head="single"):
 
     if head not in ("single", "multi"):
         raise ValueError("WhiSQA head must be single or multi")
-    if isinstance(gen_sr, bool) or not isinstance(gen_sr, int) or gen_sr <= 0:
+    if (
+        isinstance(gen_sr, bool)
+        or not isinstance(gen_sr, numbers.Integral)
+        or gen_sr <= 0
+    ):
         raise ValueError("WhiSQA requires a positive integer sample rate")
+    gen_sr = int(gen_sr)
     waveform = torch.as_tensor(pred_x, dtype=torch.float32)
     if (
         waveform.ndim != 1
@@ -72,6 +80,8 @@ def whisqa_calculate(model, pred_x, gen_sr, head="single"):
 
 
 class WhisqaMetric(BaseMetric):
+    """Reference-free WhiSQA MOS with optional quality dimensions."""
+
     def _setup(self):
         """Load the configured optional WhiSQA backend and select its device."""
         self.head = self.config.get("head", "single")

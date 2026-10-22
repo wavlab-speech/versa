@@ -37,6 +37,13 @@ METRIC_CATEGORIES = {
         "dnsmos_pro_bvcc",
         "dnsmos_pro_nisqa",
         "dnsmos_pro_vcc2018",
+        "whisqa_mos",
+        "whisqa_noisiness",
+        "whisqa_coloration",
+        "whisqa_discontinuity",
+        "whisqa_loudness",
+        "dnsmos_c_mean",
+        "dnsmos_c_variance",
     ],
     "speech_enhancement": [
         "torch_squim_pesq",
@@ -526,6 +533,9 @@ def metric_direction(
         return False
     if "distance" in normalized and "token_distance" not in normalized:
         return False
+    # Predictive uncertainty has no better/worse direction despite MOS names.
+    if "variance" in normalized:
+        return None
     if any(
         token in normalized
         for token in [
@@ -536,6 +546,7 @@ def metric_direction(
             "quality",
             "nisqa",
             "utmos",
+            "whisqa",
             "pesq",
             "stoi",
             "sdr",
