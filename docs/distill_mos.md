@@ -33,6 +33,8 @@ Dependencies are supplied by the optional upstream package, including Torch,
 TorchAudio and XLS-R-SQA. Backend requirements may exceed VERSA's base floor.
 The weights live inside the installed package; after installing the package and
 its dependencies, setup uses that local file without a separate model download.
+The installer ends with a smoke test that constructs the model, which loads
+these bundled weights.
 For offline deployments, prepare the pinned package and dependency wheels in an
 online environment, then install them from a local wheelhouse.
 

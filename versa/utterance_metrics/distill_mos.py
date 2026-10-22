@@ -1,5 +1,7 @@
 """Optional Microsoft Distill-MOS pretrained speech quality estimator."""
 
+import numbers
+
 from versa.definition import BaseMetric, MetricCategory, MetricMetadata, MetricType
 
 
@@ -20,8 +22,13 @@ def distill_mos_calculate(model, pred_x, gen_sr):
     import torch
     import torchaudio
 
-    if isinstance(gen_sr, bool) or not isinstance(gen_sr, int) or gen_sr <= 0:
+    if (
+        isinstance(gen_sr, bool)
+        or not isinstance(gen_sr, numbers.Integral)
+        or gen_sr <= 0
+    ):
         raise ValueError("Distill-MOS requires a positive integer sample rate")
+    gen_sr = int(gen_sr)
     waveform = torch.as_tensor(pred_x, dtype=torch.float32)
     if waveform.ndim != 1 or waveform.numel() == 0:
         raise ValueError("Distill-MOS requires a nonempty mono waveform")
@@ -29,7 +36,7 @@ def distill_mos_calculate(model, pred_x, gen_sr):
         raise ValueError("Distill-MOS requires finite audio samples")
     waveform = waveform.unsqueeze(0)
     if gen_sr != 16000:
-        waveform = torchaudio.transforms.Resample(gen_sr, 16000)(waveform)
+        waveform = torchaudio.functional.resample(waveform, gen_sr, 16000)
     waveform = waveform.to(next(model.parameters()).device)
     with torch.inference_mode():
         score = model(waveform).item()
@@ -40,18 +47,22 @@ class DistillMosMetric(BaseMetric):
     """Reference-free MOS using the upstream default overlapping segments."""
 
     def _setup(self):
+        """Load the optional Distill-MOS backend on the configured device."""
         self.model = distill_mos_setup(self.config.get("use_gpu", False))
 
     def compute(self, predictions, references=None, metadata=None):
+        """Score mono audio using the metadata sample rate, defaulting to 16 kHz."""
         return distill_mos_calculate(
             self.model, predictions, (metadata or {}).get("sample_rate", 16000)
         )
 
     def get_metadata(self):
+        """Return Distill-MOS input requirements and backend provenance."""
         return _distill_mos_metadata()
 
 
 def _distill_mos_metadata():
+    """Describe Distill-MOS for discovery without loading model assets."""
     return MetricMetadata(
         name="distill_mos",
         category=MetricCategory.INDEPENDENT,
@@ -68,4 +79,5 @@ def _distill_mos_metadata():
 
 
 def register_distill_mos_metric(registry):
+    """Register the optional Distill-MOS metric class and its metadata."""
     registry.register(DistillMosMetric, _distill_mos_metadata(), aliases=["distillmos"])

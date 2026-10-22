@@ -32,9 +32,10 @@ def test_preserves_full_waveform_for_upstream_segmentation(length):
     assert model.waveform.dtype == torch.float32
 
 
-def test_resampling():
+@pytest.mark.parametrize("sample_rate", [8000, np.int64(8000)])
+def test_resampling(sample_rate):
     model = RecordingModel()
-    distill_mos.distill_mos_calculate(model, np.zeros(8000), 8000)
+    distill_mos.distill_mos_calculate(model, np.zeros(8000), sample_rate)
     assert model.waveform.shape == (1, 16000)
 
 
