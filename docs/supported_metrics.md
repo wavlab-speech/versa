@@ -144,3 +144,12 @@ PS mean is not the paper's formal utterance-level aggregation.
 
 ## Acknowledgement
 We sincerely thank all the open-source implementations listed in https://github.com/shinjiwlab/versa/tree/main#list-of-metrics 
+
+### Uni-VERSA and ARECHO (ESPnet AQA)
+
+These backends use `espnet2.bin.aqa_inference.AqaInference`. Install ESPnet
+with the AQA task on Python 3.12 or 3.13; the `external` extra pins an upstream
+commit containing AQA. Older `espnet_inference` fork installations need updating.
+The VERSA metric names, YAML configs, Hugging Face model IDs, and score prefixes
+remain unchanged. See the [AQA recipe guide](https://github.com/espnet/espnet/tree/master/egs2/TEMPLATE/aqa1)
+for current inference and fine-tuning instructions.
