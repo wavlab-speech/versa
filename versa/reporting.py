@@ -37,6 +37,13 @@ METRIC_CATEGORIES = {
         "dnsmos_pro_bvcc",
         "dnsmos_pro_nisqa",
         "dnsmos_pro_vcc2018",
+        "whisqa_mos",
+        "whisqa_noisiness",
+        "whisqa_coloration",
+        "whisqa_discontinuity",
+        "whisqa_loudness",
+        "dnsmos_c_mean",
+        "dnsmos_c_variance",
     ],
     "speech_enhancement": [
         "torch_squim_pesq",
@@ -215,7 +222,8 @@ def summarize_metric(
     Absent keys count as missing; nonnumeric and nonfinite values count as
     invalid. Statistics are zero when no valid values exist. Confidence limits
     use mean +/- 1.96 standard errors, and outliers have absolute z-score >= 2.
-    Unknown score direction is ranked as higher-is-better for extrema."""
+    Unknown score direction is ranked as higher-is-better for extrema.
+    Predictive variance has no quality extrema."""
     observations, missing, invalid = numeric_observations(records, metric)
     values = [
         (str(records[index].get("key") or f"utt_{index + 1}"), value)
@@ -234,7 +242,9 @@ def summarize_metric(
     maximum = max(numeric) if numeric else 0.0
     higher_is_better = metric_direction(metric, registry=registry)
 
-    if values and higher_is_better is False:
+    if _is_undirected_metric(metric, registry):
+        best_key, best_value, worst_key, worst_value = "", 0.0, "", 0.0
+    elif values and higher_is_better is False:
         best_key, best_value = min(values, key=lambda item: item[1])
         worst_key, worst_value = max(values, key=lambda item: item[1])
     elif values:
@@ -288,13 +298,16 @@ def summarize_groups(
     """Group records by a field and rank group means separately for each metric.
 
     Missing group fields become ``unknown``. Groups with no finite values for
-    a metric are omitted from its ranking; unknown direction sorts descending."""
+    a metric are omitted from its ranking; unknown direction sorts descending.
+    Predictive variance is excluded from rankings."""
     grouped: Dict[str, List[Dict[str, Any]]] = defaultdict(list)
     for record in records:
         grouped[str(record.get(group_by, "unknown"))].append(record)
 
     metric_rankings = {}
     for metric in metrics:
+        if _is_undirected_metric(metric, registry):
+            continue
         direction = metric_direction(metric, registry=registry)
         rows = []
         for group, group_records in grouped.items():
@@ -379,8 +392,16 @@ def write_markdown_report(analysis: Dict[str, Any], output_path: str) -> None:
                 ci=f"{_fmt(summary.ci95_low)} to {_fmt(summary.ci95_high)}",
                 missing=summary.missing,
                 invalid=summary.invalid,
-                best=f"{summary.best_key} ({_fmt(summary.best_value)})",
-                worst=f"{summary.worst_key} ({_fmt(summary.worst_value)})",
+                best=(
+                    f"{summary.best_key} ({_fmt(summary.best_value)})"
+                    if summary.best_key
+                    else "—"
+                ),
+                worst=(
+                    f"{summary.worst_key} ({_fmt(summary.worst_value)})"
+                    if summary.worst_key
+                    else "—"
+                ),
             )
         )
     lines.extend(["", "## Outlier Examples", ""])
@@ -514,6 +535,15 @@ def metric_category(metric: str, registry: Optional[MetricRegistry] = None) -> s
     return "other"
 
 
+def _is_undirected_metric(
+    metric: str, registry: Optional[MetricRegistry] = None
+) -> bool:
+    """Identify uncertainty outputs that must not receive quality rankings."""
+    metadata = _metadata_for_metric(metric, registry)
+    normalized = _strip_prefix(metadata.name if metadata else metric).lower()
+    return "variance" in normalized
+
+
 def metric_direction(
     metric: str, registry: Optional[MetricRegistry] = None
 ) -> Optional[bool]:
@@ -522,6 +552,8 @@ def metric_direction(
     This is a name-based heuristic, not a backend-provided score guarantee."""
     metadata = _metadata_for_metric(metric, registry)
     normalized = _strip_prefix(metadata.name if metadata else metric).lower()
+    if _is_undirected_metric(metric, registry):
+        return None
     if any(token in normalized for token in ["wer", "cer", "error", "rmse", "mcd"]):
         return False
     if "distance" in normalized and "token_distance" not in normalized:
@@ -536,6 +568,7 @@ def metric_direction(
             "quality",
             "nisqa",
             "utmos",
+            "whisqa",
             "pesq",
             "stoi",
             "sdr",
@@ -681,8 +714,16 @@ def _summary_row(summary: MetricSummary) -> Dict[str, Any]:
 def _metric_html_row(summary: MetricSummary) -> str:
     """Render one metric summary as a table row with escaped names and keys."""
     ci = f"{_fmt(summary.ci95_low)} to {_fmt(summary.ci95_high)}"
-    best = f"{html.escape(summary.best_key)} ({_fmt(summary.best_value)})"
-    worst = f"{html.escape(summary.worst_key)} ({_fmt(summary.worst_value)})"
+    best = (
+        f"{html.escape(summary.best_key)} ({_fmt(summary.best_value)})"
+        if summary.best_key
+        else "—"
+    )
+    worst = (
+        f"{html.escape(summary.worst_key)} ({_fmt(summary.worst_value)})"
+        if summary.worst_key
+        else "—"
+    )
     return (
         "<tr>"
         f"<td>{html.escape(summary.name)}</td>"
