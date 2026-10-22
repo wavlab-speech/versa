@@ -42,7 +42,9 @@ def dnsmos_c_calculate(model, pred_x, gen_sr, device="cpu"):
         raise ValueError("DNSMOS-C requires a nonempty finite mono waveform")
     if gen_sr != 16000:
         samples = librosa.resample(samples, orig_sr=gen_sr, target_sr=16000)
-    samples = np.tile(samples, (160000 + len(samples) - 1) // len(samples))[:160000]
+    if len(samples) < 160000:
+        samples = np.tile(samples, (160000 + len(samples) - 1) // len(samples))
+    samples = samples[:160000]
     spec = librosa.stft(samples, n_fft=320, win_length=320, hop_length=160).T
     spec = np.log10(np.clip(np.abs(spec), 1e-7, 1e7))
     features = torch.as_tensor(spec, dtype=torch.float32, device=device)[None, None]

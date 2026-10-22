@@ -135,3 +135,54 @@ def test_scorer_report_writer_exports_html(tmp_path):
     )
 
     assert "VERSA Results Report" in report_path.read_text(encoding="utf-8")
+
+
+def test_variance_is_descriptive_without_quality_rankings(tmp_path):
+    """Keep variance statistics while omitting quality extrema and rankings."""
+    records = [
+        {"key": "a", "model": "m1", "dnsmos_c_variance": 0.25, "mystery": 1.0},
+        {"key": "b", "model": "m2", "dnsmos_c_variance": 0.75, "mystery": 2.0},
+    ]
+    analysis = analyze_records(records, group_by="model")
+    summaries = {summary.name: summary for summary in analysis["metrics"]}
+    variance = summaries["dnsmos_c_variance"]
+    assert variance.mean == 0.5
+    assert (variance.minimum, variance.maximum) == (0.25, 0.75)
+    assert variance.best_key == variance.worst_key == ""
+    assert variance.higher_is_better is None
+    assert "dnsmos_c_variance" not in analysis["groups"]["rankings"]
+    assert summaries["mystery"].best_key == "b"
+    assert analysis["groups"]["rankings"]["mystery"][0]["group"] == "m2"
+    for writer, suffix in [(write_markdown_report, "md"), (write_html_report, "html")]:
+        path = tmp_path / f"report.{suffix}"
+        writer(analysis, str(path))
+        contents = path.read_text()
+        assert "—" in contents
+        assert " (0.0000)" not in contents
+
+
+def test_variance_alias_uses_registry_metadata():
+    """Suppress rankings for an uncertainty alias resolved via registry metadata."""
+    registry = MetricRegistry()
+    registry.register(
+        object,
+        MetricMetadata(
+            name="dnsmos_c_variance",
+            category=MetricCategory.INDEPENDENT,
+            metric_type=MetricType.FLOAT,
+            requires_reference=False,
+            requires_text=False,
+            gpu_compatible=False,
+            auto_install=False,
+            dependencies=[],
+            description="Predictive variance",
+        ),
+        aliases=["uncertainty"],
+    )
+    analysis = analyze_records(
+        [{"key": "a", "model": "m1", "uncertainty": 0.5}],
+        registry=registry,
+        group_by="model",
+    )
+    assert analysis["metrics"][0].best_key == ""
+    assert analysis["groups"]["rankings"] == {}

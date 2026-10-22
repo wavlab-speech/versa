@@ -224,3 +224,18 @@ def test_dnsmos_resampling(monkeypatch):
         lambda _: torch.tensor([[3.0, 0.1]]), np.ones(8000), 8000
     )
     assert calls == [{"orig_sr": 8000, "target_sr": 16000}]
+
+
+@pytest.mark.parametrize("length", [160000, 320000])
+def test_dnsmos_long_audio_does_not_tile(monkeypatch, length):
+    """Avoid allocating a duplicate recording when a ten-second crop suffices."""
+
+    def reject_tile(*args, **kwargs):
+        """Fail if preprocessing copies the recording through tiling."""
+        raise AssertionError("Long inputs must be cropped without tiling")
+
+    monkeypatch.setattr(np, "tile", reject_tile)
+    result = dnsmos_c.dnsmos_c_calculate(
+        lambda _: torch.tensor([[3.0, 0.25]]), np.ones(length), 16000
+    )
+    assert result == {"dnsmos_c_mean": 3.0, "dnsmos_c_variance": 0.25}

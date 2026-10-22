@@ -56,7 +56,8 @@ author default log-magnitude STFT (320-sample FFT/window, 160-sample hop, center
 librosa defaults, magnitude clipped to 1e-7…1e7 before log10). It handles both
 plain and tuple TorchScript outputs. `dnsmos_c_mean` is the predicted MOS;
 `dnsmos_c_variance` is uncertainty in score-squared units, not a MOS rating or a
-validated confidence interval. No additional calibration or clipping is applied.
+validated confidence interval. Reports retain its descriptive statistics but omit
+quality best/worst labels and group rankings. No additional calibration or clipping is applied.
 
 ## Reproducibility and qualification
 
