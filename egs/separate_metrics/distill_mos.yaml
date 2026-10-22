@@ -1,0 +1,3 @@
+# Microsoft Distill-MOS variant 7 (independent)
+- name: distill_mos
+  use_gpu: false

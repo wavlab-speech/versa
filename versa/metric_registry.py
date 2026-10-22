@@ -238,6 +238,11 @@ METRIC_MODULES = (
         ("NisqaMetric", "register_nisqa_metric"),
     ),
     MetricModuleSpec(
+        "versa.utterance_metrics.distill_mos",
+        ("DistillMosMetric", "register_distill_mos_metric"),
+        "Please install Distill-MOS following tools/install_distill_mos.sh",
+    ),
+    MetricModuleSpec(
         "versa.utterance_metrics.pam",
         ("PamMetric", "register_pam_metric"),
     ),
