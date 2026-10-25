@@ -1,0 +1,4 @@
+# Korean speech MOS prediction. Install the optional backend with:
+# pip install komos
+- name: pseudo_mos
+  predictor_types: ["komos"]
