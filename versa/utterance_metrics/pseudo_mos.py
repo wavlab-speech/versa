@@ -95,7 +95,9 @@ def pseudo_mos_setup(
                     "Please install KOMOS with `pip install komos` to use the komos predictor"
                 ) from exc
             predictor_dict["komos"] = (
-                KOMOS.from_pretrained("upskyy/komos").to(device).eval()
+                KOMOS.from_pretrained("upskyy/komos", cache_dir=cache_dir)
+                .to(device)
+                .eval()
             )
             predictor_fs["komos"] = 16000
         elif predictor == "dnsmos":
@@ -158,11 +160,13 @@ def pseudo_mos_metric(pred, fs, predictor_dict, predictor_fs, use_gpu=False):
 
     Return backend-specific keys, including dns_overall/dns_p808 for DNSMOS.
     Each backend applies its own preprocessing and output scale; VERSA does not
-    post-process the scores. UTMOSv2 predictions are averaged over five passes."""
+    post-process the scores. KOMOS scores the full waveform in non-overlapping
+    10-second windows and rejects inputs longer than 60 seconds. UTMOSv2
+    predictions are averaged over five passes."""
     scores = {}
     for predictor in predictor_dict.keys():
         if predictor == "komos":
-            scores["komos"] = predictor_dict["komos"].score(pred, sr=fs)
+            scores["komos"] = predictor_dict["komos"].score_long_form(pred, sr=fs)
         elif predictor == "utmos":
             if fs != predictor_fs["utmos"]:
                 pred_utmos = resample_audio(pred, fs, predictor_fs["utmos"])

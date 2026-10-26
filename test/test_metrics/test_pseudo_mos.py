@@ -9,6 +9,7 @@ from pathlib import Path
 from types import SimpleNamespace
 
 import numpy as np
+import pytest
 import torch
 
 from versa.definition import MetricFactory, MetricRegistry
@@ -38,11 +39,13 @@ class DummyKOMOSModel:
     """Minimal optional KOMOS adapter used to verify model setup."""
 
     loaded_model_id = None
+    loaded_cache_dir = None
 
     @classmethod
-    def from_pretrained(cls, model_id):
+    def from_pretrained(cls, model_id, *, cache_dir):
         """Record the requested model identifier and return a test adapter."""
         cls.loaded_model_id = model_id
+        cls.loaded_cache_dir = cache_dir
         return cls()
 
     def to(self, device):
@@ -56,13 +59,16 @@ class DummyKOMOSModel:
         return self
 
 
-def test_komos_setup_loads_optional_model(monkeypatch):
+def test_komos_setup_loads_optional_model(monkeypatch, tmp_path):
     """The optional backend loads the published model on the requested device."""
     monkeypatch.setitem(sys.modules, "komos", SimpleNamespace(KOMOS=DummyKOMOSModel))
 
-    predictors, sample_rates = pseudo_mos.pseudo_mos_setup(["komos"], {}, use_gpu=False)
+    predictors, sample_rates = pseudo_mos.pseudo_mos_setup(
+        ["komos"], {}, cache_dir=str(tmp_path), use_gpu=False
+    )
 
     assert DummyKOMOSModel.loaded_model_id == "upskyy/komos"
+    assert DummyKOMOSModel.loaded_cache_dir == str(tmp_path)
     assert predictors["komos"].device == "cpu"
     assert predictors["komos"].evaluating is True
     assert sample_rates["komos"] == 16000
@@ -78,7 +84,7 @@ class RecordingKOMOS:
         self.calls = []
 
     @classmethod
-    def from_pretrained(cls, model_id):
+    def from_pretrained(cls, model_id, *, cache_dir):
         """Create and retain an adapter for later call assertions."""
         model = cls()
         cls.loaded_models.append((model_id, model))
@@ -93,15 +99,16 @@ class RecordingKOMOS:
         """Return the adapter unchanged for inference-mode chaining."""
         return self
 
-    def score(self, audio, sr):
+    def score_long_form(self, audio, sr):
         """Record the waveform call and return a deterministic MOS."""
         self.calls.append((audio, sr))
         return 4.2
 
 
-def test_komos_returns_distinct_score_through_registry(monkeypatch):
+@pytest.mark.parametrize("duration", [1, 10, 11, 60])
+def test_komos_returns_distinct_score_through_registry(monkeypatch, duration):
     """The registered metric preserves input rate and returns a KOMOS score."""
-    audio = np.ones(480, dtype=np.float32)
+    audio = np.ones(48000 * duration, dtype=np.float32)
     RecordingKOMOS.loaded_models = []
     monkeypatch.setitem(sys.modules, "komos", SimpleNamespace(KOMOS=RecordingKOMOS))
 
@@ -121,6 +128,28 @@ def test_komos_returns_distinct_score_through_registry(monkeypatch):
     assert model_id == "upskyy/komos"
     assert predictor.calls[0][0] is audio
     assert predictor.calls[0][1] == 48000
+
+
+def test_komos_propagates_long_form_limit_error():
+    """Inputs beyond the backend limit fail instead of producing partial MOS."""
+
+    class LimitedKOMOS:
+        """Represent a backend rejecting an oversized recording."""
+
+        def score_long_form(self, audio: np.ndarray, sr: int) -> float:
+            """Reject the oversized waveform with an actionable backend error."""
+            message = "Audio exceeds the 60-second score_long_form() limit."
+            raise ValueError(message)
+
+    audio = np.ones(16000 * 61, dtype=np.float32)
+
+    with pytest.raises(ValueError, match="60-second"):
+        pseudo_mos.pseudo_mos_metric(
+            audio,
+            fs=16000,
+            predictor_dict={"komos": LimitedKOMOS()},
+            predictor_fs={"komos": 16000},
+        )
 
 
 def test_utmosv2_uses_sarulab_dataset_label(monkeypatch):
