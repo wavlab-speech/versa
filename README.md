@@ -56,9 +56,16 @@ external toolkits:
 ```bash
 pip install ".[audio,text,ml]"
 pip install ".[songeval]" # SongEval Python dependencies only
-pip install ".[external]"  # Git/toolkit-backed metrics
+pip install ".[external]"  # Optional toolkits, including released ESPnet
+pip install -r tools/requirements-external.txt  # Discrete-speech fork
 pip install ".[dev]"       # tests, linting, and formatting
 ```
+
+The `external` extra installs ESPnet from PyPI (`espnet>=202611`) and requires
+Python 3.12 or 3.13, matching that ESPnet release.
+Discrete-speech metrics additionally need `tools/requirements-external.txt`.
+Uni-VERSA and ARECHO use the upstream `espnet2.bin.aqa_inference.AqaInference`
+API. The discrete-speech fork is installed separately and is not a package dependency.
 
 or alternatively, without cloning:
 
