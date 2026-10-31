@@ -109,13 +109,12 @@ ml = [
 external = [
     "Cython",
     "cdpam",
-    "discrete-speech-metrics @ git+https://github.com/ftshijt/DiscreteSpeechMetrics.git@v1.0.2",
-    "espnet @ git+https://github.com/espnet/espnet.git@e6d26103ee3173978f3e07acf471befbbd99e311",
+    "espnet>=202611",
     "espnet-tts-frontend",
     "espnet_model_zoo",
     "kaggle",
-    "openai-whisper @ git+https://github.com/openai/whisper.git",
-    "s3prl",
+    "openai-whisper",
+    "espnet-s3prl>=2026.5.14",
     "torch-complex",
 ]
 test = [

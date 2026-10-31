@@ -1,3 +1,4 @@
+# Optional backend: install with pip install -r tools/requirements-external.txt
 # Universal Metrics Configuration for Versa
 # This file contains the configuration for various universal metrics used in speech quality assessment.
 
