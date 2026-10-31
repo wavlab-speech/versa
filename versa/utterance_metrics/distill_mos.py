@@ -47,7 +47,11 @@ class DistillMosMetric(BaseMetric):
     """Reference-free MOS using the upstream default overlapping segments."""
 
     def _setup(self):
-        """Load the optional Distill-MOS backend on the configured device."""
+        """Load the backend on the device selected by the scorer.
+
+        The scorer overrides YAML use_gpu with its argument (CLI --use_gpu);
+        the CLI defaults to CPU. Direct construction uses this config value.
+        """
         self.model = distill_mos_setup(self.config.get("use_gpu", False))
 
     def compute(self, predictions, references=None, metadata=None):

@@ -8,7 +8,8 @@ This is distinct from BaleYang/DistilMOS.
 Install into the environment used for VERSA with
 `bash tools/install_distill_mos.sh` (or set `PYTHON` to that environment's Python).
 Use `egs/separate_metrics/distill_mos.yaml` with the existing scorer configuration
-option. `use_gpu: true` selects CUDA; the default is CPU.
+option. Pass `--use_gpu` to select CUDA; the default is CPU. The scorer’s
+`use_gpu` argument overrides the value in the metric YAML.
 The optional backend is imported only when constructing the metric.
 
 The output key is `distill_mos`: native MOS, nominally 1–5, higher is better.

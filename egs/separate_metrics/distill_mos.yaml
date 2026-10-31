@@ -1,3 +1,4 @@
 # Microsoft Distill-MOS variant 7 (independent)
 - name: distill_mos
+  # The scorer overrides this value; pass --use_gpu on the CLI for CUDA.
   use_gpu: false
