@@ -239,3 +239,35 @@ def test_dnsmos_long_audio_does_not_tile(monkeypatch, length):
         lambda _: torch.tensor([[3.0, 0.25]]), np.ones(length), 16000
     )
     assert result == {"dnsmos_c_mean": 3.0, "dnsmos_c_variance": 0.25}
+
+
+@pytest.mark.parametrize("rate", [8000, 22050, 44100, 48000, 96000])
+def test_dnsmos_bounds_resampling_with_boundary_context(monkeypatch, rate):
+    """Bound long inputs while retaining full-recording resampling features."""
+    import librosa
+
+    samples = np.random.default_rng(42).normal(size=30 * rate).astype(np.float32)
+    resample = librosa.resample
+    expected = resample(samples, orig_sr=rate, target_sr=16000)[:160000]
+    expected_spec = np.log10(
+        np.clip(
+            np.abs(librosa.stft(expected, n_fft=320, win_length=320, hop_length=160).T),
+            1e-7,
+            1e7,
+        )
+    )
+    calls = []
+
+    def bounded_resample(audio, **kwargs):
+        """Check the source span before delegating to the real resampler."""
+        calls.append(len(audio))
+        return resample(audio, **kwargs)
+
+    def model(features):
+        """Compare all features, including those at the crop boundary."""
+        np.testing.assert_allclose(features[0, 0].numpy(), expected_spec, atol=1e-5)
+        return torch.tensor([[3.5, 0.25]])
+
+    monkeypatch.setattr(librosa, "resample", bounded_resample)
+    dnsmos_c.dnsmos_c_calculate(model, samples, rate)
+    assert calls == [11 * rate]

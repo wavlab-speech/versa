@@ -41,6 +41,10 @@ def dnsmos_c_calculate(model, pred_x, gen_sr, device="cpu"):
     if samples.ndim != 1 or samples.size == 0 or not np.isfinite(samples).all():
         raise ValueError("DNSMOS-C requires a nonempty finite mono waveform")
     if gen_sr != 16000:
+        # Retain one second of right-hand filter context beyond the ten-second
+        # scoring window. Align the boundary to whole source seconds so the
+        # resampling phase is unchanged. Short clips retain their original end.
+        samples = samples[: 11 * gen_sr]
         samples = librosa.resample(samples, orig_sr=gen_sr, target_sr=16000)
     if len(samples) < 160000:
         samples = np.tile(samples, (160000 + len(samples) - 1) // len(samples))

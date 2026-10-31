@@ -186,3 +186,19 @@ def test_variance_alias_uses_registry_metadata():
     )
     assert analysis["metrics"][0].best_key == ""
     assert analysis["groups"]["rankings"] == {}
+
+
+def test_other_variance_names_retain_quality_rankings():
+    """Do not suppress explained variance or covariance through substring matches."""
+    for name in ["explained_variance", "covariance"]:
+        analysis = analyze_records(
+            [
+                {"key": "a", "model": "m1", name: 0.25},
+                {"key": "b", "model": "m2", name: 0.75},
+            ],
+            group_by="model",
+        )
+        summary = analysis["metrics"][0]
+        assert summary.best_key == "b"
+        assert summary.worst_key == "a"
+        assert analysis["groups"]["rankings"][name][0]["group"] == "m2"

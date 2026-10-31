@@ -541,7 +541,7 @@ def _is_undirected_metric(
     """Identify uncertainty outputs that must not receive quality rankings."""
     metadata = _metadata_for_metric(metric, registry)
     normalized = _strip_prefix(metadata.name if metadata else metric).lower()
-    return "variance" in normalized
+    return normalized == "dnsmos_c_variance"
 
 
 def metric_direction(
