@@ -2,12 +2,29 @@ import logging
 import math
 import os
 
+import pytest
 import yaml
 
 from versa.scorer_shared import VersaScorer, compute_summary
 from versa.utils_shared import find_files
 from versa.definition import MetricRegistry
-from versa.utterance_metrics.discrete_speech import register_discrete_speech_metric
+from versa.utterance_metrics.discrete_speech import (
+    is_discrete_speech_available,
+    register_discrete_speech_metric,
+)
+
+pytestmark = [
+    pytest.mark.real_model,
+    pytest.mark.skipif(
+        os.environ.get("VERSA_RUN_REAL_MODEL_TESTS") != "1",
+        reason="discrete-speech tests require explicit model-test opt-in",
+    ),
+    pytest.mark.skipif(
+        not is_discrete_speech_available(),
+        reason="install tools/requirements-external.txt for discrete-speech tests",
+    ),
+]
+
 
 TEST_INFO = {
     "speech_bert": 0.9727544784545898,
@@ -68,6 +85,11 @@ def info_update():
                 )
             )
     print("check successful", flush=True)
+
+
+def test_discrete_speech_pipeline():
+    """Run the optional discrete-speech recipe independently of general scoring."""
+    info_update()
 
 
 if __name__ == "__main__":

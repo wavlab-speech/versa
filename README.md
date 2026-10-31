@@ -63,9 +63,26 @@ pip install ".[dev]"       # tests, linting, and formatting
 
 The `external` extra installs ESPnet from PyPI (`espnet>=202611`) and requires
 Python 3.12 or 3.13, matching that ESPnet release.
-Discrete-speech metrics additionally need `tools/requirements-external.txt`.
-Uni-VERSA and ARECHO use the upstream `espnet2.bin.aqa_inference.AqaInference`
-API. The discrete-speech fork is installed separately and is not a package dependency.
+Uni-VERSA and ARECHO use the upstream `espnet2.bin.aqa_inference.AqaInference` API.
+
+**Optional discrete-speech metrics:** SpeechBERTScore (`speech_bert`), SpeechBLEU
+(`speech_bleu`), and SpeechTokenDistance (`speech_token_distance`) are supported
+only after additional installation. Neither the base install nor `[external]`
+installs their backend. From a repository checkout, run:
+
+```bash
+pip install -r tools/requirements-external.txt
+python -m versa.bin.scorer --score_config egs/separate_metrics/discrete_speech.yaml \
+    --pred test/test_samples/test2 --gt test/test_samples/test1 --output_file discrete_scores.jsonl
+```
+
+The general `egs/speech.yaml` and `egs/speech_gpu.yaml` recipes exclude these
+metrics. Their dedicated tests are opt-in and may download model checkpoints:
+
+```bash
+VERSA_RUN_REAL_MODEL_TESTS=1 python -m pytest --import-mode=importlib \
+    test/test_metrics/test_discrete_speech.py test/test_pipeline/test_discrete_speech.py
+```
 
 or alternatively, without cloning:
 

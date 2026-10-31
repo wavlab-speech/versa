@@ -75,6 +75,16 @@ The WavLM frontend uses `espnet-s3prl` (provided by the `external` extra).
 The published-model smoke checks cover Uni-VERSA no-reference and ARECHO base;
 the other Uni-VERSA reference modes are covered with local test models.
 
+Discrete-speech model tests are separate from the general speech recipes and
+are not part of the default core CI lane. Even if the backend is installed,
+pytest skips them unless model tests are explicitly enabled:
+
+```bash
+python -m pip install -r tools/requirements-external.txt
+VERSA_RUN_REAL_MODEL_TESTS=1 python -m pytest --import-mode=importlib \
+    test/test_metrics/test_discrete_speech.py test/test_pipeline/test_discrete_speech.py
+```
+
 Before pushing your changes, you can run the same checks locally:
 
 ### Code Quality
