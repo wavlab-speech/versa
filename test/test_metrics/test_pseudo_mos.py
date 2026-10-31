@@ -35,18 +35,22 @@ class DummyUTMOSv2Model:
         return torch.ones((pred_tensor.shape[0], 1), dtype=torch.float32)
 
 
-class DummyKOMOSModel:
-    """Minimal optional KOMOS adapter used to verify model setup."""
+class RecordingKOMOS:
+    """Record setup and scoring observations on one test-local backend instance."""
 
-    loaded_model_id = None
-    loaded_cache_dir = None
+    def __init__(self):
+        """Initialize the mutable setup observations and scoring-call log."""
+        self.model_id = None
+        self.cache_dir = None
+        self.device = None
+        self.evaluating = False
+        self.calls = []
 
-    @classmethod
-    def from_pretrained(cls, model_id, *, cache_dir):
-        """Record the requested model identifier and return a test adapter."""
-        cls.loaded_model_id = model_id
-        cls.loaded_cache_dir = cache_dir
-        return cls()
+    def from_pretrained(self, model_id, *, cache_dir):
+        """Record the requested checkpoint and cache directory."""
+        self.model_id = model_id
+        self.cache_dir = cache_dir
+        return self
 
     def to(self, device):
         """Record the requested execution device."""
@@ -58,59 +62,38 @@ class DummyKOMOSModel:
         self.evaluating = True
         return self
 
-
-def test_komos_setup_loads_optional_model(monkeypatch, tmp_path):
-    """The optional backend loads the published model on the requested device."""
-    monkeypatch.setitem(sys.modules, "komos", SimpleNamespace(KOMOS=DummyKOMOSModel))
-
-    predictors, sample_rates = pseudo_mos.pseudo_mos_setup(
-        ["komos"], {}, cache_dir=str(tmp_path), use_gpu=False
-    )
-
-    assert DummyKOMOSModel.loaded_model_id == "upskyy/komos"
-    assert DummyKOMOSModel.loaded_cache_dir == str(tmp_path)
-    assert predictors["komos"].device == "cpu"
-    assert predictors["komos"].evaluating is True
-    assert sample_rates["komos"] == 16000
-
-
-class RecordingKOMOS:
-    """KOMOS adapter that records waveform scoring calls."""
-
-    loaded_models = []
-
-    def __init__(self):
-        """Initialize an empty scoring-call log."""
-        self.calls = []
-
-    @classmethod
-    def from_pretrained(cls, model_id, *, cache_dir):
-        """Create and retain an adapter for later call assertions."""
-        model = cls()
-        cls.loaded_models.append((model_id, model))
-        return model
-
-    def to(self, device):
-        """Record the configured execution device."""
-        self.device = device
-        return self
-
-    def eval(self):
-        """Return the adapter unchanged for inference-mode chaining."""
-        return self
-
     def score_long_form(self, audio, sr):
         """Record the waveform call and return a deterministic MOS."""
         self.calls.append((audio, sr))
         return 4.2
 
 
+@pytest.fixture
+def komos_model(monkeypatch):
+    """Install a recording backend with fresh instance-local state for each test."""
+    model = RecordingKOMOS()
+    monkeypatch.setitem(sys.modules, "komos", SimpleNamespace(KOMOS=model))
+    return model
+
+
+def test_komos_setup_loads_optional_model(komos_model, tmp_path):
+    """The optional backend loads the published model on the requested device."""
+    predictors, sample_rates = pseudo_mos.pseudo_mos_setup(
+        ["komos"], {}, cache_dir=str(tmp_path), use_gpu=False
+    )
+
+    assert predictors["komos"] is komos_model
+    assert komos_model.model_id == "upskyy/komos"
+    assert komos_model.cache_dir == str(tmp_path)
+    assert komos_model.device == "cpu"
+    assert komos_model.evaluating is True
+    assert sample_rates["komos"] == 16000
+
+
 @pytest.mark.parametrize("duration", [1, 10, 11, 60])
-def test_komos_returns_distinct_score_through_registry(monkeypatch, duration):
+def test_komos_returns_distinct_score_through_registry(komos_model, duration):
     """The registered metric preserves input rate and returns a KOMOS score."""
     audio = np.ones(48000 * duration, dtype=np.float32)
-    RecordingKOMOS.loaded_models = []
-    monkeypatch.setitem(sys.modules, "komos", SimpleNamespace(KOMOS=RecordingKOMOS))
 
     registry = MetricRegistry()
     pseudo_mos.register_pseudo_mos_metric(registry)
@@ -124,10 +107,9 @@ def test_komos_returns_distinct_score_through_registry(monkeypatch, duration):
     )
 
     assert scores == {"komos": 4.2}
-    model_id, predictor = RecordingKOMOS.loaded_models[0]
-    assert model_id == "upskyy/komos"
-    assert predictor.calls[0][0] is audio
-    assert predictor.calls[0][1] == 48000
+    assert komos_model.model_id == "upskyy/komos"
+    assert komos_model.calls[0][0] is audio
+    assert komos_model.calls[0][1] == 48000
 
 
 def test_komos_propagates_long_form_limit_error():
