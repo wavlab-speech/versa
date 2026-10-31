@@ -4,11 +4,15 @@
 # Apache 2.0  (http://www.apache.org/licenses/LICENSE-2.0)
 
 import importlib.util
+import sys
 from pathlib import Path
 from types import SimpleNamespace
 
 import numpy as np
+import pytest
 import torch
+
+from versa.definition import MetricFactory, MetricRegistry
 
 PSEUDO_MOS_PATH = (
     Path(__file__).resolve().parents[2]
@@ -29,6 +33,105 @@ class DummyUTMOSv2Model:
     def __call__(self, pred_tensor, spec_info, data_type):
         self.data_type = data_type.detach().cpu().numpy()
         return torch.ones((pred_tensor.shape[0], 1), dtype=torch.float32)
+
+
+class RecordingKOMOS:
+    """Record setup and scoring observations on one test-local backend instance."""
+
+    def __init__(self):
+        """Initialize the mutable setup observations and scoring-call log."""
+        self.model_id = None
+        self.cache_dir = None
+        self.device = None
+        self.evaluating = False
+        self.calls = []
+
+    def from_pretrained(self, model_id, *, cache_dir):
+        """Record the requested checkpoint and cache directory."""
+        self.model_id = model_id
+        self.cache_dir = cache_dir
+        return self
+
+    def to(self, device):
+        """Record the requested execution device."""
+        self.device = device
+        return self
+
+    def eval(self):
+        """Record that setup selected inference mode."""
+        self.evaluating = True
+        return self
+
+    def score_long_form(self, audio, sr):
+        """Record the waveform call and return a deterministic MOS."""
+        self.calls.append((audio, sr))
+        return 4.2
+
+
+@pytest.fixture
+def komos_model(monkeypatch):
+    """Install a recording backend with fresh instance-local state for each test."""
+    model = RecordingKOMOS()
+    monkeypatch.setitem(sys.modules, "komos", SimpleNamespace(KOMOS=model))
+    return model
+
+
+def test_komos_setup_loads_optional_model(komos_model, tmp_path):
+    """The optional backend loads the published model on the requested device."""
+    predictors, sample_rates = pseudo_mos.pseudo_mos_setup(
+        ["komos"], {}, cache_dir=str(tmp_path), use_gpu=False
+    )
+
+    assert predictors["komos"] is komos_model
+    assert komos_model.model_id == "upskyy/komos"
+    assert komos_model.cache_dir == str(tmp_path)
+    assert komos_model.device == "cpu"
+    assert komos_model.evaluating is True
+    assert sample_rates["komos"] == 16000
+
+
+@pytest.mark.parametrize("duration", [1, 10, 11, 60])
+def test_komos_returns_distinct_score_through_registry(komos_model, duration):
+    """The registered metric preserves input rate and returns a KOMOS score."""
+    audio = np.ones(48000 * duration, dtype=np.float32)
+
+    registry = MetricRegistry()
+    pseudo_mos.register_pseudo_mos_metric(registry)
+    metric = MetricFactory(registry).create_metric(
+        "pseudo_mos", {"predictor_types": ["komos"]}
+    )
+
+    scores = metric.compute(
+        audio,
+        metadata={"sample_rate": 48000},
+    )
+
+    assert scores == {"komos": 4.2}
+    assert komos_model.model_id == "upskyy/komos"
+    assert komos_model.calls[0][0] is audio
+    assert komos_model.calls[0][1] == 48000
+
+
+def test_komos_propagates_long_form_limit_error():
+    """Inputs beyond the backend limit fail instead of producing partial MOS."""
+
+    class LimitedKOMOS:
+        """Represent a backend rejecting an oversized recording."""
+
+        def score_long_form(self, audio: np.ndarray, sr: int) -> float:
+            """Reject the oversized waveform with an actionable backend error."""
+            message = "Audio exceeds the 60-second score_long_form() limit."
+            raise ValueError(message)
+
+    audio = np.ones(16000 * 61, dtype=np.float32)
+
+    with pytest.raises(ValueError, match="60-second"):
+        pseudo_mos.pseudo_mos_metric(
+            audio,
+            fs=16000,
+            predictor_dict={"komos": LimitedKOMOS()},
+            predictor_fs={"komos": 16000},
+        )
 
 
 def test_utmosv2_uses_sarulab_dataset_label(monkeypatch):
