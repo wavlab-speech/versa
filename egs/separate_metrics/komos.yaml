@@ -1,0 +1,6 @@
+# Korean speech MOS prediction. Install the optional backend with:
+# pip install komos
+# Scores the complete utterance in 10-second windows, up to 60 seconds.
+# Split longer recordings externally before scoring.
+- name: pseudo_mos
+  predictor_types: ["komos"]
