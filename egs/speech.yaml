@@ -31,11 +31,9 @@
 # -- stoi: short-time objective intelligibility
 - name: stoi
 
-# discrete speech metrics
-# -- speech_bert: speech bert score
-# -- speech_bleu: speech bleu score
-# -- speech_token_distance: speech token distance score
-- name: discrete_speech
+# Optional discrete-speech metrics are run separately with
+# egs/separate_metrics/discrete_speech.yaml after installing
+# tools/requirements-external.txt.
 
 # pseudo subjective metrics
 # -- utmos: UT-MOS score

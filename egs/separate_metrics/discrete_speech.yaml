@@ -1,3 +1,4 @@
+# Optional backend: install with pip install -r tools/requirements-external.txt
 # discrete speech metrics
 # -- speech_bert: speech bert score
 # -- speech_bleu: speech bleu score

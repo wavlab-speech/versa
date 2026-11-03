@@ -21,6 +21,70 @@ check. Other model-backed tests still need their own dependencies and assets.
 
 ## Running Tests Locally
 
+### Package Validation
+
+The independent `.github/workflows/packaging.yml` workflow builds the sdist and
+then a wheel from that sdist on pushes and pull requests. It checks both artifacts
+with Twine and `ci/check_package_metadata.py`. The latter rejects direct URL
+dependencies in every `Requires-Dist` field, including extras and inactive
+environment markers, which `twine check` alone does not catch.
+
+```bash
+python -m pip install build twine packaging pytest
+python -m pytest -q test/test_package_metadata.py
+python -m build
+python -m twine check --strict dist/*
+python ci/check_package_metadata.py dist/*
+```
+
+Use a clean checkout/output directory when preparing a release so `dist/` contains
+only the intended version. Publish under the declared distribution name
+`versa-speech-audio-toolkit`; the Python import remains `versa`. After the checks
+pass, a maintainer with PyPI access can upload those same artifacts using
+`python -m twine upload dist/*`. Building and validating does not publish a release.
+
+The discrete-speech fork remains in `tools/requirements-external.txt`, included
+in the sdist, and is installed separately alongside the `external` extra.
+
+The `external` extra now uses `espnet>=202611` from PyPI (Python 3.12–3.13).
+Uni-VERSA and ARECHO use the upstream `AqaInference` API instead of the fork's
+`UniversaInference`. Internal AQA features and sequential decoding flags are
+excluded from metric results.
+
+Run the released-runtime compatibility tests in an environment with PyPI ESPnet:
+
+```bash
+python -m pip install ".[test]" "espnet==202611"
+VERSA_TEST_PYPI_ESPNET=1 python -m pytest -q test/test_metrics/test_aqa_pypi.py
+```
+
+These tests run real AQA inference with small randomly initialized models in
+all four Uni-VERSA reference modes, without checkpoint downloads. The ARECHO
+output contract test checks that decoding diagnostics are excluded. They do not
+establish published checkpoint compatibility or metric accuracy; validate the
+published models separately before a release:
+
+```bash
+python -m pip install "espnet-s3prl>=2026.5.14"
+VERSA_TEST_PYPI_ESPNET=1 VERSA_RUN_REAL_MODEL_TESTS=1 \
+VERSA_AQA_CACHE_DIR="$PWD/versa_cache/espnet_model_zoo" \
+python -m pytest -q test/test_metrics/test_aqa_pypi.py
+```
+
+The WavLM frontend uses `espnet-s3prl` (provided by the `external` extra).
+The published-model smoke checks cover Uni-VERSA no-reference and ARECHO base;
+the other Uni-VERSA reference modes are covered with local test models.
+
+Discrete-speech model tests are separate from the general speech recipes and
+are not part of the default core CI lane. Even if the backend is installed,
+pytest skips them unless model tests are explicitly enabled:
+
+```bash
+python -m pip install -r tools/requirements-external.txt
+VERSA_RUN_REAL_MODEL_TESTS=1 python -m pytest --import-mode=importlib \
+    test/test_metrics/test_discrete_speech.py test/test_pipeline/test_discrete_speech.py
+```
+
 Before pushing your changes, you can run the same checks locally:
 
 ### Code Quality
