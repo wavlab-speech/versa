@@ -11,7 +11,7 @@ python -m pip install -r tools/requirements-external.txt
 Use `egs/separate_metrics/discrete_speech.yaml` to run these metrics separately.
 The general speech recipes exclude them. Their individual tests require
 `VERSA_RUN_REAL_MODEL_TESTS=1` and may download checkpoints; see the
-[installation guide](../README.md#installation) for commands.
+[installation guide](../README.md#-installation) for commands.
 
 
 ### Independent Metrics
