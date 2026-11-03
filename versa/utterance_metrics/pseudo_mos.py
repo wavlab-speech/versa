@@ -34,7 +34,7 @@ except ImportError:
 def pseudo_mos_setup(
     predictor_types, predictor_args, cache_dir="versa_cache", use_gpu=False
 ):
-    # Supported predictor types: utmos, dnsmos, aecmos, plcmos
+    # Supported predictor types include utmos, komos, dnsmos, aecmos, and plcmos.
     # Predictor args: predictor specific args
     """Return predictor and sample-rate maps for the requested MOS backends.
 
@@ -87,7 +87,20 @@ def pseudo_mos_setup(
             )
 
     for predictor in predictor_types:
-        if predictor == "dnsmos":
+        if predictor == "komos":
+            try:
+                from komos import KOMOS
+            except ImportError as exc:
+                raise ImportError(
+                    "Please install KOMOS with `pip install komos` to use the komos predictor"
+                ) from exc
+            predictor_dict["komos"] = (
+                KOMOS.from_pretrained("upskyy/komos", cache_dir=cache_dir)
+                .to(device)
+                .eval()
+            )
+            predictor_fs["komos"] = 16000
+        elif predictor == "dnsmos":
             predictor_dict["dnsmos"] = dnsmos
             if "dnsmos" not in predictor_args:
                 predictor_fs["dnsmos"] = 16000
@@ -146,11 +159,15 @@ def pseudo_mos_metric(pred, fs, predictor_dict, predictor_fs, use_gpu=False):
     """Run selected MOS predictors on mono audio sampled at fs Hz.
 
     Return backend-specific keys, including dns_overall/dns_p808 for DNSMOS.
-    Each backend applies its preprocessing and output scale; scores are not
-    clipped. UTMOSv2 predictions are averaged over five inference passes."""
+    Each backend applies its own preprocessing and output scale; VERSA does not
+    post-process the scores. KOMOS scores the full waveform in non-overlapping
+    10-second windows and rejects inputs longer than 60 seconds. UTMOSv2
+    predictions are averaged over five passes."""
     scores = {}
     for predictor in predictor_dict.keys():
-        if predictor == "utmos":
+        if predictor == "komos":
+            scores["komos"] = predictor_dict["komos"].score_long_form(pred, sr=fs)
+        elif predictor == "utmos":
             if fs != predictor_fs["utmos"]:
                 pred_utmos = resample_audio(pred, fs, predictor_fs["utmos"])
             else:
@@ -205,25 +222,26 @@ def pseudo_mos_metric(pred, fs, predictor_dict, predictor_fs, use_gpu=False):
             scores.update(utmosv2=sum(score_info) / NUM_REPETITIONS)
 
         elif predictor == "dnsmos":
-            if fs != predictor_fs["dnsmos"]:
-                pred_dnsmos = resample_audio(pred, fs, predictor_fs["dnsmos"])
-                fs = predictor_fs["dnsmos"]
+            # Keep `fs` untouched: later predictors in this loop resample from it.
+            dnsmos_fs = predictor_fs["dnsmos"]
+            if fs != dnsmos_fs:
+                pred_dnsmos = resample_audio(pred, fs, dnsmos_fs)
             else:
                 pred_dnsmos = pred
 
             max_val = np.max(np.abs(pred_dnsmos))
-            score = predictor_dict["dnsmos"].run(pred_dnsmos / max_val, sr=fs)
+            score = predictor_dict["dnsmos"].run(pred_dnsmos / max_val, sr=dnsmos_fs)
 
             scores.update(dns_overall=score["ovrl_mos"], dns_p808=score["p808_mos"])
         elif predictor == "plcmos":
-            if fs != predictor_fs["plcmos"]:
-                pred_plcmos = resample_audio(pred, fs, predictor_fs["plcmos"])
-                fs = predictor_fs["plcmos"]
+            plcmos_fs = predictor_fs["plcmos"]
+            if fs != plcmos_fs:
+                pred_plcmos = resample_audio(pred, fs, plcmos_fs)
             else:
                 pred_plcmos = pred
 
             max_val = np.max(np.abs(pred_plcmos))
-            score = predictor_dict["plcmos"].run(pred_plcmos / max_val, sr=fs)
+            score = predictor_dict["plcmos"].run(pred_plcmos / max_val, sr=plcmos_fs)
             scores.update(plcmos=score["plcmos"])
         elif predictor in ("singmos", "singmos_v1", "singmos_pro"):
             if fs != predictor_fs[predictor]:
@@ -349,7 +367,7 @@ def _pseudo_mos_metadata():
         dependencies=["torch", "librosa", "numpy", "requests"],
         description=(
             "Pseudo-subjective MOS predictors including UTMOS, DNSMOS, "
-            "PLCMOS, SingMOS, and DNSMOS Pro"
+            "PLCMOS, SingMOS, KOMOS, and DNSMOS Pro"
         ),
         implementation_source="https://github.com/tarepan/SpeechMOS",
     )

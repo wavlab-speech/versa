@@ -1,0 +1,4 @@
+- name: dnsmos_c
+  dataset: NISQA  # NISQA, BVCC, or Tencent; must match the checkpoint
+  checkpoint: tools/DNSMOS-C/runs/NISQA/model_best.pt
+  use_gpu: false
