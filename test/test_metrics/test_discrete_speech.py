@@ -1,5 +1,6 @@
 from test.audio_utils import generate_fixed_wav
 
+import os
 import wave
 from pathlib import Path
 
@@ -10,6 +11,16 @@ from versa.utterance_metrics.discrete_speech import (
     DiscreteSpeechMetric,
     is_discrete_speech_available,
 )
+
+
+# Installing the optional backend alone must not trigger model downloads in pytest.
+pytestmark = [
+    pytest.mark.real_model,
+    pytest.mark.skipif(
+        os.environ.get("VERSA_RUN_REAL_MODEL_TESTS") != "1",
+        reason="discrete-speech tests require explicit model-test opt-in",
+    ),
+]
 
 
 # -------------------------------

@@ -1,3 +1,4 @@
+# Optional backend: install with pip install -r tools/requirements-external.txt
 # SE Metrics Configuration for VERSA
 
 # mcd f0 related metrics
