@@ -81,6 +81,7 @@ We include x mark if the metric is auto-installed in versa.
 | 59 |   | Korean Mean Opinion Score (KOMOS) | pseudo_mos | komos | [KOMOS](https://github.com/upskyy/komos) | [paper](https://arxiv.org/abs/2610.15353) |
 | 60 |   | WhiSQA single/multi-head (checkpoint parity pending) | whisqa | whisqa_mos; optional quality dimensions | [Setup and validation](pretrained_mos.md) | [paper](https://arxiv.org/abs/2508.02210) |
 | 61 |   | DNSMOS-C dataset-specific (checkpoint parity pending) | dnsmos_c | dnsmos_c_mean, dnsmos_c_variance | [Setup and validation](pretrained_mos.md) | [paper](https://arxiv.org/abs/2606.26903) |
+| 62 |   | Distill-MOS variant 7 (adapter; checkpoint parity pending) | distill_mos | distill_mos | [Setup and validation](distill_mos.md) | [paper](https://arxiv.org/abs/2502.05356) |
 
 
 ### Dependent Metrics
