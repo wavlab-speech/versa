@@ -1,0 +1,4 @@
+- name: whisqa
+  repo_path: tools/WhiSQA
+  head: single  # multi adds four named quality dimensions
+  use_gpu: false

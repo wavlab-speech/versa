@@ -63,6 +63,8 @@ We include x mark if the metric is auto-installed in versa.
 | 56 | x | Singing voice MOS  | pseudo_mos | singmos_pro |[singmos](https://github.com/South-Twilight/SingMOS) | [paper](https://arxiv.org/abs/2510.01812) |
 | 57 |   | SongEval (A Benchmark Dataset for Song Aesthetics Evaluation) | songeval | {songeval_coherence, songeval_musicality, songeval_memorability, songeval_clarity, songeval_naturalness} | [SongEval](https://github.com/ASLP-lab/SongEval) | [paper](https://arxiv.org/abs/2505.10793) |
 | 58 |   | Multivariate Probabilistic Assessment of Speech Quality | multigauss | multigauss_{mos,noi,col,dis,loud}, multigauss_covariance | [MultiGauss](https://github.com/fcumlin/MultiGauss) | [paper](https://arxiv.org/abs/2506.04890) |
+| 60 |   | WhiSQA single/multi-head (checkpoint parity pending) | whisqa | whisqa_mos; optional quality dimensions | [Setup and validation](pretrained_mos.md) | [paper](https://arxiv.org/abs/2508.02210) |
+| 61 |   | DNSMOS-C dataset-specific (checkpoint parity pending) | dnsmos_c | dnsmos_c_mean, dnsmos_c_variance | [Setup and validation](pretrained_mos.md) | [paper](https://arxiv.org/abs/2606.26903) |
 
 
 ### Dependent Metrics
